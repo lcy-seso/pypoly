@@ -8,7 +8,7 @@ class TensorArray(object):
     """
 
     def __init__(self, *shape, dtype=torch.float32):
-        if not isinstance(shape, tuple) or isinstance(shape, list):
+        if not (isinstance(shape, tuple) or isinstance(shape, list)):
             raise ValueError('shape should be a tuple or a list.')
             shape = list(shape)
 
