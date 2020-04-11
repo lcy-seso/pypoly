@@ -43,3 +43,7 @@ endfunction()
 
 include(external/isl)
 include(external/pybind)
+
+set(third_party_deps)
+include(external/gtest)
+list(APPEND third_party_deps extern_gtest)
