@@ -3,12 +3,14 @@ import sys
 sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
+from pprint import pprint
 from typing import List, Tuple
 import random
 
 import torch
 import torch.nn as nn
 from torch import Tensor
+from torch._utils_internal import get_source_lines_and_file
 
 import pypet
 from pypet.cells import VanillaRNNCell
@@ -21,7 +23,6 @@ class MyModule(nn.Module):
 
         self.register_buffer('init_state', torch.zeros((1, hidden_size)))
 
-    @pypet.scop
     def forward(self, input: List[List[Tensor]], batch_size: int,
                 seq_lens: List[int], cells: List[nn.Module], depth: int,
                 output_size: int) -> TensorArray:
@@ -76,4 +77,9 @@ if __name__ == '__main__':
     outputs = []
 
     m = MyModule(hidden_size).to(device)
-    m(seq_batch, batch_size, seq_lens, cells, depth, hidden_size)
+    parsed = pypet.scop(m)
+    print(parsed)
+
+    # This example cannot be run now, because of lacking necessary
+    # implementations. Do not uncomment the below line.
+    # m(seq_batch, batch_size, seq_lens, cells, depth, hidden_size)
