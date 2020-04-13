@@ -78,10 +78,11 @@ setup(
     version='0.0.1',
     author='',
     author_email='',
-    description=
-    'A tool to extract polyhedral representation from PyTorch program.',
+    description=('A tool to extract polyhedral representation '
+                 'from PyTorch program.'),
     long_description='',
     ext_modules=[CMakeExtension('pypet')],
     cmdclass=dict(build_ext=CMakeBuild),
     zip_safe=False,
+    package_data={'pypet': []}  # header files and dynamic-link library
 )
