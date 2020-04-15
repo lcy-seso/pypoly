@@ -1,3 +1,5 @@
+import __future__
+
 import torch
 
 from .cells import *
@@ -13,8 +15,7 @@ def scop(obj):
         method = getattr(obj, 'forward', None)
 
         # TODO(Ying) recursive parsing is required.
-        ts_ast = torch.jit.get_jit_def(method)
-        print(ts_ast)
+        return torch.jit.get_jit_def(method)
     else:
         raise NotImplementedError(
             'parse codes other than nn.Module is not implemented yet.')

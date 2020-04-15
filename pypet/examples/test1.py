@@ -3,6 +3,7 @@ import sys
 sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
+from pprint import pprint
 from typing import List, Tuple
 import random
 
@@ -77,6 +78,7 @@ if __name__ == '__main__':
 
     m = MyModule(hidden_size).to(device)
     parsed = pypet.scop(m)
+    print(parsed)
 
     # This example cannot be run now, because of lacking necessary
     # implementations. Do not uncomment the below line.
