@@ -9,6 +9,21 @@ set(THIRD_PARTY_CACHE_PATH
           "A path cache third party source code to avoid repeated download.")
 
 set(THIRD_PARTY_BUILD_TYPE Release)
+set(EXTERNAL_PROJECT_LOG_ARGS
+    LOG_DOWNLOAD
+    0 # Wrap download in script to log output
+    LOG_UPDATE
+    1 # Wrap update in script to log output
+    LOG_CONFIGURE
+    1 # Wrap configure in script to log output
+    LOG_BUILD
+    0 # Wrap build in script to log output
+    LOG_TEST
+    1 # Wrap test in script to log output
+    LOG_INSTALL
+    0 # Wrap install in script to log output
+)
+set(SHALLOW_CLONE "GIT_SHALLOW TRUE")
 
 function(cache_third_party TARGET)
   set(options "")
@@ -47,3 +62,5 @@ include(external/pybind)
 set(third_party_deps)
 include(external/gtest)
 list(APPEND third_party_deps extern_gtest)
+
+include(external/torchlib)

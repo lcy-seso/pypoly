@@ -1,5 +1,3 @@
-import pdb
-
 import __future__
 
 import torch
@@ -18,7 +16,6 @@ def scop(nn_module):
             raise Exception('forward implementation is not found.')
         method = getattr(nn_module, 'forward', None)
 
-        # TODO(Ying) recursive parsing is required.
         concrete_type = concrete_type_store.get_or_create_concrete_type(
             nn_module)
         methods = torch.jit._recursive.infer_methods_to_compile(nn_module)
