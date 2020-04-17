@@ -1,8 +1,8 @@
 include(GNUInstallDirs)
 include(ExternalProject)
 
-set(GTEST_PREFIX_DIR ${THIRD_PARTY_PATH}/gtest)
-set(GTEST_SOURCE_DIR ${THIRD_PARTY_PATH}/gtest/src/extern_gtest)
+set(GTEST_PREFIX_DIR ${THIRD_PARTY_PATH}/gtest/src)
+set(GTEST_SOURCE_DIR ${GTEST_PREFIX_DIR}/extern_gtest)
 set(GTEST_INSTALL_DIR ${THIRD_PARTY_PATH}/install/gtest)
 set(GTEST_INCLUDE_DIR
     "${GTEST_INSTALL_DIR}/include"
