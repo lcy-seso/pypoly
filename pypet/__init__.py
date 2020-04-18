@@ -1,4 +1,5 @@
 import __future__
+import inspect
 
 import torch
 
@@ -6,6 +7,9 @@ from torch.jit._recursive import concrete_type_store
 
 from .cells import *
 from .tensor_array import TensorArray
+
+#FIXME(Ying) for debug only, Use a standarded way to import bindings.
+import _parser
 
 
 def scop(nn_module):
@@ -16,11 +20,11 @@ def scop(nn_module):
             raise Exception('forward implementation is not found.')
         method = getattr(nn_module, 'forward', None)
 
-        concrete_type = concrete_type_store.get_or_create_concrete_type(
-            nn_module)
-        methods = torch.jit._recursive.infer_methods_to_compile(nn_module)
-        for method in methods:
-            print(method.def_)
+        filename = inspect.getsourcefile(method)
+        sourcelines, file_lineno = inspect.getsourcelines(method)
+        source = ''.join(sourcelines)
+
+        parsed = _parser.parse_scop(source)
 
     else:
         raise NotImplementedError(

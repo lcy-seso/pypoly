@@ -1,7 +1,15 @@
-#include <pypet/core/parser.h>
+#include "pypet/core/parser.h"
+
+#include <torch/csrc/jit/frontend/parser.h>
+
 namespace pypet {
 
 PYBIND11_MODULE(_parser, m) {
-  py::class_<ScopParser>(m, "ScopParser").def(py::init<const std::string&>());
+  m.def("parse_scop", [](const std::string& src) {
+    torch::jit::Parser p(std::make_shared<torch::jit::Source>(src));
+    auto ast = TorchDef(p.parseFunction(/*is_method=*/true));
+    auto scop_parser = ScopParser(ast);
+    scop_parser.dump();
+  });
 }
 }  // namespace pypet
