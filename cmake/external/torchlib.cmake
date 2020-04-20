@@ -10,7 +10,9 @@ set(TORCHLIB_TAG latest)
 
 set(TORCH_LIBRARIES ${TORCHLIB_SOURCE_DIR}/lib)
 set(TORCHLIB_INCLUDE_DIR ${TORCHLIB_SOURCE_DIR}/include)
+
 include_directories(${TORCHLIB_INCLUDE_DIR})
+link_directories(${TORCH_LIBRARIES})
 
 cache_third_party(
   extern_torchlib
