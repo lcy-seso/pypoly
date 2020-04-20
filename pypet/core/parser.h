@@ -1,9 +1,8 @@
 #pragma once
 
-#include <c10/util/SmallVector.h>
-#include <c10/util/intrusive_ptr.h>
+#include "pypet/core/pypet.h"
+
 #include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
 #include <torch/csrc/jit/frontend/tree_views.h>
 
 #include <vector>
@@ -13,13 +12,26 @@ namespace py = pybind11;
 namespace pypet {
 
 using TorchDef = torch::jit::Def;
+struct PypetScop;
 
-struct ScopParser {
-  explicit ScopParser(const TorchDef& def) : ast_(std::move(def)) {}
-
-  void dump() const { std::cout << ast_; }
+struct ParserImpl {
+  explicit ParserImpl(const TorchDef& def)
+      : ast(std::move(def)), parsedData(PypetScop()){};
+  void dumpAST() const { std::cout << ast; }
 
  private:
-  TorchDef ast_;
+  TorchDef ast;
+  PypetScop parsedData;
 };
+
+struct ScopParser {
+  explicit ScopParser(const TorchDef& def) : pImpl(new ParserImpl(def)){};
+  ~ScopParser() = default;
+
+  void dumpAST() const { pImpl->dumpAST(); }
+
+ private:
+  std::unique_ptr<ParserImpl> pImpl;
+};
+
 }  // namespace pypet
