@@ -17,3 +17,5 @@ cc_library(
   DEPS
   torch
   isl)
+
+add_subdirectory(tests)
