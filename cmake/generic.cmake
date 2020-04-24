@@ -36,9 +36,21 @@ function(cc_library TARGET_NAME)
       file(WRITE ${target_SRCS}
            "const char *dummy_${TARGET_NAME} = \"${target_SRCS}\";")
       add_library(${TARGET_NAME} STATIC ${target_SRCS})
-      target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
+      target_link_libraries(${TARGET_NAME} ${cc_library_DEPS} -rdynamic)
     else()
       message(FATAL_ERROR "No source file is given.")
     endif()
   endif(cc_library_SRCS)
 endfunction(cc_library)
+
+function(cc_test_build TARGET_NAME)
+  set(oneValueArgs "")
+  set(multiValueArgs SRCS DEPS)
+  cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}"
+                        "${multiValueArgs}" ${ARGN})
+  add_executable(${TARGET_NAME} ${PROJECT_SOURCE_DIR}/pypet/tests/test_main.cpp
+                                ${cc_test_SRCS})
+  add_dependencies(${TARGET_NAME} pypet_core)
+  target_include_directories(${TARGET_NAME} PRIVATE ${PROJECT_SOURCE_DIR})
+  target_link_libraries(${TARGET_NAME} ${cc_test_DEPS} pypet_core gtest)
+endfunction()

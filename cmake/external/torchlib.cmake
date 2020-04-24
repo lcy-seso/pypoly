@@ -34,3 +34,6 @@ ExternalProject_Add(
   BUILD_COMMAND ""
   INSTALL_COMMAND ""
   TEST_COMMAND "")
+
+add_library(torchlib SHARED IMPORTED GLOBAL)
+add_dependencies(torchlib extern_torchlib)

@@ -12,8 +12,16 @@ message(STATUS "CXX compiler: ${CMAKE_CXX_COMPILER}, version: "
 message(STATUS "C compiler: ${CMAKE_C_COMPILER}, version: "
                "${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -g -O0")
+
+# FIXME(Ying): This may lead to runtime error if users have multiple Python
+# installed, and do not specify which Python to use when compiling.
+find_package(PythonLibs REQUIRED)
+include_directories(${PYTHON_INCLUDE_DIRS})
+
+message(${PYTHON_INCLUDE_DIRS})
 
 include(third_party)
 include(generic)
+
 add_subdirectory(pypet)

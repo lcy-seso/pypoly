@@ -1,8 +1,6 @@
 #ifndef PYPET_H
 #define PYPET_H
 
-#include "pypet/core/expr.h"
-
 #include <isl/aff.h>
 #include <isl/arg.h>
 #include <isl/map.h>
@@ -10,13 +8,17 @@
 #include <isl/set.h>
 #include <isl/union_map.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
 namespace pypet {
 
+struct PypetExpr;
+struct PypetTree;
+
 struct SourceLoc {
-  SourceLoc() = default;
+  SourceLoc() : start_(0), end_(0){};
   ~SourceLoc() = default;
 
  private:
@@ -26,13 +28,13 @@ struct SourceLoc {
 
 struct PypetArray {
   PypetArray(){};
-  ~PypetArray(){};
+  ~PypetArray() = default;
 
  private:
-  isl_set* context_;
-  isl_set* extent_;
-  isl_set* value_bounds_;
-  std::string element_type_;
+  isl_set* context;
+  isl_set* extent;
+  isl_set* value_bounds;
+  std::string element_type;
 
   /* TODO(Ying): copy from pet, to check.
   int element_is_record_;
@@ -45,39 +47,51 @@ struct PypetArray {
   */
 };
 
+// A polyhedral statement.
 struct PypetStmt {
+  friend PypetTree;
+
   PypetStmt(){};
-  ~PypetStmt(){};
+  ~PypetStmt() = default;
 
  private:
-  SourceLoc loc_;
-  isl_set* domain_;
-  PypetTree* body_;
+  SourceLoc loc;
+  isl_set* domain;
 
-  std::vector<PypetExpr> args_;
+  // A polyhedral statement is either an expression statement or a larger
+  // statement that contain control part.
+  // the subset of the instance set containing instances of this polyhedral
+  // statement;
+  std::vector<std::shared_ptr<PypetExpr>> args;
+  // Information to print the body of the statement in source program.
+  std::shared_ptr<PypetTree> body;
 };
 
 struct PypetScop {
   friend PypetArray;
+  friend PypetStmt;
 
   PypetScop(){};
-  ~PypetScop();
+  ~PypetScop() = default;
 
  private:
-  SourceLoc loc_;
+  SourceLoc loc;
 
   // program parameters. A unit set.
-  isl_set* context_;
-  isl_set* context_value_;
+  isl_set* context;
+  isl_set* context_value;
 
   // the schedule tree.
-  isl_schedule* schedule_;
+  isl_schedule* schedule;
 
   // array declaration
-  std::vector<PypetArray> arrays_;
+  std::vector<PypetArray> arrays;
 
   // the statement list.
-  std::vector<PypetStmt> stmts_;
+  // a polyhedral statement may correspond to an expression statement in the
+  // source program's AST, a collection of program statements, or, a program
+  // statement may be broken up into several polyhedral statements.
+  std::vector<PypetStmt> stmts;
 };
 
 }  // namespace pypet
