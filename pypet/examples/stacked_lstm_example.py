@@ -14,7 +14,7 @@ from torch._utils_internal import get_source_lines_and_file
 
 import pypet
 from pypet.cells import VanillaRNNCell
-from pypet import TensorArray
+from pypet import ReadWriteTensorArray, ReadTensorArray
 
 
 class MyModule(nn.Module):
@@ -29,30 +29,36 @@ class MyModule(nn.Module):
 
         self.cells = [self.cell1, self.cell2, self.cell3]
 
-    def forward(self, input: List[List[Tensor]], batch_size: int,
-                seq_lens: List[int], depth: int,
-                output_size: int) -> TensorArray:
-
-        # Declare array shape.
-        output: TensorArray = TensorArray(batch_size, seq_lens, depth,
-                                          output_size)
-
+    def forward(self, input: ReadTensorArray, batch_size: int,
+                seq_lens: List[int], depth: int, output: ReadWriteTensorArray):
         for i in range(batch_size):
-            seq_len: Tensor = seq_lens[i]
+            seq_len = seq_lens[i]
             for j in range(seq_len):  # data-dependent loop bound.
                 for k in range(depth):
                     if j == 0:
                         h_prev = self.init_state
                     else:
-                        h_prev = output.read(i, j - 1, k)
+                        h_prev = output[i][j - 1][k]
 
                     if k == 0:
                         x = input[i][j]
                     else:
-                        x = output.read(i, j, k - 1)
-
+                        x = output[i][j][k - 1]
                     h = self.cells[k](x, h_prev)
-                    output.write(h, i, j, k)
+                    output[i][j][k] = h
+
+
+def get_data(batch_size, input_size):
+    min_len = 5
+    max_len = 20
+
+    seq_batch = []
+    seq_lens = [random.randint(min_len, max_len) for _ in range(batch_size)]
+    for l in seq_lens:
+        a_seq = ReadTensorArray(
+            [torch.randn(1, input_size, device=device) for _ in range(l)])
+        seq_batch.append(a_seq)
+    return ReadTensorArray(seq_batch), seq_lens
 
 
 if __name__ == '__main__':
@@ -62,31 +68,31 @@ if __name__ == '__main__':
     device = 'cpu'
 
     batch_size = 4
-    min_len = 5
-    max_len = 20
-
     input_size = 16
     hidden_size = 16
-
-    seq_batch = []
-    seq_lens = [random.randint(min_len, max_len) for _ in range(batch_size)]
-    for l in seq_lens:
-        a_seq = [torch.randn(1, input_size, device=device) for _ in range(l)]
-        seq_batch.append(a_seq)
-
     depth = 3
 
-    cells = [
+    cells = ReadTensorArray([
         VanillaRNNCell(input_size, hidden_size).to(device)
         for _ in range(depth)
-    ]
-
-    outputs = []
+    ])
 
     m = MyModule(hidden_size, cells).to(device)
-    parsed = pypet.scop(m)
-    # print(parsed)
 
-    # This example cannot be run now, because of lacking necessary
-    # implementations. Do not uncomment the below line.
-    # m(seq_batch, batch_size, seq_lens, cells, depth, hidden_size)
+    seq_batch, seq_lens = get_data(batch_size, input_size)
+
+    # Initialize output buffer.
+    outputs = []
+    for i in range(batch_size):
+        seq_len = seq_lens[i]
+        output_j = []
+        for j in range(seq_len):
+            # output buffer for innermost loop.
+            output_k = ReadWriteTensorArray(
+                length=depth, tensor_shape=(1, hidden_size))
+            output_j.append(output_k)
+        outputs.append(ReadWriteTensorArray(input=output_j))
+    outputs = ReadWriteTensorArray(outputs)
+
+    m(seq_batch, batch_size, seq_lens, depth, outputs)
+    parsed = pypet.scop(m)
