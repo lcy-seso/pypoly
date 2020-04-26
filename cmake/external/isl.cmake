@@ -3,6 +3,7 @@ include(ExternalProject)
 set(ISL_PREFIX_DIR ${THIRD_PARTY_PATH}/isl)
 set(ISL_SOURCE_DIR ${THIRD_PARTY_PATH}/isl/src/extern_isl)
 set(ISL_INSTALL_DIR ${THIRD_PARTY_PATH}/isl/src/extern_isl-install)
+set(ISL_LIBRARIES ${ISL_INSTALL_DIR}/lib)
 set(ISL_REPOSITORY https://github.com/Meinersbur/isl.git)
 set(ISL_TAG isl-0.22)
 
