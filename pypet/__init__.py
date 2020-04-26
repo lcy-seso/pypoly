@@ -6,7 +6,7 @@ import torch
 from torch.jit._recursive import concrete_type_store
 
 from .cells import *
-from .tensor_array import TensorArray
+from .python import ReadWriteTensorArray, ReadTensorArray
 
 #FIXME(Ying) for debug only, Use a standarded way to import bindings.
 import _parser
