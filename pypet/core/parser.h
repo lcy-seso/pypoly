@@ -1,4 +1,5 @@
-#pragma once
+#ifndef _PARSER_H
+#define _PARSER_H
 
 #include "pypet/core/pypet.h"
 
@@ -18,35 +19,55 @@ struct PypetScop;
 struct TorchParser {
   // TODO(Ying) for experiment with TS parser only. Parsing is a recursive
   // process. Not implemented yet.
-  TorchParser(std::string src) : src_(std::move(src)) {}
+  TorchParser(std::string src) : src(std::move(src)) {}
 
   TorchDef Parse() {
-    torch::jit::Parser p(std::make_shared<torch::jit::Source>(src_));
+    torch::jit::Parser p(std::make_shared<torch::jit::Source>(src));
     auto ast = TorchDef(p.parseFunction(/*is_method=*/true));
     return ast;
   }
 
-  std::string src_;
+  std::string src;
 };
 
-struct ParserImpl {
+class ParserImpl {
+ public:
   explicit ParserImpl(const TorchDef& def)
-      : ast(std::move(def)), parsed_data(PypetScop()){};
-  void dumpAST() const { std::cout << ast; }
+      : ast_(std::move(def)), parsed_data_(PypetScop()){};
+  void DumpAST() const { std::cout << ast_; }
+  void ParseDecl();
+  void ParseBody();
+  void ParseFunction();
 
  private:
-  TorchDef ast;
-  PypetScop parsed_data;
+  void emitFor(const torch::jit::For& stmt);
+  void emitIf(const torch::jit::If& stmt);
+  void emitWhile(const torch::jit::While& stmt);
+  void emitAssignment(const torch::jit::Assign& stmt);
+  void emitAugAssignment(const torch::jit::AugAssign& stmt);
+  void emitRaise(const torch::jit::Raise& stmt);
+  void emitAssert(const torch::jit::Assert& stmt);
+  void emitReturn(const torch::jit::Return& stmt);
+  void emitContinue(const torch::jit::Continue& stmt);
+  void emitBreak(const torch::jit::Break& stmt);
+  void emitClosure(const torch::jit::Def& stmt);
+  void emitDelete(const torch::jit::Delete& smt);
+  void emitExpr(const torch::jit::Expr& tree);
+
+  TorchDef ast_;
+  PypetScop parsed_data_;
 };
 
 struct ScopParser {
   explicit ScopParser(const TorchDef& def) : pImpl(new ParserImpl(def)) {}
   ~ScopParser() = default;
 
-  void DumpAST() const { pImpl->dumpAST(); }
+  void DumpAST() const { pImpl->DumpAST(); }
+  void Parse();
 
  private:
   std::unique_ptr<ParserImpl> pImpl;
 };
 
 }  // namespace pypet
+#endif

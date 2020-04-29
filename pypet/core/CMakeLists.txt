@@ -11,5 +11,8 @@ cc_library(
   SRCS
   ${PYPETCORE_SRCS}
   DEPS
+  isl
   torch
-  isl)
+  torch_cpu
+  c10
+  python)

@@ -12,7 +12,7 @@ __all__ = [
 
 class TensorArray(object):
     """
-    The warped Array class mainly serves two purposes:
+    The warped Array class mainly serves for two purposes:
 
     1. Provide a way to declare complicated memory layout and do necessary
        checks (the main purpose).
