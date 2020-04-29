@@ -17,35 +17,38 @@ from pypet.cells import VanillaRNNCell
 from pypet import ReadWriteTensorArray, ReadTensorArray
 
 
-class StackedLSTM(nn.Module):
+class DilatedRNN(nn.Module):
     def __init__(self, hidden_size, cells):
-        super(StackedLSTM, self).__init__()
+        super(DilatedRNN, self).__init__()
 
         self.register_buffer('init_state', torch.zeros((1, hidden_size)))
 
         self.cell1 = cells[0]
         self.cell2 = cells[1]
         self.cell3 = cells[2]
+        self.cell4 = cells[3]
 
-        self.cells = [self.cell1, self.cell2, self.cell3]
+        self.cells = [self.cell1, self.cell2, self.cell3, self.cell4]
 
     def forward(self, input: ReadTensorArray, batch_size: int,
                 seq_lens: List[int], depth: int, output: ReadWriteTensorArray):
         for i in range(batch_size):
-            seq_len = seq_lens[i]
-            for j in range(seq_len):  # data-dependent loop bound.
-                for k in range(depth):
+            link_len = 1  # dilation rate
+            for j in range(depth):
+                seq_len = seq_lens[i]
+                for k in range(seq_len):
                     if j == 0:
+                        x = input[i][k]
+                    else:
+                        x = output[i][j - 1][k]
+
+                    if k < link_len:
                         h_prev = self.init_state
                     else:
-                        h_prev = output[i][j - 1][k]
+                        h_prev = output[i][j][k - link_len]
 
-                    if k == 0:
-                        x = input[i][j]
-                    else:
-                        x = output[i][j][k - 1]
-                    h = self.cells[k](x, h_prev)
-                    output[i][j][k] = h
+                    output[i][j][k] = self.cells[j](x, h_prev)
+                link_len = 2 * link_len
 
 
 def get_data(batch_size, input_size):
@@ -70,30 +73,31 @@ if __name__ == '__main__':
     batch_size = 4
     input_size = 16
     hidden_size = 16
-    depth = 3
+    depth = 4
 
     cells = ReadTensorArray([
         VanillaRNNCell(input_size, hidden_size).to(device)
         for _ in range(depth)
     ])
 
-    m = StackedLSTM(hidden_size, cells).to(device)
+    m = DilatedRNN(hidden_size, cells).to(device)
 
     seq_batch, seq_lens = get_data(batch_size, input_size)
+
+    print(seq_lens)
 
     # Initialize output buffer. BUT do not use this way to declare array in
     # future, since it is hard to check whether the declaration is consistent
     # with loop computations.
     # TODO(Ying): provide a standard interfance to declare arrays.
-    # Initialize output buffer.
     outputs = []
     for i in range(batch_size):
-        seq_len = seq_lens[i]
         output_j = []
-        for j in range(seq_len):
-            # output buffer for innermost loop.
-            output_k = ReadWriteTensorArray(
-                length=depth, tensor_shape=(1, hidden_size))
+        for j in range(depth):
+            seq_len = seq_lens[i]
+            for k in range(seq_len):
+                output_k = ReadWriteTensorArray(
+                    length=seq_len, tensor_shape=(1, hidden_size))
             output_j.append(output_k)
         outputs.append(ReadWriteTensorArray(input=output_j))
     outputs = ReadWriteTensorArray(outputs)
