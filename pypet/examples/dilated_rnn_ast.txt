@@ -1,0 +1,242 @@
+(def
+  (ident forward)
+  (decl
+    (list
+      (param
+        (ident self)
+        (option)
+        (option)
+        (False))
+      (param
+        (ident input)
+        (option
+          (variable
+            (ident ReadTensorArray)))
+        (option)
+        (False))
+      (param
+        (ident batch_size)
+        (option (variable (ident int)))
+        (option)
+        (False))
+      (param
+        (ident seq_lens)
+        (option
+          (subscript
+            (variable (ident List))
+            (list
+              (variable (ident int)))))
+        (option)
+        (False))
+      (param
+        (ident depth)
+        (option (variable (ident int)))
+        (option)
+        (False))
+      (param
+        (ident output)
+        (option
+          (variable
+            (ident
+              ReadWriteTensorArray)))
+        (option)
+        (False)))
+    (option))
+  (list
+    (for
+      (list (variable (ident i)))
+      (list
+        (apply
+          (variable (ident range))
+          (list
+            (variable
+              (ident batch_size)))
+          (list)))
+      (list
+        (assign
+          (list
+            (variable (ident link_len)))
+          (option (const 1))
+          (option))
+        (for
+          (list (variable (ident j)))
+          (list
+            (apply
+              (variable (ident range))
+              (list
+                (variable
+                  (ident depth)))
+              (list)))
+          (list
+            (assign
+              (list
+                (variable
+                  (ident seq_len)))
+              (option
+                (subscript
+                  (variable
+                    (ident seq_lens))
+                  (list
+                    (variable
+                      (ident i)))))
+              (option))
+            (for
+              (list
+                (variable (ident k)))
+              (list
+                (apply
+                  (variable
+                    (ident range))
+                  (list
+                    (variable
+                      (ident seq_len)))
+                  (list)))
+              (list
+                (if
+                  (eq
+                    (variable
+                      (ident j))
+                    (const 0))
+                  (list
+                    (assign
+                      (list
+                        (variable
+                          (ident x)))
+                      (option
+                        (subscript
+                          (subscript
+                            (variable
+                              (ident
+                                input))
+                            (list
+                              (variable
+                                (ident
+                                  i))))
+                          (list
+                            (variable
+                              (ident k)))))
+                      (option)))
+                  (list
+                    (assign
+                      (list
+                        (variable
+                          (ident x)))
+                      (option
+                        (subscript
+                          (subscript
+                            (subscript
+                              (variable
+                                (ident
+                                  output))
+                              (list
+                                (variable
+                                  (ident
+                                    i))))
+                            (list
+                              (-
+                                (variable
+                                  (ident
+                                    j))
+                                (const
+                                  1))))
+                          (list
+                            (variable
+                              (ident k)))))
+                      (option))))
+                (if
+                  (<
+                    (variable
+                      (ident k))
+                    (variable
+                      (ident link_len)))
+                  (list
+                    (assign
+                      (list
+                        (variable
+                          (ident
+                            h_prev)))
+                      (option
+                        (.
+                          (variable
+                            (ident
+                              self))
+                          (ident
+                            init_state)))
+                      (option)))
+                  (list
+                    (assign
+                      (list
+                        (variable
+                          (ident
+                            h_prev)))
+                      (option
+                        (subscript
+                          (subscript
+                            (subscript
+                              (variable
+                                (ident
+                                  output))
+                              (list
+                                (variable
+                                  (ident
+                                    i))))
+                            (list
+                              (variable
+                                (ident
+                                  j))))
+                          (list
+                            (-
+                              (variable
+                                (ident
+                                  k))
+                              (variable
+                                (ident
+                                  link_len))))))
+                      (option))))
+                (assign
+                  (list
+                    (subscript
+                      (subscript
+                        (subscript
+                          (variable
+                            (ident
+                              output))
+                          (list
+                            (variable
+                              (ident i))))
+                        (list
+                          (variable
+                            (ident j))))
+                      (list
+                        (variable
+                          (ident k)))))
+                  (option
+                    (apply
+                      (subscript
+                        (.
+                          (variable
+                            (ident
+                              self))
+                          (ident cells))
+                        (list
+                          (variable
+                            (ident j))))
+                      (list
+                        (variable
+                          (ident x))
+                        (variable
+                          (ident
+                            h_prev)))
+                      (list)))
+                  (option))))
+            (assign
+              (list
+                (variable
+                  (ident link_len)))
+              (option
+                (*
+                  (const 2)
+                  (variable
+                    (ident link_len))))
+              (option))))))))
+[13, 16, 5, 19]

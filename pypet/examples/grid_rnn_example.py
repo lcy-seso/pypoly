@@ -65,7 +65,7 @@ class GridRNN(nn.Module):
                         if j == 0:
                             state_y = self.init_state
                         else:
-                            state_y = output[n][d][i][((j - 1) * 2 + 1)]
+                            state_y = output[n][d][i][(j - 1) * 2 + 1]
 
                         state = torch.cat([state_x, state_y], dim=1)
                         h_x = self.cells_x[d](x_t, state_x)
@@ -116,7 +116,7 @@ if __name__ == '__main__':
     # Initialize output buffer. BUT do not use this way to declare array in
     # future, since it is hard to check whether the declaration is consistent
     # with loop computations.
-    # TODO(Ying): provide a standard interfance to declare arrays.
+    # TODO(Ying): provide a better interface to declare arrays.
     outputs = []
     grid_dim = 2
     for n in range(batch_size):
