@@ -81,15 +81,12 @@ if __name__ == '__main__':
     ])
 
     m = DilatedRNN(hidden_size, cells).to(device)
-
     seq_batch, seq_lens = get_data(batch_size, input_size)
-
-    print(seq_lens)
 
     # Initialize output buffer. BUT do not use this way to declare array in
     # future, since it is hard to check whether the declaration is consistent
     # with loop computations.
-    # TODO(Ying): provide a standard interfance to declare arrays.
+    # TODO(Ying): provide a better interface to declare arrays.
     outputs = []
     for i in range(batch_size):
         output_j = []

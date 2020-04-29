@@ -84,8 +84,7 @@ if __name__ == '__main__':
     # Initialize output buffer. BUT do not use this way to declare array in
     # future, since it is hard to check whether the declaration is consistent
     # with loop computations.
-    # TODO(Ying): provide a standard interfance to declare arrays.
-    # Initialize output buffer.
+    # TODO(Ying): provide a better interface to declare arrays.
     outputs = []
     for i in range(batch_size):
         seq_len = seq_lens[i]
