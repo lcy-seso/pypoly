@@ -16,6 +16,8 @@ using TorchDef = torch::jit::Def;
 struct PypetScop;
 
 struct TorchParser {
+  // TODO(Ying) for experiment with TS parser only. Parsing is a recursive
+  // process. Not implemented yet.
   TorchParser(std::string src) : src_(std::move(src)) {}
 
   TorchDef Parse() {

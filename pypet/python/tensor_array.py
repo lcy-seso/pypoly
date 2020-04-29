@@ -11,6 +11,27 @@ __all__ = [
 
 
 class TensorArray(object):
+    """
+    The warped Array class mainly serve two purposes:
+
+    1. Provide a way to declare complicated memory layout and do necessary
+       checks (the main purpose).
+
+        TS Parser (a parser parses a subset of Python syntax) parses text-form
+        programs to tokens, if some information does not appear in text-form
+        codes, it will not in the parsed tree.
+
+        Python does not have a way to directly declare array size, but use
+        dynamic array.
+
+        Array declarations have to be constructed from this wrapped Array.
+
+    2. Make AST clean (not a required requirement):
+
+       Allow us to get array access relation by reading a single AST node
+       instead of figuring out the right subtree and then processing the
+       subtree to get array access relations.
+    """
     pass
 
 
