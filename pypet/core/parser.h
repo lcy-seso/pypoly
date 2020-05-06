@@ -1,12 +1,14 @@
 #ifndef _PARSER_H
 #define _PARSER_H
 
+#include "pypet/core/ir_emitter.h"
 #include "pypet/core/pypet.h"
 
 #include <pybind11/pybind11.h>
 #include <torch/csrc/jit/frontend/parser.h>
 #include <torch/csrc/jit/frontend/tree_views.h>
 
+#include <stdexcept>
 #include <vector>
 
 namespace py = pybind11;
@@ -40,20 +42,6 @@ class ParserImpl {
   void ParseFunction();
 
  private:
-  void emitFor(const torch::jit::For& stmt);
-  void emitIf(const torch::jit::If& stmt);
-  void emitWhile(const torch::jit::While& stmt);
-  void emitAssignment(const torch::jit::Assign& stmt);
-  void emitAugAssignment(const torch::jit::AugAssign& stmt);
-  void emitRaise(const torch::jit::Raise& stmt);
-  void emitAssert(const torch::jit::Assert& stmt);
-  void emitReturn(const torch::jit::Return& stmt);
-  void emitContinue(const torch::jit::Continue& stmt);
-  void emitBreak(const torch::jit::Break& stmt);
-  void emitClosure(const torch::jit::Def& stmt);
-  void emitDelete(const torch::jit::Delete& smt);
-  void emitExpr(const torch::jit::Expr& tree);
-
   TorchDef ast_;
   PypetScop parsed_data_;
 };

@@ -2,7 +2,7 @@ set(TARGET pypet_core)
 
 include_directories("${PROJECT_SOURCE_DIR}")
 
-set(PYPETCORE_SRCS "${PROJECT_SOURCE_DIR}/pypet/core/parser.cpp")
+file(GLOB PYPETCORE_SRCS ${PROJECT_SOURCE_DIR}/pypet/core/*.cpp)
 
 cc_library(
   ${TARGET}

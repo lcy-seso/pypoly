@@ -1,9 +1,5 @@
 #include "pypet/core/parser.h"
 
-#include "torch/csrc/jit/frontend/lexer.h"
-
-#include <stdexcept>
-
 namespace pypet {
 
 PYBIND11_MODULE(_parser, m) {
@@ -27,49 +23,63 @@ void ParserImpl::ParseBody() {
   for (auto begin = stmts_list.begin(); begin != stmts_list.end(); ++begin) {
     auto stmt = *begin;
     switch (stmt.kind()) {
-      case torch::jit::TK_IF:
-        emitIf(torch::jit::If(stmt));
-        break;
-      case torch::jit::TK_WHILE:
-        emitWhile(torch::jit::While(stmt));
-        break;
-      case torch::jit::TK_FOR:
-        emitFor(torch::jit::For(stmt));
-        break;
-      case torch::jit::TK_ASSIGN:
-        emitAssignment(torch::jit::Assign(stmt));
-        break;
-      case torch::jit::TK_AUG_ASSIGN:
-        emitAugAssignment(torch::jit::AugAssign(stmt));
-        break;
+      case torch::jit::TK_IF: {
+        EmitIf emitter;
+        emitter(torch::jit::If(stmt));
+      } break;
+      case torch::jit::TK_WHILE: {
+        EmitWhile emitter;
+        emitter(torch::jit::While(stmt));
+      } break;
+      case torch::jit::TK_FOR: {
+        EmitFor emmiter;
+        emmiter(torch::jit::For(stmt));
+      } break;
+      case torch::jit::TK_ASSIGN: {
+        EmitAssignment emitter;
+        emitter(torch::jit::Assign(stmt));
+      } break;
+      case torch::jit::TK_AUG_ASSIGN: {
+        EmitAugAssignment emitter;
+        emitter(torch::jit::AugAssign(stmt));
+      } break;
       case torch::jit::TK_EXPR_STMT: {
         auto expr = torch::jit::ExprStmt(stmt).expr();
-        emitExpr(expr);
+        EmitExpr emitter;
+        emitter(expr);
       } break;
-      case torch::jit::TK_RAISE:
-        emitRaise(torch::jit::Raise(stmt));
-        break;
-      case torch::jit::TK_ASSERT:
-        emitAssert(torch::jit::Assert(stmt));
-        break;
-      case torch::jit::TK_RETURN:
-        emitReturn(torch::jit::Return(stmt));
-        break;
-      case torch::jit::TK_CONTINUE:
-        emitContinue(torch::jit::Continue(stmt));
-        break;
-      case torch::jit::TK_BREAK:
-        emitBreak(torch::jit::Break(stmt));
-        break;
+      case torch::jit::TK_RAISE: {
+        EmitRaise emitter;
+        emitter(torch::jit::Raise(stmt));
+      } break;
+      case torch::jit::TK_ASSERT: {
+        EmitAssert emitter;
+        emitter(torch::jit::Assert(stmt));
+      } break;
+      case torch::jit::TK_RETURN: {
+        EmitReturn emitter;
+        emitter(torch::jit::Return(stmt));
+      } break;
+      case torch::jit::TK_CONTINUE: {
+        EmitContinue emitter;
+        emitter(torch::jit::Continue(stmt));
+      } break;
+      case torch::jit::TK_BREAK: {
+        EmitBreak emitter;
+        emitter(torch::jit::Break(stmt));
+      } break;
       case torch::jit::TK_PASS:
         // Emit nothing for pass
         break;
-      case torch::jit::TK_DEF:
-        emitClosure(torch::jit::Def(stmt));
+      case torch::jit::TK_DEF: {
+        EmitClosure emitter;
+        emitter(torch::jit::Def(stmt));
         break;
-      case torch::jit::TK_DELETE:
-        emitDelete(torch::jit::Delete(stmt));
-        break;
+      }
+      case torch::jit::TK_DELETE: {
+        EmitDelete emitter;
+        emitter(torch::jit::Delete(stmt));
+      } break;
       default:
         throw std::invalid_argument("Unrecognized statement kind ");
     }
@@ -80,26 +90,5 @@ void ParserImpl::ParseFunction() {
   ParseDecl();
   ParseBody();
 }
-
-void ParserImpl::emitFor(const torch::jit::For& stmt) {
-  std::cout << stmt.range() << std::endl;
-}
-
-void ParserImpl::emitIf(const torch::jit::If& stmt) {}
-
-void ParserImpl::emitWhile(const torch::jit::While& stmt) {
-  throw std::invalid_argument("while statement is not supported.");
-}
-
-void ParserImpl::emitAssignment(const torch::jit::Assign& stmt) {}
-void ParserImpl::emitAugAssignment(const torch::jit::AugAssign& stmt) {}
-void ParserImpl::emitRaise(const torch::jit::Raise& stmt) {}
-void ParserImpl::emitAssert(const torch::jit::Assert& stmt) {}
-void ParserImpl::emitReturn(const torch::jit::Return& stmt) {}
-void ParserImpl::emitContinue(const torch::jit::Continue& stmt) {}
-void ParserImpl::emitBreak(const torch::jit::Break& stmt) {}
-void ParserImpl::emitClosure(const torch::jit::Def& stmt) {}
-void ParserImpl::emitDelete(const torch::jit::Delete& stmt) {}
-void ParserImpl::emitExpr(const torch::jit::Expr& tree) {}
 
 }  // namespace pypet
