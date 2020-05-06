@@ -12,7 +12,7 @@ __all__ = [
 
 class TensorArray(object):
     """
-    The warped Array class mainly serve two purposes:
+    The warped Array class mainly serves for two purposes:
 
     1. Provide a way to declare complicated memory layout and do necessary
        checks (the main purpose).
@@ -101,7 +101,8 @@ class ReadWriteTensorArray(TensorArray, MutableSequence):
 
 class ReadTensorArray(TensorArray, Sequence):
     """
-    A read-only, list-like class whose elements MUST have a type of torch.Tensor.
+    A read-only, list-like class whose elements MUST have a type of torch.Tensor,
+    or torch.nn.Module.
     """
 
     def _type_check(self, input):

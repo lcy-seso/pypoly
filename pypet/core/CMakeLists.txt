@@ -2,7 +2,7 @@ set(TARGET pypet_core)
 
 include_directories("${PROJECT_SOURCE_DIR}")
 
-set(PYPETCORE_SRCS "${PROJECT_SOURCE_DIR}/pypet/core/parser.cpp")
+file(GLOB PYPETCORE_SRCS ${PROJECT_SOURCE_DIR}/pypet/core/*.cpp)
 
 cc_library(
   ${TARGET}
@@ -11,5 +11,8 @@ cc_library(
   SRCS
   ${PYPETCORE_SRCS}
   DEPS
+  isl
   torch
-  isl)
+  torch_cpu
+  c10
+  python)

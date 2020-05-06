@@ -12,13 +12,6 @@ function(cc_library TARGET_NAME)
     endif()
 
     if(cc_library_DEPS)
-      # remove link to python, see notes at: https://github.com/pybind/pybind11/
-      # blob/master/docs/compiling.rst#building-manually
-      if("${cc_library_DEPS};" MATCHES "python;")
-        list(REMOVE_ITEM cc_library_DEPS python)
-        add_dependencies(${TARGET_NAME} python)
-        target_link_libraries(${TARGET_NAME} "-Wl,-undefined,dynamic_lookup")
-      endif()
       target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
     endif()
 
