@@ -1,8 +1,3 @@
-import os
-import sys
-sys.path.insert(
-    0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
-
 from pprint import pprint
 from typing import List, Tuple
 import random
@@ -12,9 +7,12 @@ import torch.nn as nn
 from torch import Tensor
 from torch._utils_internal import get_source_lines_and_file
 
+import context
+
 import pypet
-from pypet.cells import VanillaRNNCell
-from pypet import ReadWriteTensorArray, ReadTensorArray
+from pypet import VanillaRNNCell
+from pypet import ReadWriteTensorArray
+from pypet import ReadTensorArray
 
 
 class DilatedRNN(nn.Module):
