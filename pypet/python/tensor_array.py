@@ -80,7 +80,7 @@ class ReadWriteTensorArray(TensorArray, MutableSequence):
         if index >= self.length:
             raise Exception('out-of-bounds access.')
         if self.T[index]:
-            raise Exception('Position i is not empty.')
+            raise Exception('Position %d is not empty.' % (index))
         self.T[index].append(value)
 
     def __delitem__(self):

@@ -1,73 +1,59 @@
-#ifndef _IR_EMMITTER_H
-#define _IR_EMMITTER_H
+#ifndef _IR_EMITTER_H
+#define _IR_EMITTER_H
+
+#include "pypet/core/error.h"
+#include "pypet/core/pypet.h"
+#include "pypet/core/sugared_value.h"
 
 #include <torch/csrc/jit/frontend/lexer.h>
 #include <torch/csrc/jit/frontend/tree_views.h>
 
 namespace pypet {
-struct EmitFor {
-  EmitFor(){};
-  void operator()(const torch::jit::For& stmt);
-};
 
-struct EmitIf {
-  EmitIf(){};
-  void operator()(const torch::jit::If& stmt);
-};
+struct EmitStatements {
+  EmitStatements(std::shared_ptr<PypetScop> scop) : scop(scop){};
+  void operator()(const torch::jit::List<torch::jit::Stmt>& statements);
 
-struct EmitWhile {
-  EmitWhile(){};
-  void operator()(const torch::jit::While& stmt);
-};
+ private:
+  void EmitFor(const torch::jit::For& stmt);
 
-struct EmitAssignment {
-  EmitAssignment(){};
-  void operator()(const torch::jit::Assign& stmt);
-};
+  void EmitForImpl(const torch::jit::List<torch::jit::Expr>& targets,
+                   const torch::jit::List<torch::jit::Expr>& itrs,
+                   const torch::jit::SourceRange& loc,
+                   const std::function<void()>& emit_body);
 
-struct EmitAugAssignment {
-  EmitAugAssignment(){};
-  void operator()(const torch::jit::AugAssign& stmt);
-};
+  std::shared_ptr<SugaredValue> EmitApplyExpr(
+      torch::jit::Apply& apply, size_t n_binders,
+      const torch::jit::TypePtr& type_hint = nullptr);
 
-struct EmitRaise {
-  EmitRaise(){};
-  void operator()(const torch::jit::Raise& stmt);
-};
+  std::shared_ptr<SugaredValue> EmitSugaredExpr(
+      const torch::jit::Expr& tree, size_t n_binders,
+      const torch::jit::TypePtr& type_hint = nullptr);
 
-struct EmitAssert {
-  EmitAssert(){};
-  void operator()(const torch::jit::Assert& stmt);
-};
+  SugaredValuePtr GetSugaredVar(const torch::jit::Ident& ident,
+                                bool required = true);
 
-struct EmitReturn {
-  EmitReturn(){};
-  void operator()(const torch::jit::Return& stmt);
-};
+  void EmitLoopCommon(torch::jit::SourceRange range,
+                      const std::function<void()>& emit_body,
+                      const SugaredValuePtr& iter_val,
+                      c10::optional<torch::jit::List<torch::jit::Expr>> targets,
+                      c10::optional<torch::jit::Expr> cond);
 
-struct EmitContinue {
-  EmitContinue(){};
-  void operator()(const torch::jit::Continue& stmt);
-};
+  void EmitIf(const torch::jit::If& stmt);
+  void EmitWhile(const torch::jit::While& stmt);
+  void EmitAssignment(const torch::jit::Assign& stmt);
+  void EmitAugAssignment(const torch::jit::AugAssign& stmt);
+  void EmitRaise(const torch::jit::Raise& stmt);
+  void EmitAssert(const torch::jit::Assert& stmt);
+  void EmitReturn(const torch::jit::Return& stmt);
+  void EmitContinue(const torch::jit::Continue& stmt);
+  void EmitBreak(const torch::jit::Break& stmt);
+  void EmitClosure(const torch::jit::Def& stmt);
+  void EmitDelete(const torch::jit::Delete& smt);
+  void EmitExpr(const torch::jit::Expr& tree);
 
-struct EmitBreak {
-  EmitBreak(){};
-  void operator()(const torch::jit::Break& stmt);
-};
-
-struct EmitClosure {
-  EmitClosure(){};
-  void operator()(const torch::jit::Def& stmt);
-};
-
-struct EmitDelete {
-  EmitDelete(){};
-  void operator()(const torch::jit::Delete& smt);
-};
-
-struct EmitExpr {
-  EmitExpr(){};
-  void operator()(const torch::jit::Expr& tree);
+  std::shared_ptr<PypetScop> scop;
+  std::shared_ptr<PypetScop> get_scop() { return scop; };
 };
 
 }  // namespace pypet
