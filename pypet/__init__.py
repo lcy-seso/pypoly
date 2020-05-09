@@ -2,6 +2,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
+import sys
 import inspect
 import torch
 
@@ -14,6 +16,8 @@ __all__ = [
 
 #FIXME(Ying) for debug only, Use a standarded way to import bindings.
 import _parser
+
+_parser.init_glog(sys.argv[0])
 
 
 def scop(nn_module):

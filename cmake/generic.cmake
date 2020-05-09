@@ -1,3 +1,10 @@
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--no-undefined -std=c++14")
+set(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g -ggdb ")
+set(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 -Wall")
+
+set(CMAKE_CXX_LINK_EXECUTABLE
+    "${CMAKE_CXX_LINK_EXECUTABLE} -lpthread -ldl -lrt")
+
 function(cc_library TARGET_NAME)
   set(options STATIC static SHARED shared)
   set(oneValueArgs "")
@@ -29,7 +36,7 @@ function(cc_library TARGET_NAME)
       file(WRITE ${target_SRCS}
            "const char *dummy_${TARGET_NAME} = \"${target_SRCS}\";")
       add_library(${TARGET_NAME} STATIC ${target_SRCS})
-      target_link_libraries(${TARGET_NAME} ${cc_library_DEPS} -rdynamic)
+      target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
     else()
       message(FATAL_ERROR "No source file is given.")
     endif()

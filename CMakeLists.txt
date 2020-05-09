@@ -1,9 +1,5 @@
 cmake_minimum_required(VERSION 3.0)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--no-undefined -std=c++14")
-set(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g -ggdb ")
-set(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 -Wall")
-
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 set(PYPET_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
@@ -16,8 +12,11 @@ message(STATUS "CXX compiler: ${CMAKE_CXX_COMPILER}, version: "
 message(STATUS "C compiler: ${CMAKE_C_COMPILER}, version: "
                "${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}")
 
+find_package(Threads)
+
+include(generic)
+
 include(python)
 include(third_party)
-include(generic)
 
 add_subdirectory(pypet)

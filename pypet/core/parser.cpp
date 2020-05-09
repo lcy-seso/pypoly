@@ -2,7 +2,17 @@
 
 namespace pypet {
 
+std::once_flag glog_init_flag;
+
+void InitGLOG(const std::string& prog_name) {
+  std::call_once(glog_init_flag, [&]() {
+    google::InitGoogleLogging(strdup(prog_name.c_str()));
+  });
+}
+
 PYBIND11_MODULE(_parser, m) {
+  m.def("init_glog", InitGLOG);
+
   m.def("parse_scop", [](const std::string& src) {
     TorchParser p(src);
 
@@ -16,7 +26,7 @@ PYBIND11_MODULE(_parser, m) {
 
 void ScopParser::Parse() { pImpl->ParseFunction(); }
 
-void ParserImpl::ParseDecl() { std::cout << ast_.name(); }
+void ParserImpl::ParseDecl() { LOG(INFO) << ast_.name(); }
 
 void ParserImpl::ParseBody() {
   EmitStatements emitter(std::make_shared<PypetScop>(parsed_data_));
@@ -24,8 +34,9 @@ void ParserImpl::ParseBody() {
 }
 
 void ParserImpl::ParseFunction() {
+  LOG(INFO) << ast_.statements();
+
   ParseDecl();
-  std::cout << ast_.statements() << std::endl << std::endl;
   ParseBody();
 }
 
