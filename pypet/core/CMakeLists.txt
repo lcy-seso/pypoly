@@ -11,6 +11,9 @@ cc_library(
   SRCS
   ${PYPETCORE_SRCS}
   DEPS
+  pthread
+  gflags
+  glog
   isl
   torch
   torch_cpu

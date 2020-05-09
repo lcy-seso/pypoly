@@ -122,7 +122,7 @@ std::shared_ptr<SugaredValue> EmitStatements::EmitSugaredExpr(
     case torch::jit::TK_VAR:
       return GetSugaredVar(torch::jit::Var(tree).name());
     case '.': {
-      std::cout << ". = " << tree.range().text();
+      LOG(INFO) << ". = " << tree.range().text();
       throw Error(tree) << "Not implemented yet.";
     }
     case torch::jit::TK_APPLY: {
@@ -136,7 +136,7 @@ std::shared_ptr<SugaredValue> EmitStatements::EmitSugaredExpr(
 
 SugaredValuePtr EmitStatements::GetSugaredVar(const torch::jit::Ident& ident,
                                               bool required) {
-  std::cout << "Var = " << ident.range().text() << std::endl;
+  LOG(INFO) << "Var = " << ident.range().text();
 }
 
 void EmitStatements::EmitIf(const torch::jit::If& stmt) {}

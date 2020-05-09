@@ -4,7 +4,9 @@
 #include "pypet/core/ir_emitter.h"
 #include "pypet/core/pypet.h"
 
+#include <glog/logging.h>
 #include <pybind11/pybind11.h>
+#include <string.h>  // for strdup
 #include <torch/csrc/jit/frontend/parser.h>
 #include <torch/csrc/jit/frontend/tree_views.h>
 
@@ -36,7 +38,7 @@ class ParserImpl {
  public:
   explicit ParserImpl(const TorchDef& def)
       : ast_(std::move(def)), parsed_data_(PypetScop()){};
-  void DumpAST() const { std::cout << ast_; }
+  void DumpAST() const { LOG(INFO) << ast_; }
   void ParseDecl();
   void ParseBody();
   void ParseFunction();

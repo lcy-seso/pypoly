@@ -5,6 +5,7 @@
 #include "pypet/core/pypet.h"
 #include "pypet/core/sugared_value.h"
 
+#include <glog/logging.h>
 #include <torch/csrc/jit/frontend/lexer.h>
 #include <torch/csrc/jit/frontend/tree_views.h>
 

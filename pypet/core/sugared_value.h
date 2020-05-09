@@ -12,8 +12,8 @@ struct SugaredValue;
 using SugaredValuePtr = std::shared_ptr<SugaredValue>;
 
 // TorchScript AST cantains sugared values. For example, loop iterator is a node
-// with the kind of 'apply' which may call python function range; As in Torch
-// JIT parser, sugared value is to temporarily hold these sugared value.
+// with kind 'Apply' which may call python function range, zip, etc.; As in
+// PyTorch JIT parser, sugared value is to temporarily hold these sugared value.
 struct SugaredValue : public std::enable_shared_from_this<SugaredValue> {
   // TODO(Ying): Interfaces for SugaredValue is not fully designed. Current
   // codes serves as a placeholder.
