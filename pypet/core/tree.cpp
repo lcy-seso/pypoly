@@ -14,7 +14,6 @@ __isl_give PypetTree* PypetTree::PypetTreeAlloc(isl_ctx* ctx,
   isl_ctx_ref(ctx);
   tree->ref = 1;
   tree->type = type;
-  // tree->loc = &pet_loc_dummy;
 
   return tree;
 }
