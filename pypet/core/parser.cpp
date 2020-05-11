@@ -20,24 +20,35 @@ PYBIND11_MODULE(_parser, m) {
     // scop_parser.DumpAST();
     scop_parser.Parse();
   });
-
-  py::class_<PypetScop>(m, "PypetScop").def(py::init());
 }
 
 void ScopParser::Parse() { pImpl->ParseFunction(); }
 
-void ParserImpl::ParseDecl() { LOG(INFO) << ast_.name(); }
+void ParserImpl::ParseDecl(isl_ctx* ctx) { LOG(INFO) << ast_.name(); }
 
-void ParserImpl::ParseBody() {
-  EmitStatements emitter(std::make_shared<PypetScop>(parsed_data_));
+void ParserImpl::ParseBody(isl_ctx* ctx) {
+  EmitStatements emitter(ctx, std::make_shared<PypetScop>(parsed_data_));
   emitter(ast_.statements());
 }
 
-void ParserImpl::ParseFunction() {
-  LOG(INFO) << ast_.statements();
+bool ParserImpl::CheckScop() {
+  // TODO(Ying): Check whether SCoP is detected. Not implmented yet.
+  return ast_.statements()[0].kind() == torch::jit::TK_FOR;
+}
 
-  ParseDecl();
-  ParseBody();
+PypetScopPtr ParserImpl::ParseFunction() {
+  LOG(INFO) << ast_.statements();
+  if (!CheckScop()) {
+    LOG(INFO) << "No SCoP is detected.";
+    return nullptr;
+  }
+
+  isl_ctx* ctx = isl_ctx_alloc();
+  ParseDecl(ctx);
+  ParseBody(ctx);
+
+  isl_ctx_free(ctx);
+  return std::make_shared<PypetScop>(parsed_data_);
 }
 
 }  // namespace pypet

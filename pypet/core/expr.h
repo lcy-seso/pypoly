@@ -1,6 +1,5 @@
-
-#ifndef PYPET_EXPR_H
-#define PYPET_EXPR_H
+#ifndef _PYPET_EXPR_H
+#define _PYPET_EXPR_H
 
 #include "pypet/core/pypet.h"
 

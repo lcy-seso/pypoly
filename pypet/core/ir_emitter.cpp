@@ -92,7 +92,7 @@ void EmitStatements::EmitLoopCommon(
 
 void EmitStatements::EmitFor(const torch::jit::For& stmt) {
   auto emit_body = [&]() {
-    EmitStatements emitter(get_scop());
+    EmitStatements emitter(get_isl_ctx(), get_scop());
     emitter(stmt.body());
   };
   EmitForImpl(stmt.targets(), stmt.itrs(), stmt.range(), emit_body);

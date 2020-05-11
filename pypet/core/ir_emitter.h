@@ -12,7 +12,8 @@
 namespace pypet {
 
 struct EmitStatements {
-  EmitStatements(std::shared_ptr<PypetScop> scop) : scop(scop){};
+  EmitStatements(isl_ctx* ctx, std::shared_ptr<PypetScop> scop)
+      : ctx(ctx), scop(scop){};
   void operator()(const torch::jit::List<torch::jit::Stmt>& statements);
 
  private:
@@ -53,8 +54,11 @@ struct EmitStatements {
   void EmitDelete(const torch::jit::Delete& smt);
   void EmitExpr(const torch::jit::Expr& tree);
 
-  std::shared_ptr<PypetScop> scop;
-  std::shared_ptr<PypetScop> get_scop() { return scop; };
+  isl_ctx* ctx;
+  isl_ctx* get_isl_ctx() { return ctx; };
+
+  PypetScopPtr scop;
+  PypetScopPtr get_scop() { return scop; };
 };
 
 }  // namespace pypet
