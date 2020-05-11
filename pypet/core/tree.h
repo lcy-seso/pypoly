@@ -1,5 +1,5 @@
-#ifndef PYPET_TREE_H
-#define PYPET_TREE_H
+#ifndef _PYPET_TREE_H
+#define _PYPET_TREE_H
 
 #include "pypet/core/pypet.h"
 
@@ -36,7 +36,7 @@ struct PypetTree {
   int ref;  // reference identifier.
   isl_ctx* ctx;
 
-  SourceLoc loc;
+  torch::jit::SourceRange range;
   isl_id* label;
 
   enum PypetTreeType type;
@@ -51,7 +51,7 @@ struct PypetTree {
     } block;  // block.
     struct {
       std::shared_ptr<PypetExpr> var;
-      std::union_ptr<PypetExpr> init;
+      std::shared_ptr<PypetExpr> init;
     } decl;  // declaration.
     struct {
       std::shared_ptr<PypetExpr> expr;

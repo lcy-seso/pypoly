@@ -7,6 +7,7 @@
 #include <isl/schedule.h>
 #include <isl/set.h>
 #include <isl/union_map.h>
+#include <torch/csrc/jit/frontend/source_range.h>
 
 #include <memory>
 #include <string>
@@ -14,17 +15,11 @@
 
 namespace pypet {
 
+struct PypetScop;
+using PypetScopPtr = std::shared_ptr<PypetScop>;
+
 struct PypetExpr;
 struct PypetTree;
-
-struct SourceLoc {
-  SourceLoc() : start_(0), end_(0){};
-  ~SourceLoc() = default;
-
- private:
-  size_t start_;
-  size_t end_;
-};
 
 struct PypetArray {
   PypetArray(){};
@@ -55,7 +50,7 @@ struct PypetStmt {
   ~PypetStmt() = default;
 
  private:
-  SourceLoc loc;
+  torch::jit::SourceRange range;
   isl_set* domain;
 
   // A polyhedral statement is either an expression statement or a larger
@@ -71,12 +66,10 @@ struct PypetScop {
   friend PypetArray;
   friend PypetStmt;
 
-  PypetScop(){};
+  PypetScop() = default;
   ~PypetScop() = default;
 
  private:
-  SourceLoc loc;
-
   // program parameters. A unit set.
   isl_set* context;
   isl_set* context_value;
