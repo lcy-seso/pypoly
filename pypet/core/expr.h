@@ -24,32 +24,32 @@ enum PypetExprType {
 
 enum PypetOpType {
   PYPET_ASSIGN = 0,  // Tensor operation leads to an assignment.
-  Pypet_Add,
-  Pypet_Sub,
-  Pypet_Mul,
-  Pypet_Div,
-  Pypet_Mod,
-  Pypet_Eq,
-  Pypet_Ne,
-  Pypet_Le,
-  Pypet_Ge,
-  Pypet_Lt,
-  Pypet_Gt,
-  Pypet_And,
-  Pypet_Xor,
-  Pypet_Or,
-  Pypet_Not,
+  PYPET_ADD,
+  PYPET_SUB,
+  PYPET_MUL,
+  PYPET_DIV,
+  PYPET_MOD,
+  PYPET_EQ,
+  PYPET_NE,
+  PYPET_LE,
+  PYPET_GE,
+  PYPET_LT,
+  PYPET_GT,
+  PYPET_AND,
+  PYPET_XOR,
+  PYPET_OR,
+  PYPET_NOT,
 };
 
 enum PypetExprAccessType {
   // TODO(Ying) check whether we needs so many access types or not?
-  Pypet_Expr_Access_May_Read = 0,
-  Pypet_Expr_Access_Begin = Pypet_Expr_Access_May_Read,
-  Pypet_Expr_Access_Fake_killed = Pypet_Expr_Access_May_Read,
-  Pypet_Expr_Access_May_Write,
-  Pypet_Expr_Access_Must_Write,
-  Pypet_Expr_Access_End,
-  Pypet_Expr_Access_Killed,
+  PYPET_EXPR_ACCESS_MAY_READ = 0,
+  PYPET_EXPR_ACCESS_BEGIN = PYPET_EXPR_ACCESS_MAY_READ,
+  PYPET_EXPR_ACCESS_FAKE_KILL = PYPET_EXPR_ACCESS_MAY_READ,
+  PYPET_EXPR_ACCESS_MAY_WRITE,
+  PYPET_EXPR_ACCESS_MUST_WRITE,
+  PYPET_EXPR_ACCESS_END,
+  PYPET_EXPR_ACCESS_KILL,
 };
 
 struct PypetExprAccess {
@@ -62,7 +62,7 @@ struct PypetExprAccess {
   size_t read;
   size_t write;
   size_t kill;
-  isl_union_map* access[Pypet_Expr_Access_End];  // access relation.
+  isl_union_map* access[PYPET_EXPR_ACCESS_END];  // access relation.
 };
 
 struct PypetExpr {
@@ -78,6 +78,7 @@ struct PypetExpr {
 
   int type_size;
 
+  unsigned int arg_num;
   PypetExpr** args;
 
   union {

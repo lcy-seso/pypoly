@@ -24,7 +24,7 @@ __isl_give PypetTree* CreatePypetTreeBlock(isl_ctx* ctx,
                                            int block, int n) {
   PypetTree* tree;
 
-  tree = CreatePypetTree(ctx, range, Pypet_Tree_Block);
+  tree = CreatePypetTree(ctx, range, PYPET_TREE_BLOCK);
   if (!tree) return nullptr;
 
   tree->ast.Block.block = block;
@@ -45,30 +45,30 @@ __isl_null PypetTree* PypetTreeFree(__isl_take PypetTree* tree) {
   isl_id_free(tree->label);
 
   switch (tree->type) {
-    case Pypet_Tree_Error:
+    case PYPET_TREE_ERROR:
       break;
-    case Pypet_Tree_Block:
+    case PYPET_TREE_BLOCK:
       for (i = 0; i < tree->ast.Block.n; ++i)
         PypetTreeFree(tree->ast.Block.children[i]);
       free(tree->ast.Block.children);
       break;
-    case Pypet_Tree_Break:
-    case Pypet_Tree_Continue:
+    case PYPET_TREE_BREAK:
+    case PYPET_TREE_CONTINUE:
       break;
-    case Pypet_Tree_Decl:
+    case PYPET_TREE_DECL:
       PypetExprFree(tree->ast.Decl.var);
       break;
-    case Pypet_Tree_Expr:
-    case Pypet_Tree_Return:
+    case PYPET_TREE_EXPR:
+    case PYPET_TREE_RETURN:
       PypetExprFree(tree->ast.Expr.expr);
       break;
-    case Pypet_Tree_For:
+    case PYPET_TREE_FOR:
       PypetExprFree(tree->ast.Loop.iv);
       PypetExprFree(tree->ast.Loop.init);
       PypetExprFree(tree->ast.Loop.inc);
-    case Pypet_Tree_If_Else:
+    case PYPET_TREE_IF_ELSE:
       PypetTreeFree(tree->ast.IfElse.else_body);
-    case Pypet_Tree_If:
+    case PYPET_TREE_IF:
       PypetExprFree(tree->ast.IfElse.cond);
       PypetTreeFree(tree->ast.IfElse.if_body);
       break;

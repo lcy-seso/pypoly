@@ -19,16 +19,16 @@ namespace pypet {
 struct PypetExpr;
 
 enum PypetTreeType {
-  Pypet_Tree_Error = -1,
-  Pypet_Tree_Expr,
-  Pypet_Tree_Block,
-  Pypet_Tree_Break,
-  Pypet_Tree_Continue,
-  Pypet_Tree_Decl,
-  Pypet_Tree_If,      /* An if without an else branch */
-  Pypet_Tree_If_Else, /* An if with an else branch */
-  Pypet_Tree_For,
-  Pypet_Tree_Return,
+  PYPET_TREE_ERROR = -1,
+  PYPET_TREE_EXPR,
+  PYPET_TREE_BLOCK,
+  PYPET_TREE_BREAK,
+  PYPET_TREE_CONTINUE,
+  PYPET_TREE_DECL,
+  PYPET_TREE_IF,      /* An if without an else branch */
+  PYPET_TREE_IF_ELSE, /* An if with an else branch */
+  PYPET_TREE_FOR,
+  PYPET_TREE_RETURN,
 };
 
 struct PypetTree {
