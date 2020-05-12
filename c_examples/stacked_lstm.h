@@ -1,4 +1,3 @@
-#include <stdio.h>
 
 void StackedLSTM(int batch_size, int depth, int max_seq_len,
                  const int seq_lens[batch_size],
