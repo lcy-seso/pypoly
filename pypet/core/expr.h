@@ -53,27 +53,24 @@ enum PypetExprAccessType {
 };
 
 struct PypetExprAccess {
-  PypetExprAccess(){};
+  PypetExprAccess() = default;
   ~PypetExprAccess() = default;
-:w
 
- private:
   isl_id* ref_id;
-isl_multi_pw_aff* index;  // index expression.
-int depth;
-size_t read;
-size_t write;
-size_t kill;
-std::vector<isl_union_map*> access;  // access relation.
+  isl_multi_pw_aff* index;  // index expression.
+  int depth;
+  size_t read;
+  size_t write;
+  size_t kill;
+  isl_union_map* access[Pypet_Expr_Access_End];  // access relation.
 };
 
 struct PypetExpr {
   friend PypetExprAccess;
 
-  PypetExpr(){};
+  PypetExpr() = default;
   ~PypetExpr() = default;
 
- private:
   int ref;
   isl_ctx* ctx;
 
@@ -81,19 +78,21 @@ struct PypetExpr {
 
   int type_size;
 
-  std::vector<std::shared_ptr<PyetExpr>> args;
+  PypetExpr** args;
 
   union {
     struct PypetExprAccess acc;
     enum PypetOpType op;
 
-    // TODO(Ying) Add external function call in future.
-    // struct PypetExprCall call_;
+    // TODO(Ying) Add representation for external function call.
+    // struct PypetExprCall call;
 
-    std::string type_name;
+    char* type_name;
     isl_val* i;
   };
 };
+
+__isl_null PypetExpr* PypetExprFree(__isl_take PypetExpr* expr);
 }  // namespace pypet
 
 #endif

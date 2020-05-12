@@ -1,7 +1,7 @@
 #ifndef _PYPET_TREE_H
 #define _PYPET_TREE_H
 
-#include "pypet/core/pypet.h"
+#include "pypet/core/expr.h"
 
 #include <isl/aff.h>
 #include <isl/ctx.h>
@@ -12,8 +12,11 @@
 #include <isl/union_map.h>
 #include <isl/union_set.h>
 #include <isl/val.h>
+#include <torch/csrc/jit/frontend/source_range.h>
 
-namespace Pypet {
+namespace pypet {
+
+struct PypetExpr;
 
 enum PypetTreeType {
   Pypet_Tree_Error = -1,
@@ -29,46 +32,56 @@ enum PypetTreeType {
 };
 
 struct PypetTree {
-  PypetTree(){};
+  PypetTree() = default;
   ~PypetTree() = default;
 
- private:
   int ref;  // reference identifier.
   isl_ctx* ctx;
-
   torch::jit::SourceRange range;
+
+  // TODO(Ying): a C style structure for source range is required.
   isl_id* label;
 
   enum PypetTreeType type;
 
-  // AST for this statement.
   union {
     struct {
       int block;
       int n;
       int max;
-      std::vector<std::shared_ptr<PypetTree>> child;
-    } block;  // block.
+      PypetTree** children;
+    } Block;  // block, such as the body of a for construct.
     struct {
-      std::shared_ptr<PypetExpr> var;
-      std::shared_ptr<PypetExpr> init;
-    } decl;  // declaration.
+      PypetExpr* var;
+      PypetExpr* init;
+    } Decl;  // declaration.
     struct {
-      std::shared_ptr<PypetExpr> expr;
-    } expr;  // expression
+      PypetExpr* expr;
+    } Expr;  // expression
     struct {
       int independent;
       int declared;
-      std::shared_ptr<PypetExpr> iv;
-      std::shared_ptr<PypetExpr> init;
-      std::shared_ptr<PypetExpr> cond;
-      std::shared_ptr<PypetExpr> inc;
-      std::shared_ptr<PypetTree> body;
-    } loop;  // for
+      PypetExpr* iv;
+      PypetExpr* init;
+      PypetExpr* cond;
+      PypetExpr* inc;
+      PypetTree* body;
+    } Loop;  // for construct
     struct {
-      std::shared_ptr<PypetExpr> cond;
-      std::shared_ptr<PypetExpr> then_body;
-      std::shared_ptr<PypetTree> else_body;
-    } if_else;  // if-else
+      PypetExpr* cond;
+      PypetTree* if_body;
+      PypetTree* else_body;
+    } IfElse;  // if-else construct
   } ast;
-}  // namespace Pypet
+};
+
+__isl_give PypetTree* CreatePypetTree(isl_ctx* ctx,
+                                      const torch::jit::SourceRange& range,
+                                      enum PypetTreeType tree_type);
+__isl_give PypetTree* CreatePypetTreeBlock(isl_ctx* ctx,
+                                           const torch::jit::SourceRange& range,
+                                           int block, int n);
+__isl_null PypetTree* PypetTreeFree(__isl_take PypetTree* tree);
+
+}  // namespace pypet
+#endif

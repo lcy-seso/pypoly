@@ -49,7 +49,10 @@ class ParserImpl {
   TorchDef ast_;
   PypetScop parsed_data_;
 
+  /* Traverse the AST to check whether there are SCoP(s) that could be
+   * optimized. */
   bool CheckScop();
+
   void ParseDecl(isl_ctx* ctx);
   void ParseBody(isl_ctx* ctx);
 };

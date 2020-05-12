@@ -25,20 +25,19 @@ struct PypetArray {
   PypetArray(){};
   ~PypetArray() = default;
 
- private:
   isl_set* context;
   isl_set* extent;
   isl_set* value_bounds;
   std::string element_type;
 
   /* TODO(Ying): copy from pet, to check.
-  int element_is_record_;
-  int element_size_;
-  int live_out_;
-  int uniquely_defined_;
-  int declared_;
-  int exposed_;
-  int outer_;
+  int element_is_record;
+  int element_size;
+  int live_out;
+  int uniquely_defined;
+  int declared;
+  int exposed;
+  int outer;
   */
 };
 
@@ -46,10 +45,9 @@ struct PypetArray {
 struct PypetStmt {
   friend PypetTree;
 
-  PypetStmt(){};
+  PypetStmt(const torch::jit::SourceRange& range) : range(range){};
   ~PypetStmt() = default;
 
- private:
   torch::jit::SourceRange range;
   isl_set* domain;
 
@@ -57,9 +55,9 @@ struct PypetStmt {
   // statement that contain control part.
   // the subset of the instance set containing instances of this polyhedral
   // statement;
-  std::vector<std::shared_ptr<PypetExpr>> args;
+  PypetExpr** args;
   // Information to print the body of the statement in source program.
-  std::shared_ptr<PypetTree> body;
+  PypetTree* body;
 };
 
 struct PypetScop {
@@ -69,7 +67,6 @@ struct PypetScop {
   PypetScop() = default;
   ~PypetScop() = default;
 
- private:
   // program parameters. A unit set.
   isl_set* context;
   isl_set* context_value;
@@ -78,13 +75,13 @@ struct PypetScop {
   isl_schedule* schedule;
 
   // array declaration
-  std::vector<PypetArray> arrays;
+  PypetArray** arrays;
 
   // the statement list.
   // a polyhedral statement may correspond to an expression statement in the
   // source program's AST, a collection of program statements, or, a program
   // statement may be broken up into several polyhedral statements.
-  std::vector<PypetStmt> stmts;
+  PypetStmt** stmts;
 };
 
 }  // namespace pypet

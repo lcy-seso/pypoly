@@ -1,5 +1,7 @@
 #include "pypet/core/ir_emitter.h"
 
+#include "pypet/core/tree.h"
+
 namespace pypet {
 
 void EmitStatements::operator()(
@@ -66,6 +68,8 @@ void EmitStatements::EmitForImpl(
     throw torch::jit::ErrorReport(loc)
         << "List of iterables is not supported currently";
   }
+
+  PypetTree* tree = CreatePypetTreeBlock(ctx, loc, 1, 1);
 
   // Emit loop information for builtinFunction values like range(), zip(),
   // enumerate() or SimpleValue like List, Tensor, Dict, etc.
