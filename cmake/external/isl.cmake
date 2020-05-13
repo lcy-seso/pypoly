@@ -29,5 +29,5 @@ ExternalProject_Add(
   SOURCE_DIR ${ISL_SOURCE_DIR}
   CONFIGURE_COMMAND ./autogen.sh
   COMMAND ./configure --prefix=${ISL_INSTALL_DIR}
-  BUILD_COMMAND make -j $(nproc)
-  INSTALL_COMMAND make install)
+  BUILD_COMMAND $(MAKE) --silent -j $(nproc)
+  INSTALL_COMMAND $(MAKE) install)

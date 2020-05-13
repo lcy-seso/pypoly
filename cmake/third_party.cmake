@@ -56,6 +56,7 @@ function(cache_third_party TARGET)
 endfunction()
 
 include(external/isl)
+include(external/pet)
 include(external/pybind)
 
 set(third_party_deps)

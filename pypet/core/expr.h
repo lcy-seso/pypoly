@@ -42,7 +42,8 @@ enum PypetOpType {
 };
 
 enum PypetExprAccessType {
-  // TODO(Ying) check whether we needs so many access types or not?
+  // TODO(Ying) check whether we needs so many access types or not, but only
+  // MUST_READ/WRITE relations?
   PYPET_EXPR_ACCESS_MAY_READ = 0,
   PYPET_EXPR_ACCESS_BEGIN = PYPET_EXPR_ACCESS_MAY_READ,
   PYPET_EXPR_ACCESS_FAKE_KILL = PYPET_EXPR_ACCESS_MAY_READ,
