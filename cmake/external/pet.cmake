@@ -16,15 +16,13 @@ cache_third_party(
   DIR
   PET_SOURCE_DIR)
 
-include_directories(${PET_INSTALL_DIR}/include)
-link_directories(${PET_INSTALL_DIR}/lib)
-
 ExternalProject_Add(
   extern_pet
   ${EXTERNAL_PROJECT_LOG_ARGS}
   ${SHALLOW_CLONE}
   "${PET_DOWNLOAD_CMD}"
   PREFIX ${PET_PREFIX_DIR}
+  UPDATE_COMMAND ""
   BUILD_IN_SOURCE 1
   SOURCE_DIR ${PET_SOURCE_DIR}
   CONFIGURE_COMMAND ./autogen.sh

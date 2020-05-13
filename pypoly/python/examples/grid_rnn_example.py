@@ -9,10 +9,10 @@ from torch import Tensor
 from torch._utils_internal import get_source_lines_and_file
 
 import context
-import pypet
-from pypet import VanillaRNNCell
-from pypet import ReadWriteTensorArray
-from pypet import ReadTensorArray
+import pypoly
+from pypoly import VanillaRNNCell
+from pypoly import ReadWriteTensorArray
+from pypoly import ReadTensorArray
 
 
 class GridRNN(nn.Module):
@@ -124,4 +124,4 @@ if __name__ == '__main__':
 
     m(src_seq_batch, src_lens, trg_seq_batch, trg_lens, batch_size, depth,
       outputs)
-    parsed = pypet.scop(m)
+    parsed = pypoly.scop(m)

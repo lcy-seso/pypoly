@@ -1,7 +1,8 @@
-#include "pypet/core/ir_emitter.h"
+#include "pypoly/core/pypet/ir_emitter.h"
 
-#include "pypet/core/tree.h"
+#include "pypoly/core/pypet/tree.h"
 
+namespace pypoly {
 namespace pypet {
 
 void EmitStatements::operator()(
@@ -160,3 +161,4 @@ void EmitStatements::EmitDelete(const torch::jit::Delete& stmt) {}
 void EmitStatements::EmitExpr(const torch::jit::Expr& tree) {}
 
 }  // namespace pypet
+}  // namespace pypoly

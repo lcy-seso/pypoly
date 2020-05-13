@@ -5,6 +5,7 @@
 #include <torch/csrc/jit/frontend/source_range.h>
 #include <torch/csrc/jit/frontend/sugared_value.h>
 
+namespace pypoly {
 namespace pypet {
 
 struct SugaredValue;
@@ -43,4 +44,5 @@ struct SugaredValue : public std::enable_shared_from_this<SugaredValue> {
   virtual ~SugaredValue() = default;
 };
 }  // namespace pypet
+}  // namespace pypoly
 #endif

@@ -4,6 +4,7 @@
 #include <torch/csrc/jit/frontend/source_range.h>
 #include <torch/csrc/jit/frontend/tree.h>
 
+namespace pypoly {
 namespace pypet {
 
 struct Error : public std::exception {
@@ -26,5 +27,6 @@ struct Error : public std::exception {
 };
 
 }  // namespace pypet
+}  // namespace pypoly
 
 #endif

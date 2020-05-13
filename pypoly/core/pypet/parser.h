@@ -1,8 +1,8 @@
 #ifndef _PARSER_H
 #define _PARSER_H
 
-#include "pypet/core/ir_emitter.h"
-#include "pypet/core/pypet.h"
+#include "pypoly/core/pypet/ir_emitter.h"
+#include "pypoly/core/pypet/pypet.h"
 
 #include <glog/logging.h>
 #include <isl/arg.h>
@@ -18,6 +18,7 @@
 
 namespace py = pybind11;
 
+namespace pypoly {
 namespace pypet {
 
 using TorchDef = torch::jit::Def;
@@ -69,4 +70,5 @@ struct ScopParser {
 };
 
 }  // namespace pypet
+}  // namespace pypoly
 #endif

@@ -48,9 +48,9 @@ function(cc_test_build TARGET_NAME)
   set(multiValueArgs SRCS DEPS)
   cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}"
                         "${multiValueArgs}" ${ARGN})
-  add_executable(${TARGET_NAME} ${PROJECT_SOURCE_DIR}/pypet/tests/test_main.cpp
+  add_executable(${TARGET_NAME} ${PROJECT_SOURCE_DIR}/pypoly/tests/test_main.cpp
                                 ${cc_test_SRCS})
   add_dependencies(${TARGET_NAME} pypet_core)
   target_include_directories(${TARGET_NAME} PRIVATE ${PROJECT_SOURCE_DIR})
-  target_link_libraries(${TARGET_NAME} ${cc_test_DEPS} pypet_core gtest)
+  target_link_libraries(${TARGET_NAME} ${cc_test_DEPS} gtest)
 endfunction()

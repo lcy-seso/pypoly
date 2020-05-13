@@ -1,7 +1,7 @@
 #ifndef _PYPET_EXPR_H
 #define _PYPET_EXPR_H
 
-#include "pypet/core/pypet.h"
+#include "pypoly/core/pypet/pypet.h"
 
 #include <isl/aff.h>
 #include <isl/ctx.h>
@@ -13,6 +13,7 @@
 #include <isl/union_set.h>
 #include <isl/val.h>
 
+namespace pypoly {
 namespace pypet {
 
 enum PypetExprType {
@@ -96,5 +97,6 @@ struct PypetExpr {
 
 __isl_null PypetExpr* PypetExprFree(__isl_take PypetExpr* expr);
 }  // namespace pypet
+}  // namespace pypoly
 
 #endif

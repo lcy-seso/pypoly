@@ -19,4 +19,4 @@ include(generic)
 include(python)
 include(third_party)
 
-add_subdirectory(pypet)
+add_subdirectory(pypoly)

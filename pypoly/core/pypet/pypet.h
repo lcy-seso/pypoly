@@ -12,6 +12,7 @@
 #include <memory>
 #include <vector>
 
+namespace pypoly {
 namespace pypet {
 
 struct PypetScop;
@@ -85,4 +86,5 @@ struct PypetScop {
 };
 
 }  // namespace pypet
+}  // namespace pypoly
 #endif

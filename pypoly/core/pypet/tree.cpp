@@ -1,5 +1,6 @@
-#include "pypet/core/tree.h"
+#include "pypoly/core/pypet/tree.h"
 
+namespace pypoly {
 namespace pypet {
 
 __isl_give PypetTree* CreatePypetTree(isl_ctx* ctx,
@@ -80,3 +81,4 @@ __isl_null PypetTree* PypetTreeFree(__isl_take PypetTree* tree) {
 }
 
 }  // namespace pypet
+}  // namespace pypoly

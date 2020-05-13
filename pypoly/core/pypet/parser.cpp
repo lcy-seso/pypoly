@@ -1,5 +1,6 @@
-#include "pypet/core/parser.h"
+#include "pypoly/core/pypet/parser.h"
 
+namespace pypoly {
 namespace pypet {
 
 std::once_flag glog_init_flag;
@@ -52,3 +53,4 @@ PypetScopPtr ParserImpl::ParseFunction() {
 }
 
 }  // namespace pypet
+}  // namespace pypoly

@@ -1,7 +1,7 @@
 #ifndef _PYPET_TREE_H
 #define _PYPET_TREE_H
 
-#include "pypet/core/expr.h"
+#include "pypoly/core/pypet/expr.h"
 
 #include <isl/aff.h>
 #include <isl/ctx.h>
@@ -14,6 +14,7 @@
 #include <isl/val.h>
 #include <torch/csrc/jit/frontend/source_range.h>
 
+namespace pypoly {
 namespace pypet {
 
 struct PypetExpr;
@@ -84,4 +85,5 @@ __isl_give PypetTree* CreatePypetTreeBlock(isl_ctx* ctx,
 __isl_null PypetTree* PypetTreeFree(__isl_take PypetTree* tree);
 
 }  // namespace pypet
+}  // namespace pypoly
 #endif
