@@ -16,7 +16,6 @@ def forward(self, input: ReadTensorArray, batch_size: int,
                     h_prev = self.init_state
                 else:
                     h_prev = output[i][j - 1][k]
-
                 if k == 0:
                     x = input[i][j]
                 else:
