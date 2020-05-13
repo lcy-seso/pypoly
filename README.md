@@ -1,6 +1,6 @@
 # pypoly
 
-Parse polyhedral representation from PyTorch JIT AST programs, performance dependence analysis and code transformations to generate efficient device codes.
+Parse polyhedral representation from PyTorch JIT AST, perform dependence analysis and code transformations to generate efficient device codes, making more innovative Deep Learning models able to be (semi-)automatically optimized.
 
 ## How to compile
 
