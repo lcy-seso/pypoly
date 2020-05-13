@@ -1,5 +1,6 @@
-#include "pypet/core/expr.h"
+#include "pypoly/core/pypet/expr.h"
 
+namespace pypoly {
 namespace pypet {
 
 __isl_null PypetExpr* PypetExprFree(__isl_take PypetExpr* expr) {
@@ -27,3 +28,4 @@ __isl_null PypetExpr* PypetExprFree(__isl_take PypetExpr* expr) {
   }
 }
 }  // namespace pypet
+}  // namespace pypoly

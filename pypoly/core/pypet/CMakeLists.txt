@@ -2,7 +2,7 @@ set(TARGET pypet_core)
 
 include_directories("${PROJECT_SOURCE_DIR}")
 
-file(GLOB PYPETCORE_SRCS ${PROJECT_SOURCE_DIR}/pypet/core/*.cpp)
+file(GLOB PYPETCORE_SRCS ${PROJECT_SOURCE_DIR}/pypoly/core/pypet/*.cpp)
 
 cc_library(
   ${TARGET}

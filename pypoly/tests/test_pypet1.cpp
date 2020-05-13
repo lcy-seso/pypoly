@@ -1,6 +1,7 @@
 #include "gtest/gtest.h"
-#include "pypet/core/parser.h"
+#include "pypoly/core/pypet/parser.h"
 
+namespace pypoly {
 namespace pypet {
 // paste the implementation of forward in
 // pypet/python/examples/stacked_rnn_example.py
@@ -32,3 +33,4 @@ TEST(ParserTest, Test1) {
   ASSERT_TRUE(1);
 }
 }  // namespace pypet
+}  // namespace pypoly

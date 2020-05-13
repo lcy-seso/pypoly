@@ -1,6 +1,6 @@
-# pypet
+# pypoly
 
-Extract polyhedral representation from PyTorch programs.
+Parse polyhedral representation from PyTorch JIT AST programs, performance dependence analysis and code transformations to generate efficient device codes.
 
 ## How to compile
 

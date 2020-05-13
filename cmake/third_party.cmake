@@ -56,6 +56,12 @@ function(cache_third_party TARGET)
 endfunction()
 
 include(external/isl)
+
+# TODO(Ying): pet and yaml are for experiments in this repo. Remove them in
+# future.
+include(external/pet)
+include(external/yaml)
+
 include(external/pybind)
 
 set(third_party_deps)

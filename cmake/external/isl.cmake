@@ -25,9 +25,10 @@ ExternalProject_Add(
   ${SHALLOW_CLONE}
   "${ISL_DOWNLOAD_CMD}"
   PREFIX ${ISL_PREFIX_DIR}
+  UPDATE_COMMAND ""
   BUILD_IN_SOURCE 1
   SOURCE_DIR ${ISL_SOURCE_DIR}
   CONFIGURE_COMMAND ./autogen.sh
   COMMAND ./configure --prefix=${ISL_INSTALL_DIR}
-  BUILD_COMMAND make -j $(nproc)
-  INSTALL_COMMAND make install)
+  BUILD_COMMAND $(MAKE) --silent -j $(nproc)
+  INSTALL_COMMAND $(MAKE) install)

@@ -1,5 +1,6 @@
-#include "pypet/core/error.h"
+#include "pypoly/core/pypet/error.h"
 
+namespace pypoly {
 namespace pypet {
 
 Error::Error(const Error& e)
@@ -17,3 +18,4 @@ const char* Error::what() const noexcept {
   return the_message.c_str();
 }
 }  // namespace pypet
+}  // namespace pypoly

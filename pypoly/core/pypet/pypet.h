@@ -1,5 +1,5 @@
-#ifndef PYPET_H
-#define PYPET_H
+#ifndef _PYPET_H
+#define _PYPET_H
 
 #include <isl/aff.h>
 #include <isl/arg.h>
@@ -10,9 +10,9 @@
 #include <torch/csrc/jit/frontend/source_range.h>
 
 #include <memory>
-#include <string>
 #include <vector>
 
+namespace pypoly {
 namespace pypet {
 
 struct PypetScop;
@@ -28,7 +28,7 @@ struct PypetArray {
   isl_set* context;
   isl_set* extent;
   isl_set* value_bounds;
-  std::string element_type;
+  char* element_type;
 
   /* TODO(Ying): copy from pet, to check.
   int element_is_record;
@@ -45,7 +45,8 @@ struct PypetArray {
 struct PypetStmt {
   friend PypetTree;
 
-  PypetStmt(const torch::jit::SourceRange& range) : range(range){};
+  PypetStmt(const torch::jit::SourceRange& range)
+      : range(range), domain(nullptr), args(nullptr), body(nullptr){};
   ~PypetStmt() = default;
 
   torch::jit::SourceRange range;
@@ -85,4 +86,5 @@ struct PypetScop {
 };
 
 }  // namespace pypet
+}  // namespace pypoly
 #endif
