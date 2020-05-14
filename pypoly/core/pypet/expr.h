@@ -67,6 +67,39 @@ struct PypetExprAccess {
   isl_union_map* access[PYPET_EXPR_ACCESS_END];  // access relation.
 };
 
+enum PypetArgType {
+  PYPET_ARG_TENSOR,
+  PYPET_ARG_ARRAY,
+  PYPET_ARG_OTHER,  // int, float, etc. other numeric types.
+  // TODO(Ying): Do we need more argument types?
+};
+
+struct PypetFuncSummaryArg {
+  enum PypetArgType type;
+
+  union {
+    isl_id* id;
+    isl_union_map* access[PYPET_EXPR_ACCESS_END];
+  };
+};
+
+struct PypetFuncSummary {
+  int ref;
+  isl_ctx* ctx;
+
+  unsigned n;  // the number of arguments.
+
+  struct PypetFuncSummaryArg arg[];
+};
+
+struct PypetExprCall {
+  char* name;
+  PypetFuncSummary* summary;
+
+  PypetExprCall() = default;
+  ~PypetExprCall() = default;
+};
+
 struct PypetExpr {
   friend PypetExprAccess;
 
@@ -87,8 +120,7 @@ struct PypetExpr {
     struct PypetExprAccess acc;
     enum PypetOpType op;
 
-    // TODO(Ying) Add representation for external function call.
-    // struct PypetExprCall call;
+    struct PypetExprCall call;
 
     char* type_name;
     isl_val* i;
@@ -96,6 +128,7 @@ struct PypetExpr {
 };
 
 __isl_null PypetExpr* PypetExprFree(__isl_take PypetExpr* expr);
+
 }  // namespace pypet
 }  // namespace pypoly
 
