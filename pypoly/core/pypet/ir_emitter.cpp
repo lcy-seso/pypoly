@@ -5,6 +5,36 @@
 namespace pypoly {
 namespace pypet {
 
+namespace {
+
+PypetExpr* PypetExprFromIntVal(int val) {
+  // TODO
+  return nullptr;
+}
+
+PypetExpr* ExtractIndexExpr(const torch::jit::Expr& expr) {
+  // TODO
+  return nullptr;
+}
+
+PypetExpr* PypetExprAccessFromIndex() {
+  // TODO
+  return nullptr;
+}
+
+PypetExpr* ExtractAccessExpr(const torch::jit::Expr& expr) {
+  // TODO
+  return nullptr;
+}
+
+PypetExpr* BuildPypetBinaryOpExpr(PypetOpType op_type, PypetExpr* lhs,
+                                  PypetExpr* rhs) {
+  // TODO
+  return nullptr;
+}
+
+}  // namespace
+
 void EmitStatements::operator()(
     const torch::jit::List<torch::jit::Stmt>& statements) {
   for (auto begin = statements.begin(); begin != statements.end(); ++begin) {
@@ -96,11 +126,59 @@ void EmitStatements::EmitLoopCommon(
 }
 
 void EmitStatements::EmitFor(const torch::jit::For& stmt) {
-  auto emit_body = [&]() {
-    EmitStatements emitter(get_isl_ctx(), get_scop());
-    emitter(stmt.body());
-  };
-  EmitForImpl(stmt.targets(), stmt.itrs(), stmt.range(), emit_body);
+  // assume the format is: for iter_var in range(a, b, c)
+  const torch::jit::List<torch::jit::Expr>& targets = stmt.targets();
+  const torch::jit::List<torch::jit::Expr>& itrs = stmt.itrs();
+
+  CHECK_EQ(targets.size(), 1) << "List of iterables is not supported currently";
+  CHECK_EQ(itrs.size(), 1) << "List of iterables is not supported currently";
+
+  PypetTree* tree =
+      CreatePypetTree(ctx, stmt.range(), PypetTreeType::PYPET_TREE_FOR);
+  PypetExpr* iv = ExtractAccessExpr(targets[0]);
+
+  CHECK(itrs[0].kind() == torch::jit::TK_APPLY);
+  torch::jit::Apply apply = torch::jit::Apply(itrs[0]);
+  CHECK(apply.callee().kind() == torch::jit::TK_VAR);
+
+  const torch::jit::List<torch::jit::Expr>& args = apply.inputs();
+
+  PypetExpr* init = nullptr;
+  PypetExpr* bound = nullptr;
+  PypetExpr* cond = nullptr;
+  PypetExpr* inc = nullptr;
+
+  switch (args.size()) {
+    case 1: {
+      init = PypetExprFromIntVal(0);
+      bound = ExtractAccessExpr(args[0]);
+      inc = PypetExprFromIntVal(1);
+      break;
+    }
+    case 2: {
+      init = ExtractAccessExpr(args[0]);
+      bound = ExtractAccessExpr(args[1]);
+      inc = PypetExprFromIntVal(1);
+      break;
+    }
+    case 3: {
+      init = ExtractAccessExpr(args[0]);
+      bound = ExtractAccessExpr(args[1]);
+      inc = ExtractAccessExpr(args[2]);
+      break;
+    }
+    default:
+      LOG(ERROR) << "Range parameter num: " << args.size();
+      break;
+  }
+  // TODO: or PYPET_GT
+  cond = BuildPypetBinaryOpExpr(PypetOpType::PYPET_LT, iv, bound);
+
+  tree->ast.Loop.iv = iv;
+  tree->ast.Loop.init = init;
+  tree->ast.Loop.cond = cond;
+  tree->ast.Loop.inc = inc;
+  //   emitter(stmt.body());
 }
 
 std::shared_ptr<SugaredValue> EmitStatements::EmitApplyExpr(
@@ -116,7 +194,6 @@ std::shared_ptr<SugaredValue> EmitStatements::EmitApplyExpr(
     // TODO(ying) Check code pattens that fall in this branch.
     throw Error(apply.range()) << "Unsupported code pattern.";
   }
-
   return sv->call(loc);
 }
 
