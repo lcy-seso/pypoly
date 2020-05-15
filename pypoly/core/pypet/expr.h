@@ -68,6 +68,7 @@ struct PypetExprAccess {
 };
 
 enum PypetArgType {
+  PYPET_ARG_INT,
   PYPET_ARG_TENSOR,
   PYPET_ARG_ARRAY,
   PYPET_ARG_OTHER,  // int, float, etc. other numeric types.

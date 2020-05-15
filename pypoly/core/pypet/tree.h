@@ -40,14 +40,14 @@ struct PypetTree {
   isl_ctx* ctx;
   torch::jit::SourceRange range;
 
-  // TODO(Ying): a C style structure for source range is required.
   isl_id* label;
 
   enum PypetTreeType type;
 
   union {
     struct {
-      int block;
+      int block;  // whether the sequence has its own scope. When this field is
+                  // set false?
       int n;
       int max;
       PypetTree** children;

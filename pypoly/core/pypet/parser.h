@@ -55,7 +55,7 @@ class ParserImpl {
   bool CheckScop();
 
   void ParseDecl(isl_ctx* ctx);
-  void ParseBody(isl_ctx* ctx);
+  PypetTree* ParseBody(isl_ctx* ctx);
 };
 
 struct ScopParser {
