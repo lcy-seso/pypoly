@@ -87,7 +87,7 @@ struct PypetFuncSummary {
   int ref;
   isl_ctx* ctx;
 
-  unsigned n;  // the number of arguments.
+  size_t n;  // the number of arguments.
 
   struct PypetFuncSummaryArg arg[];
 };
@@ -113,7 +113,7 @@ struct PypetExpr {
 
   int type_size;
 
-  unsigned int arg_num;
+  size_t arg_num;
   PypetExpr** args;
 
   union {

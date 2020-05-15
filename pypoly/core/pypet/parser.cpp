@@ -44,7 +44,9 @@ PypetScopPtr ParserImpl::ParseFunction() {
     return nullptr;
   }
 
-  isl_ctx* ctx = isl_ctx_alloc();
+  struct isl_options* options = isl_options_new_with_defaults();
+  isl_ctx* ctx = isl_ctx_alloc_with_options(&isl_options_args, options);
+
   ParseDecl(ctx);
   ParseBody(ctx);
 
