@@ -21,6 +21,7 @@ enum PypetExprType {
   PYPET_EXPR_ACCESS,
   PYPET_EXPR_CALL,
   PYPET_EXPR_OP,
+  PYPET_EXPR_INT,
 };
 
 enum PypetOpType {
@@ -75,6 +76,8 @@ struct PypetExpr {
 
   int ref;
   isl_ctx* ctx;
+
+  uint32_t hash;
 
   enum PypetExprType type;
 
