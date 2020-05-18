@@ -42,6 +42,15 @@ enum PypetOpType {
   PYPET_NOT,
 };
 
+constexpr const char* OpToString[] = {
+    [PYPET_ASSIGN] = "=", [PYPET_ADD] = "+",  [PYPET_SUB] = "-",
+    [PYPET_MUL] = "*",    [PYPET_DIV] = "/",  [PYPET_MOD] = "%",
+    [PYPET_EQ] = "==",    [PYPET_NE] = "not", [PYPET_LE] = "<=",
+    [PYPET_GE] = ">=",    [PYPET_LT] = "<",   [PYPET_GT] = ">",
+    [PYPET_AND] = "and",  [PYPET_XOR] = "^",  [PYPET_OR] = "or",
+    [PYPET_NOT] = "not",
+};
+
 enum PypetExprAccessType {
   // TODO(Ying) check whether we needs so many access types or not, but only
   // MUST_READ/WRITE relations?

@@ -1,5 +1,8 @@
 #include "pypoly/core/pypet/parser.h"
 
+#include "pypoly/core/pypet/tree.h"
+#include "pypoly/core/pypet/tree2scop.h"
+
 namespace pypoly {
 namespace pypet {
 
@@ -28,7 +31,7 @@ void ScopParser::Parse() { pImpl->ParseFunction(); }
 void ParserImpl::ParseDecl(isl_ctx* ctx) { LOG(INFO) << ast_.name(); }
 
 PypetTree* ParserImpl::ParseBody(isl_ctx* ctx) {
-  EmitStatements emitter(ctx, std::make_shared<PypetScop>(parsed_data_));
+  EmitStatements emitter(ctx, parsed_data_);
   return emitter.Extract(ast_.statements());
 }
 
@@ -37,7 +40,7 @@ bool ParserImpl::CheckScop() {
   return ast_.statements()[0].kind() == torch::jit::TK_FOR;
 }
 
-PypetScopPtr ParserImpl::ParseFunction() {
+PypetScop* ParserImpl::ParseFunction() {
   LOG(INFO) << ast_.statements();
   if (!CheckScop()) {
     LOG(INFO) << "No SCoP is detected.";
@@ -50,8 +53,11 @@ PypetScopPtr ParserImpl::ParseFunction() {
   ParseDecl(ctx);
   PypetTree* tree = ParseBody(ctx);
 
+  TreeToScop converter(ctx);
+  parsed_data_ = converter.ScopFromTree(tree);
+
   isl_ctx_free(ctx);
-  return std::make_shared<PypetScop>(parsed_data_);
+  return parsed_data_;
 }
 
 }  // namespace pypet

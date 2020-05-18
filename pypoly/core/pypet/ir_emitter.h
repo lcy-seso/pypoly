@@ -14,8 +14,7 @@ namespace pypoly {
 namespace pypet {
 
 struct EmitStatements {
-  EmitStatements(isl_ctx* ctx, std::shared_ptr<PypetScop> scop)
-      : ctx(ctx), scop(scop){};
+  EmitStatements(isl_ctx* ctx, PypetScop* scop) : ctx(ctx), scop(scop){};
   PypetTree* Extract(const torch::jit::List<torch::jit::Stmt>& statements);
 
  private:
@@ -62,8 +61,8 @@ struct EmitStatements {
 
   std::set<std::string> used_names;
 
-  PypetScopPtr scop;
-  PypetScopPtr get_scop() { return scop; };
+  PypetScop* scop;
+  PypetScop* get_scop() { return scop; };
 };
 
 }  // namespace pypet

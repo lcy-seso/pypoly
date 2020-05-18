@@ -9,6 +9,7 @@
 #include <isl/map.h>
 #include <isl/set.h>
 #include <isl/space.h>
+#include <isl/stream.h>
 #include <isl/union_map.h>
 #include <isl/union_set.h>
 #include <isl/val.h>
@@ -40,7 +41,7 @@ struct PypetTree {
   isl_ctx* ctx;
   torch::jit::SourceRange range;
 
-  isl_id* label;
+  isl_id* label;  // unique label of this polyhedral statement.
 
   enum PypetTreeType type;
 
@@ -48,10 +49,11 @@ struct PypetTree {
     struct {
       int block;  // whether the sequence has its own scope. When this field is
                   // set false?
-      int n;
+      int n;      // how many statements in this block.
       int max;
-      PypetTree** children;
-    } Block;  // block, such as the body of a for construct.
+      PypetTree** children;  // each statement in the block is represented in
+                             // the form of a tree.
+    } Block;                 // block, such as the body of a for construct.
     struct {
       PypetExpr* var;
       PypetExpr* init;
@@ -83,6 +85,39 @@ __isl_give PypetTree* CreatePypetTreeBlock(isl_ctx* ctx,
                                            const torch::jit::SourceRange& range,
                                            int block, int n);
 __isl_null PypetTree* PypetTreeFree(__isl_take PypetTree* tree);
+
+int PypetTreeForeachSubTree(
+    __isl_keep PypetTree* tree,
+    const std::function<int(PypetTree* tree, void* user)>& fn,
+    void* user /* points to user data that can be any type.*/);
+
+struct TreePrettyPrinter {
+  TreePrettyPrinter(const __isl_keep PypetTree* tree) : tree(tree) {}
+  const PypetTree* tree;
+
+  void Print(std::ostream& out, const __isl_keep PypetExpr* expr,
+             int indent = 2);
+  void Print(std::ostream& out, const __isl_keep PypetTree* tree,
+             int indent = 2);
+
+ private:
+  __isl_give isl_printer* PrintArguments(const __isl_keep PypetExpr* expr,
+                                         __isl_take isl_printer* p);
+
+  __isl_give isl_printer* PrintExpr(const __isl_keep PypetExpr* expr,
+                                    __isl_take isl_printer* p);
+  __isl_give isl_printer* PrintFuncSummary(
+      const __isl_keep PypetFuncSummary* summary, __isl_take isl_printer* p);
+};
+
+static inline std::ostream& operator<<(std::ostream& out, TreePrettyPrinter t) {
+  t.Print(out, t.tree, 0);
+  return out << std::endl;
+}
+
+static inline std::ostream& operator<<(std::ostream& out, const PypetTree* t) {
+  return out << TreePrettyPrinter(t);
+}
 
 }  // namespace pypet
 }  // namespace pypoly

@@ -41,14 +41,14 @@ struct TorchParser {
 class ParserImpl {
  public:
   explicit ParserImpl(const TorchDef& def)
-      : ast_(std::move(def)), parsed_data_(PypetScop()){};
+      : ast_(std::move(def)), parsed_data_(nullptr){};
 
   void DumpAST() const { LOG(INFO) << ast_; }
-  PypetScopPtr ParseFunction();
+  PypetScop* ParseFunction();
 
  private:
   TorchDef ast_;
-  PypetScop parsed_data_;
+  PypetScop* parsed_data_;
 
   /* Traverse the AST to check whether there are SCoP(s) that could be
    * optimized. */
