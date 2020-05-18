@@ -1,0 +1,185 @@
+TranslationUnitDecl 0x682f518 <<invalid sloc>> <invalid sloc>
+|-TypedefDecl 0x682fdb0 <<invalid sloc>> <invalid sloc> implicit __int128_t '__int128'
+| `-BuiltinType 0x682fab0 '__int128'
+|-TypedefDecl 0x682fe20 <<invalid sloc>> <invalid sloc> implicit __uint128_t 'unsigned __int128'
+| `-BuiltinType 0x682fad0 'unsigned __int128'
+|-TypedefDecl 0x6830108 <<invalid sloc>> <invalid sloc> implicit __NSConstantString 'struct __NSConstantString_tag'
+| `-RecordType 0x682ff00 'struct __NSConstantString_tag'
+|   `-Record 0x682fe78 '__NSConstantString_tag'
+|-TypedefDecl 0x68301a0 <<invalid sloc>> <invalid sloc> implicit __builtin_ms_va_list 'char *'
+| `-PointerType 0x6830160 'char *'
+|   `-BuiltinType 0x682f5b0 'char'
+|-TypedefDecl 0x6830478 <<invalid sloc>> <invalid sloc> implicit __builtin_va_list 'struct __va_list_tag [1]'
+| `-ConstantArrayType 0x6830420 'struct __va_list_tag [1]' 1 
+|   `-RecordType 0x6830280 'struct __va_list_tag'
+|     `-Record 0x68301f8 '__va_list_tag'
+|-FunctionDecl 0x688df08 <./stacked_lstm.h:2:1, line:6:34> line:2:6 StackedLSTM 'void (int, int, int, const int *, float (*)[max_seq_len], float (*)[max_seq_len][depth], float)'
+| |-ParmVarDecl 0x688d4d0 <col:18, col:22> col:22 used batch_size 'int'
+| |-ParmVarDecl 0x688d550 <col:34, col:38> col:38 used depth 'int'
+| |-ParmVarDecl 0x688d5d0 <col:45, col:49> col:49 used max_seq_len 'int'
+| |-ParmVarDecl 0x688d760 <line:3:18, col:47> col:28 seq_lens 'const int *':'const int *'
+| |-ParmVarDecl 0x688d960 <line:4:18, col:53> col:24 input 'float (*)[max_seq_len]':'float (*)[max_seq_len]'
+| |-ParmVarDecl 0x688dbe0 <line:5:18, col:61> col:24 output 'float (*)[max_seq_len][depth]':'float (*)[max_seq_len][depth]'
+| `-ParmVarDecl 0x688dc60 <line:6:18, col:24> col:24 init_state 'float'
+|-FunctionDecl 0x688e1a0 <stacked_lstm.c:3:1, col:43> col:7 used cell 'float (float, float)'
+| |-ParmVarDecl 0x688e040 <col:12, col:18> col:18 a 'float'
+| |-ParmVarDecl 0x688e0c0 <col:21, col:27> col:27 b 'float'
+| `-CompoundStmt 0x688e298 <col:30, col:43>
+|   `-ReturnStmt 0x688e288 <col:32, col:39>
+|     `-ImplicitCastExpr 0x688e270 <col:39> 'float' <FloatingCast>
+|       `-FloatingLiteral 0x688e250 <col:39> 'double' 5.000000e+00
+`-FunctionDecl 0x688f5f8 prev 0x688df08 <line:5:1, line:35:1> line:5:6 StackedLSTM 'void (int, int, int, const int *, float (*)[max_seq_len], float (*)[max_seq_len][depth], float)'
+  |-ParmVarDecl 0x688e2c8 <col:18, col:22> col:22 used batch_size 'int'
+  |-ParmVarDecl 0x688e348 <col:34, col:38> col:38 used depth 'int'
+  |-ParmVarDecl 0x688e3c8 <col:45, col:49> col:49 used max_seq_len 'int'
+  |-ParmVarDecl 0x688ee50 <line:6:18, col:47> col:28 used seq_lens 'const int *':'const int *'
+  |-ParmVarDecl 0x688f050 <line:7:18, col:53> col:24 used input 'float (*)[max_seq_len]':'float (*)[max_seq_len]'
+  |-ParmVarDecl 0x688f2d0 <line:8:18, col:61> col:24 used output 'float (*)[max_seq_len][depth]':'float (*)[max_seq_len][depth]'
+  |-ParmVarDecl 0x688f350 <line:9:18, col:24> col:24 used init_state 'float'
+  `-CompoundStmt 0x68914c0 <col:36, line:35:1>
+    `-ForStmt 0x6891488 <line:11:3, line:33:3>
+      |-DeclStmt 0x688f770 <line:11:8, col:17>
+      | `-VarDecl 0x688f6e8 <col:8, col:16> col:12 used i 'int' cinit
+      |   `-IntegerLiteral 0x688f750 <col:16> 'int' 0
+      |-<<<NULL>>>
+      |-BinaryOperator 0x688f7f8 <col:19, col:23> 'int' '<'
+      | |-ImplicitCastExpr 0x688f7c8 <col:19> 'int' <LValueToRValue>
+      | | `-DeclRefExpr 0x688f788 <col:19> 'int' lvalue Var 0x688f6e8 'i' 'int'
+      | `-ImplicitCastExpr 0x688f7e0 <col:23> 'int' <LValueToRValue>
+      |   `-DeclRefExpr 0x688f7a8 <col:23> 'int' lvalue ParmVar 0x688e2c8 'batch_size' 'int'
+      |-UnaryOperator 0x688f838 <col:35, col:37> 'int' prefix '++'
+      | `-DeclRefExpr 0x688f818 <col:37> 'int' lvalue Var 0x688f6e8 'i' 'int'
+      `-CompoundStmt 0x6891468 <col:40, line:33:3>
+        |-DeclStmt 0x688f978 <line:12:5, col:30>
+        | `-VarDecl 0x688f868 <col:5, col:29> col:9 used seq_len 'int' cinit
+        |   `-ImplicitCastExpr 0x688f960 <col:19, col:29> 'int' <LValueToRValue>
+        |     `-ArraySubscriptExpr 0x688f940 <col:19, col:29> 'const int' lvalue
+        |       |-ImplicitCastExpr 0x688f910 <col:19> 'const int *':'const int *' <LValueToRValue>
+        |       | `-DeclRefExpr 0x688f8d0 <col:19> 'const int *':'const int *' lvalue ParmVar 0x688ee50 'seq_lens' 'const int *':'const int *'
+        |       `-ImplicitCastExpr 0x688f928 <col:28> 'int' <LValueToRValue>
+        |         `-DeclRefExpr 0x688f8f0 <col:28> 'int' lvalue Var 0x688f6e8 'i' 'int'
+        `-ForStmt 0x6891430 <line:13:5, line:32:5>
+          |-DeclStmt 0x688fa30 <line:13:10, col:19>
+          | `-VarDecl 0x688f9a8 <col:10, col:18> col:14 used j 'int' cinit
+          |   `-IntegerLiteral 0x688fa10 <col:18> 'int' 0
+          |-<<<NULL>>>
+          |-BinaryOperator 0x688fab8 <col:21, col:25> 'int' '<'
+          | |-ImplicitCastExpr 0x688fa88 <col:21> 'int' <LValueToRValue>
+          | | `-DeclRefExpr 0x688fa48 <col:21> 'int' lvalue Var 0x688f9a8 'j' 'int'
+          | `-ImplicitCastExpr 0x688faa0 <col:25> 'int' <LValueToRValue>
+          |   `-DeclRefExpr 0x688fa68 <col:25> 'int' lvalue Var 0x688f868 'seq_len' 'int'
+          |-UnaryOperator 0x688faf8 <col:34, col:36> 'int' prefix '++'
+          | `-DeclRefExpr 0x688fad8 <col:36> 'int' lvalue Var 0x688f9a8 'j' 'int'
+          `-CompoundStmt 0x6891418 <col:39, line:32:5>
+            `-ForStmt 0x68913e0 <line:14:7, line:31:7>
+              |-DeclStmt 0x688fbb0 <line:14:12, col:21>
+              | `-VarDecl 0x688fb28 <col:12, col:20> col:16 used k 'int' cinit
+              |   `-IntegerLiteral 0x688fb90 <col:20> 'int' 0
+              |-<<<NULL>>>
+              |-BinaryOperator 0x688fc38 <col:23, col:27> 'int' '<'
+              | |-ImplicitCastExpr 0x688fc08 <col:23> 'int' <LValueToRValue>
+              | | `-DeclRefExpr 0x688fbc8 <col:23> 'int' lvalue Var 0x688fb28 'k' 'int'
+              | `-ImplicitCastExpr 0x688fc20 <col:27> 'int' <LValueToRValue>
+              |   `-DeclRefExpr 0x688fbe8 <col:27> 'int' lvalue ParmVar 0x688e348 'depth' 'int'
+              |-UnaryOperator 0x688fc78 <col:34, col:36> 'int' prefix '++'
+              | `-DeclRefExpr 0x688fc58 <col:36> 'int' lvalue Var 0x688fb28 'k' 'int'
+              `-CompoundStmt 0x68913a0 <col:39, line:31:7>
+                |-DeclStmt 0x688fd48 <line:15:9, col:26>
+                | `-VarDecl 0x688fca8 <col:9, col:24> col:15 used h_prev 'float' cinit
+                |   `-ImplicitCastExpr 0x688fd30 <col:24> 'float' <FloatingCast>
+                |     `-FloatingLiteral 0x688fd10 <col:24> 'double' 0.000000e+00
+                |-IfStmt 0x6890b18 <line:16:9, line:20:9> has_else
+                | |-BinaryOperator 0x68907f0 <line:16:13, col:18> 'int' '=='
+                | | |-ImplicitCastExpr 0x688fda0 <col:13> 'int' <LValueToRValue>
+                | | | `-DeclRefExpr 0x688fd60 <col:13> 'int' lvalue Var 0x688f9a8 'j' 'int'
+                | | `-IntegerLiteral 0x688fd80 <col:18> 'int' 0
+                | |-CompoundStmt 0x6890888 <col:21, line:18:9>
+                | | `-BinaryOperator 0x6890868 <line:17:11, col:20> 'float' '='
+                | |   |-DeclRefExpr 0x6890810 <col:11> 'float' lvalue Var 0x688fca8 'h_prev' 'float'
+                | |   `-ImplicitCastExpr 0x6890850 <col:20> 'float' <LValueToRValue>
+                | |     `-DeclRefExpr 0x6890830 <col:20> 'float' lvalue ParmVar 0x688f350 'init_state' 'float'
+                | `-CompoundStmt 0x6890b00 <line:18:16, line:20:9>
+                |   `-BinaryOperator 0x6890ae0 <line:19:11, col:38> 'float' '='
+                |     |-DeclRefExpr 0x68908a0 <col:11> 'float' lvalue Var 0x688fca8 'h_prev' 'float'
+                |     `-ImplicitCastExpr 0x6890ac8 <col:20, col:38> 'float' <LValueToRValue>
+                |       `-ArraySubscriptExpr 0x6890aa8 <col:20, col:38> 'float' lvalue
+                |         |-ImplicitCastExpr 0x6890a78 <col:20, col:35> 'float *' <ArrayToPointerDecay>
+                |         | `-ArraySubscriptExpr 0x6890a10 <col:20, col:35> 'float [depth]' lvalue
+                |         |   |-ImplicitCastExpr 0x68909f8 <col:20, col:28> 'float (*)[depth]' <ArrayToPointerDecay>
+                |         |   | `-ArraySubscriptExpr 0x6890930 <col:20, col:28> 'float [max_seq_len][depth]' lvalue
+                |         |   |   |-ImplicitCastExpr 0x6890900 <col:20> 'float (*)[max_seq_len][depth]':'float (*)[max_seq_len][depth]' <LValueToRValue>
+                |         |   |   | `-DeclRefExpr 0x68908c0 <col:20> 'float (*)[max_seq_len][depth]':'float (*)[max_seq_len][depth]' lvalue ParmVar 0x688f2d0 'output' 'float (*)[max_seq_len][depth]':'float (*)[max_seq_len][depth]'
+                |         |   |   `-ImplicitCastExpr 0x6890918 <col:27> 'int' <LValueToRValue>
+                |         |   |     `-DeclRefExpr 0x68908e0 <col:27> 'int' lvalue Var 0x688f6e8 'i' 'int'
+                |         |   `-BinaryOperator 0x68909a8 <col:30, col:34> 'int' '-'
+                |         |     |-ImplicitCastExpr 0x6890990 <col:30> 'int' <LValueToRValue>
+                |         |     | `-DeclRefExpr 0x6890950 <col:30> 'int' lvalue Var 0x688f9a8 'j' 'int'
+                |         |     `-IntegerLiteral 0x6890970 <col:34> 'int' 1
+                |         `-ImplicitCastExpr 0x6890a90 <col:37> 'int' <LValueToRValue>
+                |           `-DeclRefExpr 0x6890a30 <col:37> 'int' lvalue Var 0x688fb28 'k' 'int'
+                |-DeclStmt 0x6890bf8 <line:22:9, col:21>
+                | `-VarDecl 0x6890b58 <col:9, col:19> col:15 used x 'float' cinit
+                |   `-ImplicitCastExpr 0x6890be0 <col:19> 'float' <FloatingCast>
+                |     `-FloatingLiteral 0x6890bc0 <col:19> 'double' 0.000000e+00
+                |-IfStmt 0x6891018 <line:23:9, line:27:9> has_else
+                | |-BinaryOperator 0x6890c68 <line:23:13, col:18> 'int' '=='
+                | | |-ImplicitCastExpr 0x6890c50 <col:13> 'int' <LValueToRValue>
+                | | | `-DeclRefExpr 0x6890c10 <col:13> 'int' lvalue Var 0x688fb28 'k' 'int'
+                | | `-IntegerLiteral 0x6890c30 <col:18> 'int' 0
+                | |-CompoundStmt 0x6890de0 <col:21, line:25:9>
+                | | `-BinaryOperator 0x6890dc0 <line:24:11, col:25> 'float' '='
+                | |   |-DeclRefExpr 0x6890c88 <col:11> 'float' lvalue Var 0x6890b58 'x' 'float'
+                | |   `-ImplicitCastExpr 0x6890da8 <col:15, col:25> 'float' <LValueToRValue>
+                | |     `-ArraySubscriptExpr 0x6890d88 <col:15, col:25> 'float' lvalue
+                | |       |-ImplicitCastExpr 0x6890d58 <col:15, col:22> 'float *' <ArrayToPointerDecay>
+                | |       | `-ArraySubscriptExpr 0x6890d18 <col:15, col:22> 'float [max_seq_len]' lvalue
+                | |       |   |-ImplicitCastExpr 0x6890ce8 <col:15> 'float (*)[max_seq_len]':'float (*)[max_seq_len]' <LValueToRValue>
+                | |       |   | `-DeclRefExpr 0x6890ca8 <col:15> 'float (*)[max_seq_len]':'float (*)[max_seq_len]' lvalue ParmVar 0x688f050 'input' 'float (*)[max_seq_len]':'float (*)[max_seq_len]'
+                | |       |   `-ImplicitCastExpr 0x6890d00 <col:21> 'int' <LValueToRValue>
+                | |       |     `-DeclRefExpr 0x6890cc8 <col:21> 'int' lvalue Var 0x688f6e8 'i' 'int'
+                | |       `-ImplicitCastExpr 0x6890d70 <col:24> 'int' <LValueToRValue>
+                | |         `-DeclRefExpr 0x6890d38 <col:24> 'int' lvalue Var 0x688f9a8 'j' 'int'
+                | `-CompoundStmt 0x6891000 <line:25:16, line:27:9>
+                |   `-BinaryOperator 0x6890fe0 <line:26:11, col:33> 'float' '='
+                |     |-DeclRefExpr 0x6890df8 <col:11> 'float' lvalue Var 0x6890b58 'x' 'float'
+                |     `-ImplicitCastExpr 0x6890fc8 <col:15, col:33> 'float' <LValueToRValue>
+                |       `-ArraySubscriptExpr 0x6890fa8 <col:15, col:33> 'float' lvalue
+                |         |-ImplicitCastExpr 0x6890f90 <col:15, col:26> 'float *' <ArrayToPointerDecay>
+                |         | `-ArraySubscriptExpr 0x6890ef8 <col:15, col:26> 'float [depth]' lvalue
+                |         |   |-ImplicitCastExpr 0x6890ec8 <col:15, col:23> 'float (*)[depth]' <ArrayToPointerDecay>
+                |         |   | `-ArraySubscriptExpr 0x6890e88 <col:15, col:23> 'float [max_seq_len][depth]' lvalue
+                |         |   |   |-ImplicitCastExpr 0x6890e58 <col:15> 'float (*)[max_seq_len][depth]':'float (*)[max_seq_len][depth]' <LValueToRValue>
+                |         |   |   | `-DeclRefExpr 0x6890e18 <col:15> 'float (*)[max_seq_len][depth]':'float (*)[max_seq_len][depth]' lvalue ParmVar 0x688f2d0 'output' 'float (*)[max_seq_len][depth]':'float (*)[max_seq_len][depth]'
+                |         |   |   `-ImplicitCastExpr 0x6890e70 <col:22> 'int' <LValueToRValue>
+                |         |   |     `-DeclRefExpr 0x6890e38 <col:22> 'int' lvalue Var 0x688f6e8 'i' 'int'
+                |         |   `-ImplicitCastExpr 0x6890ee0 <col:25> 'int' <LValueToRValue>
+                |         |     `-DeclRefExpr 0x6890ea8 <col:25> 'int' lvalue Var 0x688f9a8 'j' 'int'
+                |         `-BinaryOperator 0x6890f70 <col:28, col:32> 'int' '-'
+                |           |-ImplicitCastExpr 0x6890f58 <col:28> 'int' <LValueToRValue>
+                |           | `-DeclRefExpr 0x6890f18 <col:28> 'int' lvalue Var 0x688fb28 'k' 'int'
+                |           `-IntegerLiteral 0x6890f38 <col:32> 'int' 1
+                |-DeclStmt 0x68911c0 <line:29:9, col:34>
+                | `-VarDecl 0x6891058 <col:9, col:33> col:15 used h 'float' cinit
+                |   `-CallExpr 0x6891160 <col:19, col:33> 'float'
+                |     |-ImplicitCastExpr 0x6891148 <col:19> 'float (*)(float, float)' <FunctionToPointerDecay>
+                |     | `-DeclRefExpr 0x68910c0 <col:19> 'float (float, float)' Function 0x688e1a0 'cell' 'float (float, float)'
+                |     |-ImplicitCastExpr 0x6891190 <col:24> 'float' <LValueToRValue>
+                |     | `-DeclRefExpr 0x68910e0 <col:24> 'float' lvalue Var 0x6890b58 'x' 'float'
+                |     `-ImplicitCastExpr 0x68911a8 <col:27> 'float' <LValueToRValue>
+                |       `-DeclRefExpr 0x6891100 <col:27> 'float' lvalue Var 0x688fca8 'h_prev' 'float'
+                `-BinaryOperator 0x6891380 <line:30:9, col:27> 'float' '='
+                  |-ArraySubscriptExpr 0x6891328 <col:9, col:23> 'float' lvalue
+                  | |-ImplicitCastExpr 0x68912f8 <col:9, col:20> 'float *' <ArrayToPointerDecay>
+                  | | `-ArraySubscriptExpr 0x68912b8 <col:9, col:20> 'float [depth]' lvalue
+                  | |   |-ImplicitCastExpr 0x6891288 <col:9, col:17> 'float (*)[depth]' <ArrayToPointerDecay>
+                  | |   | `-ArraySubscriptExpr 0x6891248 <col:9, col:17> 'float [max_seq_len][depth]' lvalue
+                  | |   |   |-ImplicitCastExpr 0x6891218 <col:9> 'float (*)[max_seq_len][depth]':'float (*)[max_seq_len][depth]' <LValueToRValue>
+                  | |   |   | `-DeclRefExpr 0x68911d8 <col:9> 'float (*)[max_seq_len][depth]':'float (*)[max_seq_len][depth]' lvalue ParmVar 0x688f2d0 'output' 'float (*)[max_seq_len][depth]':'float (*)[max_seq_len][depth]'
+                  | |   |   `-ImplicitCastExpr 0x6891230 <col:16> 'int' <LValueToRValue>
+                  | |   |     `-DeclRefExpr 0x68911f8 <col:16> 'int' lvalue Var 0x688f6e8 'i' 'int'
+                  | |   `-ImplicitCastExpr 0x68912a0 <col:19> 'int' <LValueToRValue>
+                  | |     `-DeclRefExpr 0x6891268 <col:19> 'int' lvalue Var 0x688f9a8 'j' 'int'
+                  | `-ImplicitCastExpr 0x6891310 <col:22> 'int' <LValueToRValue>
+                  |   `-DeclRefExpr 0x68912d8 <col:22> 'int' lvalue Var 0x688fb28 'k' 'int'
+                  `-ImplicitCastExpr 0x6891368 <col:27> 'float' <LValueToRValue>
+                    `-DeclRefExpr 0x6891348 <col:27> 'float' lvalue Var 0x6891058 'h' 'float'
