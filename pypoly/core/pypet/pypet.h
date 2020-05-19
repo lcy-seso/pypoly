@@ -1,6 +1,8 @@
 #ifndef _PYPET_H
 #define _PYPET_H
 
+#include "util.h"
+
 #include <isl/aff.h>
 #include <isl/arg.h>
 #include <isl/map.h>
