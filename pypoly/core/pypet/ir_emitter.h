@@ -57,6 +57,8 @@ struct EmitStatements {
   isl_ctx* ctx;
   isl_ctx* get_isl_ctx() { return ctx; };
 
+  std::set<std::string> used_names;
+
   PypetScopPtr scop;
   PypetScopPtr get_scop() { return scop; };
 };
