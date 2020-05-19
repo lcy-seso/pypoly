@@ -4,7 +4,6 @@
 #include "pypoly/core/pypet/ir_emitter.h"
 #include "pypoly/core/pypet/pypet.h"
 
-#include <glog/logging.h>
 #include <isl/arg.h>
 #include <isl/ctx.h>
 #include <isl/options.h>
