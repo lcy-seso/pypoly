@@ -7,50 +7,14 @@ namespace pypet {
 
 namespace {
 
-PypetExpr* PypetExprDup(PypetExpr* expr) {
-  // TODO
-  return nullptr;
-}
-
-PypetExpr* PypetExprCow(PypetExpr* expr) {
-  CHECK(expr);
-  if (expr->ref == 1) {
-    expr->hash = 0;
-    return expr;
-  } else {
-    expr->ref--;
-    return PypetExprDup(expr);
-  }
-}
-
-PypetExpr* PypetExprAlloc(isl_ctx* ctx, PypetExprType expr_type) {
-  PypetExpr* expr = isl_alloc_type(ctx, struct PypetExpr);
-  CHECK(expr);
-  expr->ctx = ctx;
-  isl_ctx_ref(ctx);
-  expr->type = expr_type;
-  expr->ref = 1;
-  return expr;
-}
-
-PypetExpr* PypetExprFromIslVal(isl_val* val) {
-  isl_ctx* ctx = isl_val_get_ctx(val);
-  PypetExpr* expr = PypetExprAlloc(ctx, PypetExprType::PYPET_EXPR_INT);
-  expr->i = val;
-  return expr;
-}
-
-PypetExpr* PypetExprFromIntVal(isl_ctx* ctx, long val) {
-  isl_val* expr_val = isl_val_int_from_si(ctx, val);
-  return PypetExprFromIslVal(expr_val);
-}
-
 PypetExpr* PypetExprAccessSetIndex(PypetExpr* expr, isl_multi_pw_aff* index) {
   expr = PypetExprCow(expr);
   CHECK(expr);
   CHECK(index);
   CHECK(expr->type == PYPET_EXPR_ACCESS);
-  isl_multi_pw_aff_free(expr->acc.index);
+  if (expr->acc.index != nullptr) {
+    isl_multi_pw_aff_free(expr->acc.index);
+  }
   expr->acc.index = index;
   expr->acc.depth = isl_multi_pw_aff_dim(index, isl_dim_out);
   return expr;
@@ -63,17 +27,18 @@ PypetExpr* PypetExprFromIndex(isl_multi_pw_aff* index) {
   CHECK(expr);
   expr->acc.read = 1;
   expr->acc.write = 0;
+  expr->acc.index = nullptr;
   return PypetExprAccessSetIndex(expr, index);
 }
 
 PypetExpr* ExtractIndexExprFromVar(isl_ctx* ctx, const torch::jit::Var& expr) {
   CHECK(expr.kind() == torch::jit::TK_VAR);
-  torch::jit::Ident ident_expr = torch::jit::Ident(expr);
+  torch::jit::Ident ident_expr = torch::jit::Ident(expr.name());
   const std::string& name = ident_expr.name();
   isl_id* id = isl_id_alloc(ctx, name.c_str(), nullptr);
   isl_space* space = isl_space_alloc(ctx, 0, 0, 0);
   space = isl_space_set_tuple_id(space, isl_dim_out, id);
-  return nullptr;
+  return PypetExprFromIndex(isl_multi_pw_aff_zero(space));
 }
 
 PypetExpr* ExtractIndexExprFromConst(isl_ctx* ctx,
@@ -101,8 +66,9 @@ PypetExpr* ExtractIndexExpr(isl_ctx* ctx, const torch::jit::Expr& expr) {
 
 PypetExpr* PypetExprAccessFromIndex(const torch::jit::Expr& expr,
                                     PypetExpr* index) {
-  // TODO
-  return nullptr;
+  // TODO: depth
+  // TODO: type_size
+  return index;
 }
 
 PypetExpr* ExtractAccessExpr(isl_ctx* ctx, const torch::jit::Expr& expr) {
@@ -118,6 +84,7 @@ PypetExpr* BuildPypetBinaryOpExpr(isl_ctx* ctx, PypetOpType op_type,
   PypetExpr* expr = PypetExprAlloc(ctx, PypetExprType::PYPET_EXPR_OP);
   // TODO: type_size
   expr->arg_num = 2;
+  expr->args = new PypetExpr*[2];
   expr->args[0] = lhs;
   expr->args[1] = rhs;
   expr->op = op_type;
@@ -191,7 +158,7 @@ void EmitStatements::EmitForImpl(
         << "List of iterables is not supported currently";
   }
 
-  PypetTree* tree = CreatePypetTreeBlock(ctx, loc, 1, 1);
+  // PypetTree* tree = CreatePypetTreeBlock(ctx, loc, 1, 1);
 
   // Emit loop information for builtinFunction values like range(), zip(),
   // enumerate() or SimpleValue like List, Tensor, Dict, etc.
@@ -258,7 +225,7 @@ void EmitStatements::EmitFor(const torch::jit::For& stmt) {
       break;
     }
     default:
-      LOG(ERROR) << "Range parameter num: " << args.size();
+      LOG(FATAL) << "Range parameter num: " << args.size();
       break;
   }
   // TODO: or PYPET_GT
@@ -268,6 +235,11 @@ void EmitStatements::EmitFor(const torch::jit::For& stmt) {
   tree->ast.Loop.init = init;
   tree->ast.Loop.cond = cond;
   tree->ast.Loop.inc = inc;
+
+  PypetExprPrint2Stdout(init);
+  PypetExprPrint2Stdout(bound);
+  PypetExprPrint2Stdout(cond);
+  PypetExprPrint2Stdout(inc);
   //   emitter(stmt.body());
 }
 
@@ -277,8 +249,8 @@ std::shared_ptr<SugaredValue> EmitStatements::EmitApplyExpr(
   auto sv = EmitSugaredExpr(apply.callee(), 1);
 
   auto loc = apply.callee().range();
-  if (auto special_form =
-          dynamic_cast<torch::jit::SpecialFormValue*>(sv.get())) {
+  auto special_form = dynamic_cast<torch::jit::SpecialFormValue*>(sv.get());
+  if (special_form != nullptr) {
     // this branch handles expressions that look like apply statements
     // but have special evaluation rules for the arguments.
     // TODO(ying) Check code pattens that fall in this branch.
@@ -309,6 +281,7 @@ std::shared_ptr<SugaredValue> EmitStatements::EmitSugaredExpr(
 SugaredValuePtr EmitStatements::GetSugaredVar(const torch::jit::Ident& ident,
                                               bool required) {
   LOG(INFO) << "Var = " << ident.range().text();
+  return nullptr;
 }
 
 void EmitStatements::EmitIf(const torch::jit::If& stmt) {}

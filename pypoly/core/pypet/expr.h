@@ -68,6 +68,13 @@ struct PypetExprAccess {
   isl_union_map* access[PYPET_EXPR_ACCESS_END];  // access relation.
 };
 
+struct PypetFunctionSummary;
+
+struct PypetExprCall {
+  char* name;
+  struct PypetFunctionSummary* summary;
+};
+
 struct PypetExpr {
   friend PypetExprAccess;
 
@@ -91,14 +98,29 @@ struct PypetExpr {
     enum PypetOpType op;
 
     // TODO(Ying) Add representation for external function call.
-    // struct PypetExprCall call;
+    struct PypetExprCall call;
 
     char* type_name;
     isl_val* i;
   };
 };
 
+PypetExpr* PypetExprAlloc(isl_ctx* ctx, PypetExprType expr_type);
+
 __isl_null PypetExpr* PypetExprFree(__isl_take PypetExpr* expr);
+
+PypetExpr* PypetExprDup(PypetExpr* expr);
+
+PypetExpr* PypetExprCow(PypetExpr* expr);
+
+PypetExpr* PypetExprFromIslVal(isl_val* val);
+
+PypetExpr* PypetExprFromIntVal(isl_ctx* ctx, long val);
+
+isl_printer* PypetExprPrint(PypetExpr* expr, isl_printer* p);
+
+void PypetExprPrint2Stdout(PypetExpr* expr);
+
 }  // namespace pypet
 }  // namespace pypoly
 
