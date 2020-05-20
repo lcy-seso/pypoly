@@ -37,9 +37,9 @@ __isl_give PypetTree* CreatePypetTreeBlock(isl_ctx* ctx,
   return tree;
 }
 
-__isl_give PypetTree* CreatePypetTreFor(isl_ctx* ctx,
-                                        const torch::jit::SourceRange& range,
-                                        int block, int n) {
+__isl_give PypetTree* CreatePypetTreeFor(isl_ctx* ctx,
+                                         const torch::jit::SourceRange& range,
+                                         int block, int n) {
   PypetTree* tree;
 
   tree = CreatePypetTree(ctx, range, PYPET_TREE_FOR);
@@ -64,8 +64,9 @@ __isl_null PypetTree* PypetTreeFree(__isl_take PypetTree* tree) {
     case PYPET_TREE_ERROR:
       break;
     case PYPET_TREE_BLOCK:
-      for (int i = 0; i < tree->ast.Block.n; ++i)
+      for (int i = 0; i < tree->ast.Block.n; ++i) {
         PypetTreeFree(tree->ast.Block.children[i]);
+      }
       free(tree->ast.Block.children);
       break;
     case PYPET_TREE_BREAK:
@@ -93,7 +94,7 @@ __isl_null PypetTree* PypetTreeFree(__isl_take PypetTree* tree) {
   isl_ctx_deref(tree->ctx);
   free(tree);
   return nullptr;
-}
+}  // namespace pypet
 
 /* DFS traverse the given tree. Call "fn" on each node of "tree", including
  * "tree" itself.
@@ -149,35 +150,39 @@ void TreePrettyPrinter::Print(std::ostream& out,
     out << std::string(isl_id_to_str(tree->label));
   }
 
+  // TODO: The indention is not tested for compliated PypetTree structurem which
+  // requires further implementations.
   switch (tree->type) {
     case PYPET_TREE_ERROR:
       out << "ERROR!";
       return;
     case PYPET_TREE_BLOCK:
-      for (int i = 0; i < tree->ast.Block.n; ++i)
+      for (int i = 0; i < tree->ast.Block.n; ++i) {
         Print(out, tree->ast.Block.children[i], indent + 2);
+      }
       break;
     case PYPET_TREE_BREAK:
     case PYPET_TREE_CONTINUE:
     case PYPET_TREE_EXPR:
-    case PYPET_TREE_RETURN: {
+    case PYPET_TREE_RETURN:
       out << tree->ast.Expr.expr;
-    } break;
-    case PYPET_TREE_DECL: {
+      break;
+    case PYPET_TREE_DECL:
       out << tree->ast.Decl.var;
       out << std::string(indent, ' ');
       out << tree->ast.Decl.init;
-    } break;
+      break;
     case PYPET_TREE_IF:
-    case PYPET_TREE_IF_ELSE: {
+    case PYPET_TREE_IF_ELSE:
       out << tree->ast.IfElse.cond;
       out << std::string(indent, ' ');
       out << tree->ast.IfElse.if_body;
       if (tree->type != PYPET_TREE_IF_ELSE) break;
       out << tree->ast.IfElse.else_body;
-    } break;
+      break;
     case PYPET_TREE_FOR: {
-      out << std::string(indent, ' ') << tree->ast.Loop.iv;
+      out << std::string(indent, ' ');
+      out << tree->ast.Loop.iv;
       out << tree->ast.Loop.init;
       out << tree->ast.Loop.cond;
       out << tree->ast.Loop.inc;

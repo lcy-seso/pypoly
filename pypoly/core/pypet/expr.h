@@ -12,6 +12,7 @@
 #include <isl/union_map.h>
 #include <isl/union_set.h>
 #include <isl/val.h>
+#include <string.h>
 
 namespace pypoly {
 namespace pypet {
@@ -86,6 +87,9 @@ enum PypetArgType {
 };
 
 struct PypetFuncSummaryArg {
+  PypetFuncSummaryArg() = default;
+  ~PypetFuncSummaryArg() = default;
+
   enum PypetArgType type;
 
   union {
@@ -95,6 +99,9 @@ struct PypetFuncSummaryArg {
 };
 
 struct PypetFuncSummary {
+  PypetFuncSummary() = default;
+  ~PypetFuncSummary() = default;
+
   int ref;
   isl_ctx* ctx;
 
@@ -138,7 +145,7 @@ struct PypetExpr {
   };
 };
 
-PypetExpr* PypetExprAlloc(isl_ctx* ctx, PypetExprType expr_type);
+__isl_give PypetExpr* PypetExprAlloc(isl_ctx* ctx, PypetExprType expr_type);
 
 __isl_null PypetExpr* PypetExprFree(__isl_take PypetExpr* expr);
 
@@ -149,6 +156,9 @@ __isl_keep PypetExpr* PypetExprCow(__isl_keep PypetExpr* expr);
 __isl_keep PypetExpr* PypetExprFromIslVal(__isl_keep isl_val* val);
 
 __isl_keep PypetExpr* PypetExprFromIntVal(__isl_keep isl_ctx* ctx, long val);
+
+__isl_give PypetExpr* PypetExprCreateCall(isl_ctx* ctx, const char* name,
+                                          size_t arg_num);
 
 struct ExprPrettyPrinter {
   ExprPrettyPrinter(const __isl_keep PypetExpr* expr) : expr(expr) {}
@@ -166,9 +176,8 @@ struct ExprPrettyPrinter {
       const __isl_keep PypetFuncSummary* summary, __isl_take isl_printer* p);
 };
 
-static inline std::ostream& operator<<(std::ostream& out,
-                                       ExprPrettyPrinter expr) {
-  expr.Print(out, 0);
+static inline std::ostream& operator<<(std::ostream& out, ExprPrettyPrinter p) {
+  p.Print(out, 0);
   return out << std::endl;
 };
 

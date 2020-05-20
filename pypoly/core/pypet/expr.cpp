@@ -5,11 +5,16 @@ namespace pypet {
 
 namespace {
 static void PypetFuncArgFree(struct PypetFuncSummaryArg* arg) {
-  if (arg->type == PYPET_ARG_INT) isl_id_free(arg->id);
+  if (!arg) return;
+
+  if (arg->type == PYPET_ARG_INT) {
+    isl_id_free(arg->id);
+  }
   if (arg->type != PYPET_ARG_ARRAY) return;
   for (size_t type = PYPET_EXPR_ACCESS_BEGIN; type < PYPET_EXPR_ACCESS_END;
-       ++type)
+       ++type) {
     arg->access[type] = isl_union_map_free(arg->access[type]);
+  }
 }
 
 __isl_null PypetFuncSummary* PypetFuncSummaryFree(
@@ -17,24 +22,31 @@ __isl_null PypetFuncSummary* PypetFuncSummaryFree(
   if (!summary) return nullptr;
   if (--summary->ref > 0) return nullptr;
 
-  for (size_t i = 0; i < summary->n; ++i) PypetFuncArgFree(&summary->arg[i]);
+  for (size_t i = 0; i < summary->n; ++i) {
+    PypetFuncArgFree(&summary->arg[i]);
+  }
 
   isl_ctx_deref(summary->ctx);
-  free(summary);
+  if (summary) {
+    free(summary);
+  }
   return nullptr;
 }
 }  // namespace
 
-PypetExpr* PypetExprAlloc(isl_ctx* ctx, PypetExprType expr_type) {
+__isl_give PypetExpr* PypetExprAlloc(isl_ctx* ctx, PypetExprType expr_type) {
   PypetExpr* expr = isl_alloc_type(ctx, struct PypetExpr);
   CHECK(expr);
   expr->ctx = ctx;
   isl_ctx_ref(ctx);
   expr->type = expr_type;
   expr->ref = 1;
+
+  expr->arg_num = 0;
+  expr->args = nullptr;
+
   switch (expr_type) {
-    case PypetExprType::PYPET_EXPR_ACCESS:
-      expr->arg_num = 0;
+    case PYPET_EXPR_ACCESS:
       expr->acc.ref_id = nullptr;
       expr->acc.index = nullptr;
       expr->acc.depth = 1;
@@ -53,8 +65,12 @@ __isl_null PypetExpr* PypetExprFree(__isl_take PypetExpr* expr) {
   if (!expr) return nullptr;
   if (--expr->ref > 0) return nullptr;
 
-  for (unsigned int i = 0; i < expr->arg_num; ++i) PypetExprFree(expr->args[i]);
-  free(expr->args);
+  for (size_t i = 0; i < expr->arg_num; ++i) {
+    PypetExprFree(expr->args[i]);
+  }
+  if (expr->args) {
+    free(expr->args);
+  }
 
   switch (expr->type) {
     case PYPET_EXPR_ACCESS:
@@ -65,21 +81,36 @@ __isl_null PypetExpr* PypetExprFree(__isl_take PypetExpr* expr) {
       isl_multi_pw_aff_free(expr->acc.index);
       break;
     case PYPET_EXPR_CALL:
-      free(expr->call.name);
+      if (expr->call.name) {
+        free(expr->call.name);
+      }
       PypetFuncSummaryFree(expr->call.summary);
       break;
+    case PYPET_EXPR_INT:
+      isl_val_free(expr->i);
+      break;
     case PYPET_EXPR_OP:
-      UNIMPLEMENTED();
-      break;
     case PYPET_EXPR_ERROR:
-      UNIMPLEMENTED();
-      break;
-    default:
-      UNIMPLEMENTED();
       break;
   }
 
+  isl_ctx_deref(expr->ctx);
+  free(expr);
   return nullptr;
+}
+
+__isl_give PypetExpr* PypetExprCreateCall(isl_ctx* ctx, const char* name,
+                                          size_t arg_num) {
+  PypetExpr* expr = PypetExprAlloc(ctx, PYPET_EXPR_CALL);
+  CHECK(expr);
+  expr->arg_num = arg_num;
+  expr->call.name = strdup(name);
+  if (!expr->call.name) {
+    return PypetExprFree(expr);
+  }
+
+  expr->call.summary = nullptr;
+  return expr;
 }
 
 PypetExpr* PypetExprDup(PypetExpr* expr) {
@@ -141,8 +172,10 @@ __isl_give isl_printer* ExprPrettyPrinter::PrintExpr(
       }
       p = isl_printer_print_str(p, "index");
       p = isl_printer_yaml_next(p);
-      p = isl_printer_print_multi_pw_aff(p, expr->acc.index);
+      if (expr->acc.index)
+        p = isl_printer_print_multi_pw_aff(p, expr->acc.index);
       p = isl_printer_yaml_next(p);
+
       p = isl_printer_print_str(p, "depth");
       p = isl_printer_yaml_next(p);
       p = isl_printer_print_int(p, expr->acc.depth);
@@ -196,7 +229,20 @@ __isl_give isl_printer* ExprPrettyPrinter::PrintExpr(
       p = isl_printer_yaml_end_mapping(p);
       break;
     case PypetExprType::PYPET_EXPR_CALL:
-      UNIMPLEMENTED();
+      p = isl_printer_yaml_start_mapping(p);
+      p = isl_printer_print_str(p, "call");
+      p = isl_printer_yaml_next(p);
+      p = isl_printer_print_str(p, expr->call.name);
+      p = isl_printer_print_str(p, "/");
+      p = isl_printer_print_int(p, expr->arg_num);
+      p = isl_printer_yaml_next(p);
+      p = PrintArguments(expr, p);
+      if (expr->call.summary) {
+        p = isl_printer_print_str(p, "summary");
+        p = isl_printer_yaml_next(p);
+        p = PrintFuncSummary(expr->call.summary, p);
+      }
+      p = isl_printer_yaml_end_mapping(p);
       break;
     case PypetExprType::PYPET_EXPR_ERROR:
       p = isl_printer_print_str(p, "ERROR");
@@ -222,12 +268,11 @@ __isl_give isl_printer* ExprPrettyPrinter::PrintFuncSummary(
         p = isl_printer_yaml_next(p);
         p = isl_printer_yaml_end_mapping(p);
         break;
-      case PYPET_ARG_TENSOR:  // TODO(Ying): not implemented yet.
+      case PYPET_ARG_TENSOR:  // TODO(Ying): not fully implemented yet.
         p = isl_printer_yaml_start_mapping(p);
         p = isl_printer_print_str(p, "tensor");
         p = isl_printer_yaml_next(p);
-        p = isl_printer_print_id(
-            p, summary->arg[i].id);  // Is tensor stored same as int?
+        p = isl_printer_print_id(p, summary->arg[i].id);
         p = isl_printer_yaml_next(p);
         p = isl_printer_yaml_end_mapping(p);
         break;
