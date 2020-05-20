@@ -39,7 +39,7 @@ struct PypetTree {
 
   int ref;  // reference identifier.
   isl_ctx* ctx;
-  torch::jit::SourceRange range;
+  torch::jit::SourceRange const* range;
 
   isl_id* label;  // unique label of this polyhedral statement.
 
@@ -79,11 +79,9 @@ struct PypetTree {
 };
 
 __isl_give PypetTree* CreatePypetTree(isl_ctx* ctx,
-                                      const torch::jit::SourceRange& range,
+                                      torch::jit::SourceRange const* range,
                                       enum PypetTreeType tree_type);
-__isl_give PypetTree* CreatePypetTreeBlock(isl_ctx* ctx,
-                                           const torch::jit::SourceRange& range,
-                                           int block, int n);
+__isl_give PypetTree* CreatePypetTreeBlock(isl_ctx* ctx, int block, int n);
 __isl_null PypetTree* PypetTreeFree(__isl_take PypetTree* tree);
 
 struct TreePrettyPrinter {

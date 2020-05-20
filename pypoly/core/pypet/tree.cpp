@@ -4,7 +4,7 @@ namespace pypoly {
 namespace pypet {
 
 __isl_give PypetTree* CreatePypetTree(isl_ctx* ctx,
-                                      const torch::jit::SourceRange& range,
+                                      torch::jit::SourceRange const* range,
                                       enum PypetTreeType tree_type) {
   PypetTree* tree;
 
@@ -15,17 +15,19 @@ __isl_give PypetTree* CreatePypetTree(isl_ctx* ctx,
   isl_ctx_ref(ctx);
   tree->ref = 1;
   tree->type = tree_type;
-  tree->range = range;
+  if (range != nullptr) {
+    tree->range = range;
+  } else {
+    tree->range = nullptr;
+  }
 
   return tree;
 }
 
-__isl_give PypetTree* CreatePypetTreeBlock(isl_ctx* ctx,
-                                           const torch::jit::SourceRange& range,
-                                           int block, int n) {
+__isl_give PypetTree* CreatePypetTreeBlock(isl_ctx* ctx, int block, int n) {
   PypetTree* tree;
 
-  tree = CreatePypetTree(ctx, range, PYPET_TREE_BLOCK);
+  tree = CreatePypetTree(ctx, nullptr, PYPET_TREE_BLOCK);
   if (!tree) return nullptr;
 
   tree->ast.Block.block = block;

@@ -19,6 +19,8 @@ struct EmitStatements {
       const torch::jit::List<torch::jit::Stmt>& statements);
 
  private:
+  PypetTree* EmitBlockStatements(
+      const torch::jit::List<torch::jit::Stmt>& statements);
   PypetTree* EmitStatement(const torch::jit::Stmt& stmt);
   PypetTree* EmitFor(const torch::jit::For& stmt);
 

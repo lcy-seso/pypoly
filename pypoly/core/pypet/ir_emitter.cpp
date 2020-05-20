@@ -56,7 +56,7 @@ PypetExpr* ExtractIndexExpr(isl_ctx* ctx, const torch::jit::Expr& expr) {
       return ExtractIndexExprFromConst(ctx, const_expr);
     }
     default:
-      LOG(ERROR) << "Unexpected expr kind " << expr.kind();
+      LOG(FATAL) << "Unexpected expr kind " << expr.kind();
       break;
   }
   return nullptr;
@@ -89,6 +89,52 @@ PypetExpr* BuildPypetBinaryOpExpr(isl_ctx* ctx, PypetOpType op_type,
   return expr;
 }
 
+PypetExpr* ExtractAssignExpr(isl_ctx* ctx, const torch::jit::Assign& stmt) {
+  return nullptr;
+}
+
+PypetExpr* ExtractBinaryExpr(isl_ctx* ctx, const torch::jit::Expr& expr) {
+  UNIMPLEMENTED();
+  return nullptr;
+}
+
+PypetExpr* ExtractExpr(isl_ctx* ctx, const torch::jit::Expr& expr) {
+  switch (expr.kind()) {
+    case torch::jit::TK_SUBSCRIPT: {
+      break;
+    }
+    case torch::jit::TK_VAR:
+      break;
+    case '.':
+      break;
+    case torch::jit::TK_IDENT:
+      break;
+    case torch::jit::TK_AND:
+    case torch::jit::TK_OR:
+    case '<':
+    case '>':
+    case torch::jit::TK_EQ:
+    case torch::jit::TK_LE:
+    case torch::jit::TK_GE:
+    case torch::jit::TK_NE:
+    case '+':
+    case '-':
+    case '*':
+    case '/':
+      return ExtractBinaryExpr(ctx, expr);
+    case torch::jit::TK_NOT:
+      break;
+    case torch::jit::TK_CONST:
+      break;
+    case torch::jit::TK_STRING:
+      break;
+    default:
+      UNIMPLEMENTED();
+      break;
+  }
+  return nullptr;
+}
+
 }  // namespace
 
 std::vector<PypetTree*> EmitStatements::operator()(
@@ -96,8 +142,18 @@ std::vector<PypetTree*> EmitStatements::operator()(
   std::vector<PypetTree*> ret(statements.size(), nullptr);
   for (size_t i = 0; i < statements.size(); ++i) {
     ret[i] = EmitStatement(statements[i]);
+    std::cout << ret[i];
   }
   return ret;
+}
+
+PypetTree* EmitStatements::EmitBlockStatements(
+    const torch::jit::List<torch::jit::Stmt>& statements) {
+  PypetTree* tree = CreatePypetTreeBlock(ctx, 1, statements.size());
+  for (size_t i = 0; i < statements.size(); ++i) {
+    tree->ast.Block.children[i] = EmitStatement(statements[i]);
+  }
+  return tree;
 }
 
 PypetTree* EmitStatements::EmitStatement(const torch::jit::Stmt& stmt) {
@@ -182,7 +238,7 @@ PypetTree* EmitStatements::EmitFor(const torch::jit::For& stmt) {
   CHECK_EQ(itrs.size(), 1) << "List of iterables is not supported currently";
 
   PypetTree* tree =
-      CreatePypetTree(ctx, stmt.range(), PypetTreeType::PYPET_TREE_FOR);
+      CreatePypetTree(ctx, &stmt.range(), PypetTreeType::PYPET_TREE_FOR);
   PypetExpr* iv = ExtractAccessExpr(ctx, targets[0]);
 
   CHECK(itrs[0].kind() == torch::jit::TK_APPLY);
@@ -227,12 +283,8 @@ PypetTree* EmitStatements::EmitFor(const torch::jit::For& stmt) {
   tree->ast.Loop.cond = cond;
   tree->ast.Loop.inc = inc;
 
-  std::cout << init;
-  std::cout << bound;
-  std::cout << cond;
-  std::cout << inc;
-  //   emitter(stmt.body());
-  return nullptr;
+  tree->ast.Loop.body = EmitBlockStatements(stmt.body());
+  return tree;
 }
 
 std::shared_ptr<SugaredValue> EmitStatements::EmitApplyExpr(
@@ -277,8 +329,17 @@ SugaredValuePtr EmitStatements::GetSugaredVar(const torch::jit::Ident& ident,
 }
 
 PypetTree* EmitStatements::EmitIf(const torch::jit::If& stmt) {
-  UNIMPLEMENTED();
-  return nullptr;
+  bool has_false_branch = stmt.falseBranch().size() > 0;
+  PypetTree* tree =
+      CreatePypetTree(ctx, &stmt.range(),
+                      has_false_branch ? PypetTreeType::PYPET_TREE_IF_ELSE
+                                       : PypetTreeType::PYPET_TREE_IF);
+  tree->ast.IfElse.cond = ExtractExpr(ctx, stmt.cond());
+  tree->ast.IfElse.if_body = EmitBlockStatements(stmt.trueBranch());
+  if (has_false_branch == true) {
+    tree->ast.IfElse.else_body = EmitBlockStatements(stmt.falseBranch());
+  }
+  return tree;
 }
 PypetTree* EmitStatements::EmitWhile(const torch::jit::While& stmt) {
   UNIMPLEMENTED();
@@ -286,8 +347,10 @@ PypetTree* EmitStatements::EmitWhile(const torch::jit::While& stmt) {
 }
 
 PypetTree* EmitStatements::EmitAssignment(const torch::jit::Assign& stmt) {
-  UNIMPLEMENTED();
-  return nullptr;
+  PypetTree* tree =
+      CreatePypetTree(ctx, &stmt.range(), PypetTreeType::PYPET_TREE_EXPR);
+  tree->ast.Expr.expr = ExtractAssignExpr(ctx, stmt);
+  return tree;
 }
 PypetTree* EmitStatements::EmitAugAssignment(
     const torch::jit::AugAssign& stmt) {
