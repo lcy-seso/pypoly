@@ -28,8 +28,9 @@ __isl_give PypetContext* CreatePypetContext(__isl_take isl_set* domain) {
   return pc;
 }
 
-/* Free a reference to "pc" and return NULL.
- *  */
+/*
+ * Free a reference to "pc" and return nullptr.
+ */
 __isl_null PypetContext* FreePypetContext(__isl_take PypetContext* pc) {
   if (!pc) return nullptr;
   if (--pc->ref > 0) return nullptr;

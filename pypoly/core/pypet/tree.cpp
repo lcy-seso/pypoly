@@ -30,7 +30,7 @@ __isl_give PypetTree* CreatePypetTreeBlock(isl_ctx* ctx,
 
   tree->ast.Block.block = block;
   tree->ast.Block.n = 0;
-  tree->ast.Block.max = n;  // what is the difference between `n` and `max`?
+  tree->ast.Block.max = n;
   tree->ast.Block.children = isl_calloc_array(ctx, PypetTree*, n);
   if (n && !tree->ast.Block.children) return PypetTreeFree(tree);
 
@@ -47,9 +47,11 @@ __isl_give PypetTree* CreatePypetTreeFor(isl_ctx* ctx,
 
   tree->ast.Block.block = block;
   tree->ast.Block.n = 0;
-  tree->ast.Block.max = n;  // what is the difference between `n` and `max`?
+  tree->ast.Block.max = n;
   tree->ast.Block.children = isl_calloc_array(ctx, PypetTree*, n);
-  if (n && !tree->ast.Block.children) return PypetTreeFree(tree);
+  if (n && !tree->ast.Block.children) {
+    return PypetTreeFree(tree);
+  }
 
   return tree;
 }
@@ -94,7 +96,7 @@ __isl_null PypetTree* PypetTreeFree(__isl_take PypetTree* tree) {
   isl_ctx_deref(tree->ctx);
   free(tree);
   return nullptr;
-}  // namespace pypet
+}
 
 /* DFS traverse the given tree. Call "fn" on each node of "tree", including
  * "tree" itself.
@@ -150,7 +152,7 @@ void TreePrettyPrinter::Print(std::ostream& out,
     out << std::string(isl_id_to_str(tree->label));
   }
 
-  // TODO: The indention is not tested for compliated PypetTree structurem which
+  // TODO: The indention is not tested for compliated PypetTree structure which
   // requires further implementations.
   switch (tree->type) {
     case PYPET_TREE_ERROR:
