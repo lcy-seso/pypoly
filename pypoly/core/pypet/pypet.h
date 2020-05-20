@@ -19,7 +19,6 @@ namespace pypet {
 
 struct PypetScop;
 using PypetScopPtr = std::shared_ptr<PypetScop>;
-
 struct PypetExpr;
 struct PypetTree;
 

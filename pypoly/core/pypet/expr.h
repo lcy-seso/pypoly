@@ -12,6 +12,7 @@
 #include <isl/union_map.h>
 #include <isl/union_set.h>
 #include <isl/val.h>
+#include <string.h>
 
 namespace pypoly {
 namespace pypet {
@@ -43,6 +44,15 @@ enum PypetOpType {
   PYPET_NOT,
 };
 
+static constexpr const char* op_type_to_string[] = {
+    [PYPET_ASSIGN] = "=", [PYPET_ADD] = "+", [PYPET_SUB] = "-",
+    [PYPET_MUL] = "*",    [PYPET_DIV] = "/", [PYPET_MOD] = "%",
+    [PYPET_EQ] = "==",    [PYPET_NE] = "!=", [PYPET_LE] = "<=",
+    [PYPET_GE] = ">=",    [PYPET_LT] = "<",  [PYPET_GT] = ">",
+    [PYPET_AND] = "&",    [PYPET_XOR] = "^", [PYPET_OR] = "or",
+    [PYPET_NOT] = "not",
+};
+
 enum PypetExprAccessType {
   // TODO(Ying) check whether we needs so many access types or not, but only
   // MUST_READ/WRITE relations?
@@ -69,6 +79,7 @@ struct PypetExprAccess {
 };
 
 enum PypetArgType {
+  PYPET_ARG_INT,
   PYPET_ARG_TENSOR,
   PYPET_ARG_ARRAY,
   PYPET_ARG_OTHER,  // int, float, etc. other numeric types.
@@ -76,6 +87,9 @@ enum PypetArgType {
 };
 
 struct PypetFuncSummaryArg {
+  PypetFuncSummaryArg() = default;
+  ~PypetFuncSummaryArg() = default;
+
   enum PypetArgType type;
 
   union {
@@ -85,6 +99,9 @@ struct PypetFuncSummaryArg {
 };
 
 struct PypetFuncSummary {
+  PypetFuncSummary() = default;
+  ~PypetFuncSummary() = default;
+
   int ref;
   isl_ctx* ctx;
 
@@ -102,8 +119,6 @@ struct PypetExprCall {
 };
 
 struct PypetExpr {
-  friend PypetExprAccess;
-
   PypetExpr() = default;
   ~PypetExpr() = default;
 
@@ -130,21 +145,46 @@ struct PypetExpr {
   };
 };
 
-PypetExpr* PypetExprAlloc(isl_ctx* ctx, PypetExprType expr_type);
+__isl_give PypetExpr* PypetExprAlloc(isl_ctx* ctx, PypetExprType expr_type);
 
 __isl_null PypetExpr* PypetExprFree(__isl_take PypetExpr* expr);
 
-PypetExpr* PypetExprDup(PypetExpr* expr);
+__isl_keep PypetExpr* PypetExprDup(__isl_keep PypetExpr* expr);
 
-PypetExpr* PypetExprCow(PypetExpr* expr);
+__isl_keep PypetExpr* PypetExprCow(__isl_keep PypetExpr* expr);
 
-PypetExpr* PypetExprFromIslVal(isl_val* val);
+__isl_keep PypetExpr* PypetExprFromIslVal(__isl_keep isl_val* val);
 
-PypetExpr* PypetExprFromIntVal(isl_ctx* ctx, long val);
+__isl_keep PypetExpr* PypetExprFromIntVal(__isl_keep isl_ctx* ctx, long val);
 
-isl_printer* PypetExprPrint(PypetExpr* expr, isl_printer* p);
+__isl_give PypetExpr* PypetExprCreateCall(isl_ctx* ctx, const char* name,
+                                          size_t arg_num);
 
-void PypetExprPrint2Stdout(PypetExpr* expr);
+struct ExprPrettyPrinter {
+  ExprPrettyPrinter(const __isl_keep PypetExpr* expr) : expr(expr) {}
+  ~ExprPrettyPrinter() = default;
+
+  const PypetExpr* expr;
+
+  void Print(std::ostream& out, int indent = 2);
+  static __isl_give isl_printer* PrintExpr(const PypetExpr* expr,
+                                           __isl_take isl_printer* p);
+  static __isl_give isl_printer* PrintArguments(
+      const __isl_keep PypetExpr* expr, __isl_take isl_printer* p);
+
+  static __isl_give isl_printer* PrintFuncSummary(
+      const __isl_keep PypetFuncSummary* summary, __isl_take isl_printer* p);
+};
+
+static inline std::ostream& operator<<(std::ostream& out, ExprPrettyPrinter p) {
+  p.Print(out, 0);
+  return out << std::endl;
+};
+
+static inline std::ostream& operator<<(std::ostream& out,
+                                       const PypetExpr* expr) {
+  return out << ExprPrettyPrinter(expr);
+};
 
 }  // namespace pypet
 }  // namespace pypoly
