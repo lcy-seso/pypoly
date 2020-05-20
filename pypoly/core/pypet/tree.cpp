@@ -38,6 +38,8 @@ __isl_give PypetTree* CreatePypetTreeBlock(isl_ctx* ctx,
 }
 
 __isl_null PypetTree* PypetTreeFree(__isl_take PypetTree* tree) {
+  int i;
+
   if (!tree) return nullptr;
   if (--tree->ref > 0) return nullptr;
 
@@ -47,9 +49,8 @@ __isl_null PypetTree* PypetTreeFree(__isl_take PypetTree* tree) {
     case PYPET_TREE_ERROR:
       break;
     case PYPET_TREE_BLOCK:
-      for (int i = 0; i < tree->ast.Block.n; ++i) {
+      for (i = 0; i < tree->ast.Block.n; ++i)
         PypetTreeFree(tree->ast.Block.children[i]);
-      }
       free(tree->ast.Block.children);
       break;
     case PYPET_TREE_BREAK:
@@ -77,56 +78,6 @@ __isl_null PypetTree* PypetTreeFree(__isl_take PypetTree* tree) {
   isl_ctx_deref(tree->ctx);
   free(tree);
   return nullptr;
-}
-
-void TreePrettyPrinter::Print(std::ostream& out,
-                              const __isl_keep PypetTree* tree, int indent) {
-  if (!tree) return;
-
-  if (tree->label) {
-    out << std::string(indent, ' ');
-    out << std::string(isl_id_to_str(tree->label));
-  }
-
-  // TODO: The indention is not tested for compliated PypetTree structurem which
-  // requires further implementations.
-  switch (tree->type) {
-    case PYPET_TREE_ERROR:
-      out << "ERROR!";
-      return;
-    case PYPET_TREE_BLOCK:
-      for (int i = 0; i < tree->ast.Block.n; ++i) {
-        Print(out, tree->ast.Block.children[i], indent + 2);
-      }
-      break;
-    case PYPET_TREE_BREAK:
-    case PYPET_TREE_CONTINUE:
-    case PYPET_TREE_EXPR:
-    case PYPET_TREE_RETURN:
-      out << tree->ast.Expr.expr;
-      break;
-    case PYPET_TREE_DECL:
-      out << tree->ast.Decl.var;
-      out << std::string(indent, ' ');
-      out << tree->ast.Decl.init;
-      break;
-    case PYPET_TREE_IF:
-    case PYPET_TREE_IF_ELSE:
-      out << tree->ast.IfElse.cond;
-      out << std::string(indent, ' ');
-      out << tree->ast.IfElse.if_body;
-      if (tree->type != PYPET_TREE_IF_ELSE) break;
-      out << tree->ast.IfElse.else_body;
-      break;
-    case PYPET_TREE_FOR: {
-      out << std::string(indent, ' ');
-      out << tree->ast.Loop.iv;
-      out << tree->ast.Loop.init;
-      out << tree->ast.Loop.cond;
-      out << tree->ast.Loop.inc;
-      out << tree->ast.Loop.body;
-    } break;
-  }
 }
 
 }  // namespace pypet

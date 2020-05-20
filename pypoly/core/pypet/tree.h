@@ -9,7 +9,6 @@
 #include <isl/map.h>
 #include <isl/set.h>
 #include <isl/space.h>
-#include <isl/stream.h>
 #include <isl/union_map.h>
 #include <isl/union_set.h>
 #include <isl/val.h>
@@ -41,19 +40,18 @@ struct PypetTree {
   isl_ctx* ctx;
   torch::jit::SourceRange range;
 
-  isl_id* label;  // unique label of this polyhedral statement.
+  // TODO(Ying): a C style structure for source range is required.
+  isl_id* label;
 
   enum PypetTreeType type;
 
   union {
     struct {
-      int block;  // whether the sequence has its own scope. When this field is
-                  // set false?
-      int n;      // how many statements in this block.
+      int block;
+      int n;
       int max;
-      PypetTree** children;  // each statement in the block is represented in
-                             // the form of a tree.
-    } Block;                 // block, such as the body of a for construct.
+      PypetTree** children;
+    } Block;  // block, such as the body of a for construct.
     struct {
       PypetExpr* var;
       PypetExpr* init;
@@ -86,22 +84,6 @@ __isl_give PypetTree* CreatePypetTreeBlock(isl_ctx* ctx,
                                            int block, int n);
 __isl_null PypetTree* PypetTreeFree(__isl_take PypetTree* tree);
 
-struct TreePrettyPrinter {
-  TreePrettyPrinter(const __isl_keep PypetTree* tree) : tree(tree) {}
-  const PypetTree* tree;
-
-  void Print(std::ostream& out, const __isl_keep PypetTree* tree,
-             int indent = 2);
-};
-
-static inline std::ostream& operator<<(std::ostream& out, TreePrettyPrinter t) {
-  t.Print(out, t.tree, 0);
-  return out << std::endl;
-}
-
-static inline std::ostream& operator<<(std::ostream& out, const PypetTree* t) {
-  return out << TreePrettyPrinter(t);
-}
 }  // namespace pypet
 }  // namespace pypoly
 #endif
