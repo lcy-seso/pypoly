@@ -95,19 +95,8 @@ struct TreePrettyPrinter {
   TreePrettyPrinter(const __isl_keep PypetTree* tree) : tree(tree) {}
   const PypetTree* tree;
 
-  void Print(std::ostream& out, const __isl_keep PypetExpr* expr,
-             int indent = 2);
   void Print(std::ostream& out, const __isl_keep PypetTree* tree,
              int indent = 2);
-
- private:
-  __isl_give isl_printer* PrintArguments(const __isl_keep PypetExpr* expr,
-                                         __isl_take isl_printer* p);
-
-  __isl_give isl_printer* PrintExpr(const __isl_keep PypetExpr* expr,
-                                    __isl_take isl_printer* p);
-  __isl_give isl_printer* PrintFuncSummary(
-      const __isl_keep PypetFuncSummary* summary, __isl_take isl_printer* p);
 };
 
 static inline std::ostream& operator<<(std::ostream& out, TreePrettyPrinter t) {
@@ -118,7 +107,6 @@ static inline std::ostream& operator<<(std::ostream& out, TreePrettyPrinter t) {
 static inline std::ostream& operator<<(std::ostream& out, const PypetTree* t) {
   return out << TreePrettyPrinter(t);
 }
-
 }  // namespace pypet
 }  // namespace pypoly
 #endif
