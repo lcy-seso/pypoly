@@ -21,6 +21,7 @@ enum PypetExprType {
   PYPET_EXPR_ACCESS,
   PYPET_EXPR_CALL,
   PYPET_EXPR_OP,
+  PYPET_EXPR_INT,
 };
 
 enum PypetOpType {
@@ -119,6 +120,8 @@ struct PypetExpr {
   int ref;
   isl_ctx* ctx;
 
+  uint32_t hash;
+
   enum PypetExprType type;
 
   int type_size;
@@ -137,7 +140,21 @@ struct PypetExpr {
   };
 };
 
+PypetExpr* PypetExprAlloc(isl_ctx* ctx, PypetExprType expr_type);
+
 __isl_null PypetExpr* PypetExprFree(__isl_take PypetExpr* expr);
+
+PypetExpr* PypetExprDup(PypetExpr* expr);
+
+PypetExpr* PypetExprCow(PypetExpr* expr);
+
+PypetExpr* PypetExprFromIslVal(isl_val* val);
+
+PypetExpr* PypetExprFromIntVal(isl_ctx* ctx, long val);
+
+isl_printer* PypetExprPrint(PypetExpr* expr, isl_printer* p);
+
+void PypetExprPrint2Stdout(PypetExpr* expr);
 
 }  // namespace pypet
 }  // namespace pypoly
