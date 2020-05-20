@@ -227,10 +227,10 @@ PypetTree* EmitStatements::EmitFor(const torch::jit::For& stmt) {
   tree->ast.Loop.cond = cond;
   tree->ast.Loop.inc = inc;
 
-  PypetExprPrint2Stdout(init);
-  PypetExprPrint2Stdout(bound);
-  PypetExprPrint2Stdout(cond);
-  PypetExprPrint2Stdout(inc);
+  std::cout << init;
+  std::cout << bound;
+  std::cout << cond;
+  std::cout << inc;
   //   emitter(stmt.body());
   return nullptr;
 }
