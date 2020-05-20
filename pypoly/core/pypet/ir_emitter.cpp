@@ -1,7 +1,5 @@
 #include "pypoly/core/pypet/ir_emitter.h"
 
-#include "pypoly/core/pypet/tree.h"
-
 namespace pypoly {
 namespace pypet {
 
@@ -93,59 +91,52 @@ PypetExpr* BuildPypetBinaryOpExpr(isl_ctx* ctx, PypetOpType op_type,
 
 }  // namespace
 
-void EmitStatements::operator()(
+std::vector<PypetTree*> EmitStatements::operator()(
     const torch::jit::List<torch::jit::Stmt>& statements) {
-  for (auto begin = statements.begin(); begin != statements.end(); ++begin) {
-    auto stmt = *begin;
-    switch (stmt.kind()) {
-      case torch::jit::TK_IF: {
-        EmitIf(torch::jit::If(stmt));
-      } break;
-      case torch::jit::TK_WHILE: {
-        EmitWhile(torch::jit::While(stmt));
-      } break;
-      case torch::jit::TK_FOR: {
-        EmitFor(torch::jit::For(stmt));
-      } break;
-      case torch::jit::TK_ASSIGN: {
-        EmitAssignment(torch::jit::Assign(stmt));
-      } break;
-      case torch::jit::TK_AUG_ASSIGN: {
-        EmitAugAssignment(torch::jit::AugAssign(stmt));
-      } break;
-      case torch::jit::TK_EXPR_STMT: {
-        auto expr = torch::jit::ExprStmt(stmt).expr();
-        EmitExpr(expr);
-      } break;
-      case torch::jit::TK_RAISE: {
-        EmitRaise(torch::jit::Raise(stmt));
-      } break;
-      case torch::jit::TK_ASSERT: {
-        EmitAssert(torch::jit::Assert(stmt));
-      } break;
-      case torch::jit::TK_RETURN: {
-        EmitReturn(torch::jit::Return(stmt));
-      } break;
-      case torch::jit::TK_CONTINUE: {
-        EmitContinue(torch::jit::Continue(stmt));
-      } break;
-      case torch::jit::TK_BREAK: {
-        EmitBreak(torch::jit::Break(stmt));
-      } break;
-      case torch::jit::TK_PASS:
-        // Emit nothing for pass
-        break;
-      case torch::jit::TK_DEF: {
-        EmitClosure(torch::jit::Def(stmt));
-        break;
-      }
-      case torch::jit::TK_DELETE: {
-        EmitDelete(torch::jit::Delete(stmt));
-      } break;
-      default:
-        throw std::invalid_argument("Unrecognized statement kind ");
-    }
+  std::vector<PypetTree*> ret(statements.size(), nullptr);
+  for (size_t i = 0; i < statements.size(); ++i) {
+    ret[i] = EmitStatement(statements[i]);
   }
+  return ret;
+}
+
+PypetTree* EmitStatements::EmitStatement(const torch::jit::Stmt& stmt) {
+  switch (stmt.kind()) {
+    case torch::jit::TK_IF:
+      return EmitIf(torch::jit::If(stmt));
+    case torch::jit::TK_WHILE:
+      return EmitWhile(torch::jit::While(stmt));
+    case torch::jit::TK_FOR:
+      return EmitFor(torch::jit::For(stmt));
+    case torch::jit::TK_ASSIGN:
+      return EmitAssignment(torch::jit::Assign(stmt));
+    case torch::jit::TK_AUG_ASSIGN:
+      return EmitAugAssignment(torch::jit::AugAssign(stmt));
+    case torch::jit::TK_EXPR_STMT: {
+      auto expr = torch::jit::ExprStmt(stmt).expr();
+      return EmitExpr(expr);
+    }
+    case torch::jit::TK_RAISE:
+      return EmitRaise(torch::jit::Raise(stmt));
+    case torch::jit::TK_ASSERT:
+      return EmitAssert(torch::jit::Assert(stmt));
+    case torch::jit::TK_RETURN:
+      return EmitReturn(torch::jit::Return(stmt));
+    case torch::jit::TK_CONTINUE:
+      return EmitContinue(torch::jit::Continue(stmt));
+    case torch::jit::TK_BREAK:
+      return EmitBreak(torch::jit::Break(stmt));
+    case torch::jit::TK_PASS:
+      break;
+    case torch::jit::TK_DEF:
+      return EmitClosure(torch::jit::Def(stmt));
+    case torch::jit::TK_DELETE:
+      return EmitDelete(torch::jit::Delete(stmt));
+    default:
+      UNIMPLEMENTED();
+      break;
+  }
+  return nullptr;
 }
 
 void EmitStatements::EmitForImpl(
@@ -183,7 +174,7 @@ void EmitStatements::EmitLoopCommon(
   emit_body();
 }
 
-void EmitStatements::EmitFor(const torch::jit::For& stmt) {
+PypetTree* EmitStatements::EmitFor(const torch::jit::For& stmt) {
   // assume the format is: for iter_var in range(a, b, c)
   const torch::jit::List<torch::jit::Expr>& targets = stmt.targets();
   const torch::jit::List<torch::jit::Expr>& itrs = stmt.itrs();
@@ -241,6 +232,7 @@ void EmitStatements::EmitFor(const torch::jit::For& stmt) {
   PypetExprPrint2Stdout(cond);
   PypetExprPrint2Stdout(inc);
   //   emitter(stmt.body());
+  return nullptr;
 }
 
 std::shared_ptr<SugaredValue> EmitStatements::EmitApplyExpr(
@@ -284,21 +276,56 @@ SugaredValuePtr EmitStatements::GetSugaredVar(const torch::jit::Ident& ident,
   return nullptr;
 }
 
-void EmitStatements::EmitIf(const torch::jit::If& stmt) {}
-void EmitStatements::EmitWhile(const torch::jit::While& stmt) {
-  throw std::invalid_argument("while statement is not supported.");
+PypetTree* EmitStatements::EmitIf(const torch::jit::If& stmt) {
+  UNIMPLEMENTED();
+  return nullptr;
+}
+PypetTree* EmitStatements::EmitWhile(const torch::jit::While& stmt) {
+  UNIMPLEMENTED();
+  return nullptr;
 }
 
-void EmitStatements::EmitAssignment(const torch::jit::Assign& stmt) {}
-void EmitStatements::EmitAugAssignment(const torch::jit::AugAssign& stmt) {}
-void EmitStatements::EmitRaise(const torch::jit::Raise& stmt) {}
-void EmitStatements::EmitAssert(const torch::jit::Assert& stmt) {}
-void EmitStatements::EmitReturn(const torch::jit::Return& stmt) {}
-void EmitStatements::EmitContinue(const torch::jit::Continue& stmt) {}
-void EmitStatements::EmitBreak(const torch::jit::Break& stmt) {}
-void EmitStatements::EmitClosure(const torch::jit::Def& stmt) {}
-void EmitStatements::EmitDelete(const torch::jit::Delete& stmt) {}
-void EmitStatements::EmitExpr(const torch::jit::Expr& tree) {}
+PypetTree* EmitStatements::EmitAssignment(const torch::jit::Assign& stmt) {
+  UNIMPLEMENTED();
+  return nullptr;
+}
+PypetTree* EmitStatements::EmitAugAssignment(
+    const torch::jit::AugAssign& stmt) {
+  UNIMPLEMENTED();
+  return nullptr;
+}
+PypetTree* EmitStatements::EmitRaise(const torch::jit::Raise& stmt) {
+  UNIMPLEMENTED();
+  return nullptr;
+}
+PypetTree* EmitStatements::EmitAssert(const torch::jit::Assert& stmt) {
+  UNIMPLEMENTED();
+  return nullptr;
+}
+PypetTree* EmitStatements::EmitReturn(const torch::jit::Return& stmt) {
+  UNIMPLEMENTED();
+  return nullptr;
+}
+PypetTree* EmitStatements::EmitContinue(const torch::jit::Continue& stmt) {
+  UNIMPLEMENTED();
+  return nullptr;
+}
+PypetTree* EmitStatements::EmitBreak(const torch::jit::Break& stmt) {
+  UNIMPLEMENTED();
+  return nullptr;
+}
+PypetTree* EmitStatements::EmitClosure(const torch::jit::Def& stmt) {
+  UNIMPLEMENTED();
+  return nullptr;
+}
+PypetTree* EmitStatements::EmitDelete(const torch::jit::Delete& stmt) {
+  UNIMPLEMENTED();
+  return nullptr;
+}
+PypetTree* EmitStatements::EmitExpr(const torch::jit::Expr& tree) {
+  UNIMPLEMENTED();
+  return nullptr;
+}
 
 }  // namespace pypet
 }  // namespace pypoly
