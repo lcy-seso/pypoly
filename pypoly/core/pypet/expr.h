@@ -42,6 +42,7 @@ enum PypetOpType {
   PYPET_XOR,
   PYPET_OR,
   PYPET_NOT,
+  PYPET_UNKNOWN,
 };
 
 static constexpr const char* op_type_to_string[] = {
