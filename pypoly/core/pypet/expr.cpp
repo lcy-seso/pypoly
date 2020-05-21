@@ -155,7 +155,10 @@ void ExprPrettyPrinter::Print(std::ostream& out, int indent) {
 
 __isl_give isl_printer* ExprPrettyPrinter::PrintExpr(
     const PypetExpr* expr, __isl_take isl_printer* p) {
-  CHECK(expr);
+  // CHECK(expr);
+  if (expr == nullptr) {
+    return p;
+  }
   CHECK(p);
 
   switch (expr->type) {

@@ -27,11 +27,11 @@ __isl_give PypetTree* CreatePypetTree(isl_ctx* ctx,
 __isl_give PypetTree* CreatePypetTreeBlock(isl_ctx* ctx, int block, int n) {
   PypetTree* tree;
 
-  tree = CreatePypetTree(ctx, nullptr, PYPET_TREE_BLOCK);
+  tree = CreatePypetTree(ctx, nullptr, PypetTreeType::PYPET_TREE_BLOCK);
   if (!tree) return nullptr;
 
   tree->ast.Block.block = block;
-  tree->ast.Block.n = 0;
+  tree->ast.Block.n = n;
   tree->ast.Block.max = n;
   tree->ast.Block.children = isl_calloc_array(ctx, PypetTree*, n);
   if (n && !tree->ast.Block.children) return PypetTreeFree(tree);
@@ -127,7 +127,11 @@ void TreePrettyPrinter::Print(std::ostream& out,
       out << tree->ast.Loop.cond;
       out << tree->ast.Loop.inc;
       out << tree->ast.Loop.body;
-    } break;
+      break;
+    }
+    default:
+      UNIMPLEMENTED();
+      break;
   }
 }
 

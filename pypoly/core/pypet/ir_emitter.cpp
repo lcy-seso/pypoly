@@ -5,6 +5,25 @@ namespace pypet {
 
 namespace {
 
+void isl_printer_to_stdout(struct isl_printer* p) {
+  char* str = isl_printer_get_str(p);
+  isl_printer_free(p);
+  puts(str);
+  free(str);
+}
+
+void print_isl_multi_pw_aff(isl_multi_pw_aff* pw_multi_aff) {
+  isl_printer* p = isl_printer_to_str(isl_multi_pw_aff_get_ctx(pw_multi_aff));
+  p = isl_printer_print_multi_pw_aff(p, pw_multi_aff);
+  isl_printer_to_stdout(p);
+}
+
+void print_isl_pw_aff(isl_pw_aff* pw_aff) {
+  isl_printer* p = isl_printer_to_str(isl_pw_aff_get_ctx(pw_aff));
+  p = isl_printer_print_pw_aff(p, pw_aff);
+  isl_printer_to_stdout(p);
+}
+
 PypetExpr* ExtractExpr(isl_ctx* ctx, const torch::jit::Expr& expr);
 
 PypetExpr* PypetExprAccessSetIndex(PypetExpr* expr, isl_multi_pw_aff* index) {
@@ -137,6 +156,8 @@ PypetExpr* PypetExprAccessPullbackMultiAff(PypetExpr* expr,
   }
   expr->acc.index =
       isl_multi_pw_aff_pullback_multi_aff(expr->acc.index, multi_aff);
+  std::cout << "pullback" << std::endl;
+  print_isl_multi_pw_aff(expr->acc.index);
   CHECK(expr->acc.index);
   return expr;
 }
@@ -177,6 +198,9 @@ isl_multi_pw_aff* PypetArraySubscript(isl_multi_pw_aff* base,
                                       isl_pw_aff* index) {
   int member_access = isl_multi_pw_aff_range_is_wrapping(base);
   CHECK_GE(member_access, 0);
+  std::cout << "array subscript" << std::endl;
+  print_isl_multi_pw_aff(base);
+  print_isl_pw_aff(index);
 
   if (member_access > 0) {
     isl_id* id = isl_multi_pw_aff_get_tuple_id(base, isl_dim_out);
@@ -186,6 +210,7 @@ isl_multi_pw_aff* PypetArraySubscript(isl_multi_pw_aff* base,
     range = PypetArraySubscript(range, index);
     isl_multi_pw_aff* access = isl_multi_pw_aff_range_product(domain, range);
     access = isl_multi_pw_aff_set_tuple_id(access, isl_dim_out, id);
+    print_isl_multi_pw_aff(access);
     return access;
   } else {
     isl_id* id = isl_multi_pw_aff_get_tuple_id(base, isl_dim_set);
@@ -194,6 +219,7 @@ isl_multi_pw_aff* PypetArraySubscript(isl_multi_pw_aff* base,
     isl_multi_pw_aff* access = isl_multi_pw_aff_from_pw_aff(index);
     access = isl_multi_pw_aff_flat_range_product(base, access);
     access = isl_multi_pw_aff_set_tuple_id(access, isl_dim_set, id);
+    print_isl_multi_pw_aff(access);
     return access;
   }
 }
@@ -221,8 +247,8 @@ PypetExpr* ExtractIndexExprFromSubscript(isl_ctx* ctx,
   CHECK_EQ(indexes.size(), 1);
   PypetExpr* base_expr = ExtractIndexExpr(ctx, base);
   PypetExpr* index_expr = ExtractExpr(ctx, indexes[0]);
-  // std::cout << base_expr;
-  // std::cout << index_expr;
+  std::cout << base_expr;
+  std::cout << index_expr;
   return PypetExprAccessSubscript(base_expr, index_expr);
 }
 
