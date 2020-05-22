@@ -3,25 +3,13 @@
 
 #include "pypoly/core/pypet/expr.h"
 
-#include <isl/aff.h>
-#include <isl/ctx.h>
-#include <isl/id.h>
-#include <isl/map.h>
-#include <isl/set.h>
-#include <isl/space.h>
-#include <isl/stream.h>
-#include <isl/union_map.h>
-#include <isl/union_set.h>
-#include <isl/val.h>
-#include <torch/csrc/jit/frontend/source_range.h>
-
 namespace pypoly {
 namespace pypet {
 
 struct PypetExpr;
 
 enum PypetTreeType {
-  PYPET_TREE_ERROR = -1,
+  PYPET_TREE_ERROR = 0,
   PYPET_TREE_EXPR,
   PYPET_TREE_BLOCK,
   PYPET_TREE_BREAK,
@@ -33,13 +21,26 @@ enum PypetTreeType {
   PYPET_TREE_RETURN,
 };
 
+static constexpr const char* tree_type_str[] = {
+    [PYPET_TREE_ERROR] = "error",
+    [PYPET_TREE_EXPR] = "expression",
+    [PYPET_TREE_BLOCK] = "block",
+    [PYPET_TREE_BREAK] = "break",
+    [PYPET_TREE_CONTINUE] = "continue",
+    [PYPET_TREE_DECL] = "declaration",
+    [PYPET_TREE_IF] = "if",
+    [PYPET_TREE_IF_ELSE] = "if-else",
+    [PYPET_TREE_FOR] = "for",
+    [PYPET_TREE_RETURN] = "return",
+};
+
 struct PypetTree {
   PypetTree() = default;
   ~PypetTree() = default;
 
   int ref;  // reference identifier.
   isl_ctx* ctx;
-  torch::jit::SourceRange range;
+  torch::jit::SourceRange const* range;
 
   isl_id* label;  // unique label of this polyhedral statement.
 
@@ -79,11 +80,9 @@ struct PypetTree {
 };
 
 __isl_give PypetTree* CreatePypetTree(isl_ctx* ctx,
-                                      const torch::jit::SourceRange& range,
+                                      torch::jit::SourceRange const* range,
                                       enum PypetTreeType tree_type);
-__isl_give PypetTree* CreatePypetTreeBlock(isl_ctx* ctx,
-                                           const torch::jit::SourceRange& range,
-                                           int block, int n);
+__isl_give PypetTree* CreatePypetTreeBlock(isl_ctx* ctx, int block, int n);
 __isl_null PypetTree* PypetTreeFree(__isl_take PypetTree* tree);
 
 struct TreePrettyPrinter {
