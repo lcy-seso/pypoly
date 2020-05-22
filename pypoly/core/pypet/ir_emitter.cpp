@@ -5,50 +5,7 @@ namespace pypet {
 
 namespace {
 
-void isl_printer_to_stdout(struct isl_printer* p) {
-  char* str = isl_printer_get_str(p);
-  isl_printer_free(p);
-  puts(str);
-  free(str);
-}
-
-void print_isl_multi_pw_aff(isl_multi_pw_aff* pw_multi_aff) {
-  isl_printer* p = isl_printer_to_str(isl_multi_pw_aff_get_ctx(pw_multi_aff));
-  p = isl_printer_print_multi_pw_aff(p, pw_multi_aff);
-  isl_printer_to_stdout(p);
-}
-
-void print_isl_pw_aff(isl_pw_aff* pw_aff) {
-  isl_printer* p = isl_printer_to_str(isl_pw_aff_get_ctx(pw_aff));
-  p = isl_printer_print_pw_aff(p, pw_aff);
-  isl_printer_to_stdout(p);
-}
-
 PypetExpr* ExtractExpr(isl_ctx* ctx, const torch::jit::Expr& expr);
-
-PypetExpr* PypetExprAccessSetIndex(PypetExpr* expr, isl_multi_pw_aff* index) {
-  expr = PypetExprCow(expr);
-  CHECK(expr);
-  CHECK(index);
-  CHECK(expr->type == PYPET_EXPR_ACCESS);
-  if (expr->acc.index != nullptr) {
-    isl_multi_pw_aff_free(expr->acc.index);
-  }
-  expr->acc.index = index;
-  expr->acc.depth = isl_multi_pw_aff_dim(index, isl_dim_out);
-  return expr;
-}
-
-PypetExpr* PypetExprFromIndex(isl_multi_pw_aff* index) {
-  CHECK(index);
-  isl_ctx* ctx = isl_multi_pw_aff_get_ctx(index);
-  PypetExpr* expr = PypetExprAlloc(ctx, PYPET_EXPR_ACCESS);
-  CHECK(expr);
-  expr->acc.read = 1;
-  expr->acc.write = 0;
-  expr->acc.index = nullptr;
-  return PypetExprAccessSetIndex(expr, index);
-}
 
 PypetExpr* ExtractIndexExprFromVar(isl_ctx* ctx, const torch::jit::Var& expr) {
   CHECK(expr.kind() == torch::jit::TK_VAR);
@@ -68,179 +25,6 @@ PypetExpr* ExtractIndexExprFromConst(isl_ctx* ctx,
 
 PypetExpr* ExtractIndexExpr(isl_ctx* ctx, const torch::jit::Expr& expr);
 
-PypetExpr* PypetExprSetNArgs(PypetExpr* expr, int n) {
-  CHECK(expr);
-  if (expr->arg_num == n) {
-    return expr;
-  }
-  expr = PypetExprCow(expr);
-  CHECK(expr);
-  if (n < expr->arg_num) {
-    for (int i = n; i < expr->arg_num; ++i) {
-      PypetExprFree(expr->args[i]);
-    }
-    expr->arg_num = n;
-    return expr;
-  }
-  PypetExpr** args = isl_realloc_array(expr->ctx, expr->args, PypetExpr*, n);
-  CHECK(args);
-  expr->args = args;
-  for (int i = expr->arg_num; i < n; ++i) {
-    expr->args[i] = nullptr;
-  }
-  expr->arg_num = n;
-  return expr;
-}
-
-PypetExpr* PypetExprCopy(PypetExpr* expr) {
-  CHECK(expr);
-  ++expr->ref;
-  return expr;
-}
-
-PypetExpr* PypetExprGetArg(PypetExpr* expr, int pos) {
-  CHECK(expr);
-  CHECK_GE(pos, 0);
-  CHECK_LT(pos, expr->arg_num);
-  return PypetExprCopy(expr->args[pos]);
-}
-
-PypetExpr* PypetExprSetArg(PypetExpr* expr, int pos, PypetExpr* arg) {
-  CHECK(expr);
-  CHECK(arg);
-  CHECK_GE(pos, 0);
-  CHECK_LT(pos, expr->arg_num);
-
-  if (expr->args[pos] == arg) {
-    PypetExprFree(arg);
-    return expr;
-  }
-
-  expr = PypetExprCow(expr);
-  CHECK(expr);
-  PypetExprFree(expr->args[pos]);
-  expr->args[pos] = arg;
-  return expr;
-}
-
-isl_space* PypetExprAccessGetAugmentedDomainSpace(PypetExpr* expr) {
-  CHECK(expr);
-  CHECK(expr->type == PypetExprType::PYPET_EXPR_ACCESS);
-  isl_space* space = isl_multi_pw_aff_get_space(expr->acc.index);
-  space = isl_space_domain(space);
-  return space;
-}
-
-isl_space* PypetExprAccessGetDomainSpace(PypetExpr* expr) {
-  isl_space* space = PypetExprAccessGetAugmentedDomainSpace(expr);
-  if (isl_space_is_wrapping(space) == true) {
-    space = isl_space_domain(isl_space_unwrap(space));
-  }
-  return space;
-}
-
-PypetExpr* PypetExprAccessPullbackMultiAff(PypetExpr* expr,
-                                           isl_multi_aff* multi_aff) {
-  expr = PypetExprCow(expr);
-  CHECK(expr);
-  CHECK(multi_aff);
-  CHECK(expr->type == PypetExprType::PYPET_EXPR_ACCESS);
-  for (int type = PypetExprAccessType::PYPET_EXPR_ACCESS_BEGIN;
-       type < PypetExprAccessType::PYPET_EXPR_ACCESS_END; ++type) {
-    if (expr->acc.access[type] == nullptr) {
-      continue;
-    }
-    expr->acc.access[type] = isl_union_map_preimage_domain_multi_aff(
-        expr->acc.access[type], isl_multi_aff_copy(multi_aff));
-    CHECK(expr->acc.access[type]);
-  }
-  expr->acc.index =
-      isl_multi_pw_aff_pullback_multi_aff(expr->acc.index, multi_aff);
-  // std::cout << "pullback" << std::endl;
-  // print_isl_multi_pw_aff(expr->acc.index);
-  CHECK(expr->acc.index);
-  return expr;
-}
-
-PypetExpr* PypetExprInsertArg(PypetExpr* expr, int pos, PypetExpr* arg) {
-  CHECK(expr);
-  CHECK(arg);
-  CHECK(expr->type == PypetExprType::PYPET_EXPR_ACCESS);
-  int n = expr->arg_num;
-  CHECK_GE(pos, 0);
-  CHECK_LE(pos, n);
-  expr = PypetExprSetNArgs(expr, n + 1);
-  for (int i = n; i > pos; --i) {
-    PypetExprSetArg(expr, i, PypetExprGetArg(expr, i - 1));
-  }
-  expr = PypetExprSetArg(expr, pos, arg);
-
-  isl_space* space = PypetExprAccessGetDomainSpace(expr);
-  space = isl_space_from_domain(space);
-  space = isl_space_add_dims(space, isl_dim_out, n + 1);
-
-  isl_multi_aff* multi_aff = nullptr;
-  if (n == 0) {
-    multi_aff = isl_multi_aff_domain_map(space);
-  } else {
-    multi_aff = isl_multi_aff_domain_map(isl_space_copy(space));
-    isl_multi_aff* new_multi_aff = isl_multi_aff_range_map(space);
-    space = isl_space_range(isl_multi_aff_get_space(new_multi_aff));
-    isl_multi_aff* proj =
-        isl_multi_aff_project_out_map(space, isl_dim_set, pos, 1);
-    new_multi_aff = isl_multi_aff_pullback_multi_aff(proj, new_multi_aff);
-    multi_aff = isl_multi_aff_range_product(multi_aff, new_multi_aff);
-  }
-  return PypetExprAccessPullbackMultiAff(expr, multi_aff);
-}
-
-isl_multi_pw_aff* PypetArraySubscript(isl_multi_pw_aff* base,
-                                      isl_pw_aff* index) {
-  int member_access = isl_multi_pw_aff_range_is_wrapping(base);
-  CHECK_GE(member_access, 0);
-  // std::cout << "array subscript" << std::endl;
-  // print_isl_multi_pw_aff(base);
-  // print_isl_pw_aff(index);
-
-  if (member_access > 0) {
-    isl_id* id = isl_multi_pw_aff_get_tuple_id(base, isl_dim_out);
-    isl_multi_pw_aff* domain = isl_multi_pw_aff_copy(base);
-    domain = isl_multi_pw_aff_range_factor_domain(domain);
-    isl_multi_pw_aff* range = isl_multi_pw_aff_range_factor_range(base);
-    range = PypetArraySubscript(range, index);
-    isl_multi_pw_aff* access = isl_multi_pw_aff_range_product(domain, range);
-    access = isl_multi_pw_aff_set_tuple_id(access, isl_dim_out, id);
-    // print_isl_multi_pw_aff(access);
-    return access;
-  } else {
-    isl_id* id = isl_multi_pw_aff_get_tuple_id(base, isl_dim_set);
-    isl_set* domain = isl_pw_aff_nonneg_set(isl_pw_aff_copy(index));
-    index = isl_pw_aff_intersect_domain(index, domain);
-    isl_multi_pw_aff* access = isl_multi_pw_aff_from_pw_aff(index);
-    access = isl_multi_pw_aff_flat_range_product(base, access);
-    access = isl_multi_pw_aff_set_tuple_id(access, isl_dim_set, id);
-    // print_isl_multi_pw_aff(access);
-    return access;
-  }
-}
-
-PypetExpr* PypetExprAccessSubscript(PypetExpr* expr, PypetExpr* index) {
-  expr = PypetExprCow(expr);
-  CHECK(expr);
-  CHECK(index);
-  CHECK(expr->type == PypetExprType::PYPET_EXPR_ACCESS);
-  int n = expr->arg_num;
-  expr = PypetExprInsertArg(expr, n, index);
-  isl_space* space = isl_multi_pw_aff_get_domain_space(expr->acc.index);
-  isl_local_space* local_space = isl_local_space_from_space(space);
-  isl_pw_aff* pw_aff =
-      isl_pw_aff_from_aff(isl_aff_var_on_domain(local_space, isl_dim_set, n));
-  expr->acc.index = PypetArraySubscript(expr->acc.index, pw_aff);
-  CHECK(expr->acc.index);
-  expr->acc.depth = isl_multi_pw_aff_dim(expr->acc.index, isl_dim_out);
-  return expr;
-}
-
 PypetExpr* ExtractIndexExprFromSubscript(isl_ctx* ctx,
                                          const torch::jit::Subscript& expr) {
   const torch::jit::Expr& base = expr.value();
@@ -248,8 +32,6 @@ PypetExpr* ExtractIndexExprFromSubscript(isl_ctx* ctx,
   CHECK_EQ(indexes.size(), 1);
   PypetExpr* base_expr = ExtractIndexExpr(ctx, base);
   PypetExpr* index_expr = ExtractExpr(ctx, indexes[0]);
-  // std::cout << base_expr;
-  // std::cout << index_expr;
   return PypetExprAccessSubscript(base_expr, index_expr);
 }
 
@@ -292,18 +74,6 @@ PypetExpr* ExtractAccessExpr(isl_ctx* ctx, const torch::jit::Expr& expr) {
     return index;
   }
   return PypetExprAccessFromIndex(expr, index);
-}
-
-PypetExpr* BuildPypetBinaryOpExpr(isl_ctx* ctx, PypetOpType op_type,
-                                  PypetExpr* lhs, PypetExpr* rhs) {
-  PypetExpr* expr = PypetExprAlloc(ctx, PypetExprType::PYPET_EXPR_OP);
-  // TODO: type_size
-  expr->arg_num = 2;
-  expr->args = new PypetExpr*[2];
-  expr->args[0] = lhs;
-  expr->args[1] = rhs;
-  expr->op = op_type;
-  return expr;
 }
 
 PypetExpr* ExtractAssignExpr(isl_ctx* ctx, const torch::jit::Assign& stmt) {
@@ -364,41 +134,6 @@ PypetExpr* ExtractBinaryExpr(isl_ctx* ctx, const torch::jit::Expr& expr) {
   ret->args[0] = ExtractExpr(ctx, bin_expr.lhs());
   ret->args[1] = ExtractExpr(ctx, bin_expr.rhs());
   return ret;
-}
-
-char* PypetArrayMemberAccessName(isl_ctx* ctx, const char* base,
-                                 const char* field) {
-  int len = strlen(base) + 1 + strlen(field);
-  char* name = isl_alloc_array(ctx, char, len + 1);
-  CHECK(name);
-  snprintf(name, len + 1, "%s_%s", base, field);
-  return name;
-}
-
-isl_multi_pw_aff* PypetArrayMember(isl_multi_pw_aff* base,
-                                   isl_multi_pw_aff* field) {
-  isl_ctx* ctx = isl_multi_pw_aff_get_ctx(base);
-  const char* base_name = isl_multi_pw_aff_get_tuple_name(base, isl_dim_out);
-  const char* field_name = isl_multi_pw_aff_get_tuple_name(field, isl_dim_out);
-  char* name = PypetArrayMemberAccessName(ctx, base_name, field_name);
-  isl_multi_pw_aff* access = isl_multi_pw_aff_range_product(base, field);
-  access = isl_multi_pw_aff_set_tuple_name(access, isl_dim_out, name);
-  free(name);
-  return access;
-}
-
-PypetExpr* PypetExprAccessMember(PypetExpr* expr, isl_id* id) {
-  expr = PypetExprCow(expr);
-  CHECK(expr);
-  CHECK(id);
-  CHECK(expr->type == PypetExprType::PYPET_EXPR_ACCESS);
-  isl_space* space = isl_multi_pw_aff_get_domain_space(expr->acc.index);
-  space = isl_space_from_domain(space);
-  space = isl_space_set_tuple_id(space, isl_dim_out, id);
-  isl_multi_pw_aff* field_access = isl_multi_pw_aff_zero(space);
-  expr->acc.index = PypetArrayMember(expr->acc.index, field_access);
-  CHECK(expr->acc.index);
-  return expr;
 }
 
 PypetExpr* ExtractSelectExpr(isl_ctx* ctx, const torch::jit::Expr& expr) {
@@ -518,41 +253,6 @@ PypetTree* EmitStatements::EmitStatement(const torch::jit::Stmt& stmt) {
   return nullptr;
 }
 
-void EmitStatements::EmitForImpl(
-    const torch::jit::List<torch::jit::Expr>& targets,
-    const torch::jit::List<torch::jit::Expr>& itrs,
-    const torch::jit::SourceRange& loc,
-    const std::function<void()>& emit_body) {
-  if (itrs.size() != 1) {
-    throw torch::jit::ErrorReport(loc)
-        << "List of iterables is not supported currently";
-  }
-
-  // PypetTree* tree = CreatePypetTreeBlock(ctx, loc, 1, 1);
-
-  // Emit loop information for builtinFunction values like range(), zip(),
-  // enumerate() or SimpleValue like List, Tensor, Dict, etc.
-  SugaredValuePtr sv = EmitSugaredExpr(itrs[0], 1 /* n_binders */);
-  SugaredValuePtr iterable = sv->iter(loc);
-
-  EmitLoopCommon(loc, emit_body, iterable, targets, {});
-
-  // TODO(Ying) To decide whether to unroll the loop for iterables that
-  // contain computation graphs.
-  // if (!iterable->shouldEmitUnrolled()) {
-  // } else {
-  // }
-}
-
-void EmitStatements::EmitLoopCommon(
-    torch::jit::SourceRange range, const std::function<void()>& emit_body,
-    const SugaredValuePtr& iter_val,
-    c10::optional<torch::jit::List<torch::jit::Expr>> targets,
-    c10::optional<torch::jit::Expr> cond) {
-  // recursively parse statements.
-  emit_body();
-}
-
 PypetTree* EmitStatements::EmitFor(const torch::jit::For& stmt) {
   // assume the format is: for iter_var in range(a, b, c)
   const torch::jit::List<torch::jit::Expr>& targets = stmt.targets();
@@ -610,47 +310,6 @@ PypetTree* EmitStatements::EmitFor(const torch::jit::For& stmt) {
   return tree;
 }
 
-std::shared_ptr<SugaredValue> EmitStatements::EmitApplyExpr(
-    torch::jit::Apply& apply, size_t n_binders,
-    const torch::jit::TypePtr& type_hint) {
-  auto sv = EmitSugaredExpr(apply.callee(), 1);
-
-  auto loc = apply.callee().range();
-  auto special_form = dynamic_cast<torch::jit::SpecialFormValue*>(sv.get());
-  if (special_form != nullptr) {
-    // this branch handles expressions that look like apply statements
-    // but have special evaluation rules for the arguments.
-    // TODO(ying) Check code pattens that fall in this branch.
-    throw Error(apply.range()) << "Unsupported code pattern.";
-  }
-  return sv->call(loc);
-}
-
-std::shared_ptr<SugaredValue> EmitStatements::EmitSugaredExpr(
-    const torch::jit::Expr& tree, size_t n_binders,
-    const torch::jit::TypePtr& type_hint) {
-  switch (tree.kind()) {
-    case torch::jit::TK_VAR:
-      return GetSugaredVar(torch::jit::Var(tree).name());
-    case '.': {
-      LOG(INFO) << ". = " << tree.range().text();
-      throw Error(tree) << "Not implemented yet.";
-    }
-    case torch::jit::TK_APPLY: {
-      auto apply = torch::jit::Apply(tree);
-      return EmitApplyExpr(apply, n_binders, type_hint);
-    } break;
-    default:
-      throw Error(tree) << "Not implemented yet.";
-  }
-}
-
-SugaredValuePtr EmitStatements::GetSugaredVar(const torch::jit::Ident& ident,
-                                              bool required) {
-  LOG(INFO) << "Var = " << ident.range().text();
-  return nullptr;
-}
-
 PypetTree* EmitStatements::EmitIf(const torch::jit::If& stmt) {
   bool has_false_branch = stmt.falseBranch().size() > 0;
   PypetTree* tree =
@@ -664,6 +323,7 @@ PypetTree* EmitStatements::EmitIf(const torch::jit::If& stmt) {
   }
   return tree;
 }
+
 PypetTree* EmitStatements::EmitWhile(const torch::jit::While& stmt) {
   UNIMPLEMENTED();
   return nullptr;
@@ -675,39 +335,48 @@ PypetTree* EmitStatements::EmitAssignment(const torch::jit::Assign& stmt) {
   tree->ast.Expr.expr = ExtractAssignExpr(ctx, stmt);
   return tree;
 }
+
 PypetTree* EmitStatements::EmitAugAssignment(
     const torch::jit::AugAssign& stmt) {
   UNIMPLEMENTED();
   return nullptr;
 }
+
 PypetTree* EmitStatements::EmitRaise(const torch::jit::Raise& stmt) {
   UNIMPLEMENTED();
   return nullptr;
 }
+
 PypetTree* EmitStatements::EmitAssert(const torch::jit::Assert& stmt) {
   UNIMPLEMENTED();
   return nullptr;
 }
+
 PypetTree* EmitStatements::EmitReturn(const torch::jit::Return& stmt) {
   UNIMPLEMENTED();
   return nullptr;
 }
+
 PypetTree* EmitStatements::EmitContinue(const torch::jit::Continue& stmt) {
   UNIMPLEMENTED();
   return nullptr;
 }
+
 PypetTree* EmitStatements::EmitBreak(const torch::jit::Break& stmt) {
   UNIMPLEMENTED();
   return nullptr;
 }
+
 PypetTree* EmitStatements::EmitClosure(const torch::jit::Def& stmt) {
   UNIMPLEMENTED();
   return nullptr;
 }
+
 PypetTree* EmitStatements::EmitDelete(const torch::jit::Delete& stmt) {
   UNIMPLEMENTED();
   return nullptr;
 }
+
 PypetTree* EmitStatements::EmitExpr(const torch::jit::Expr& tree) {
   UNIMPLEMENTED();
   return nullptr;

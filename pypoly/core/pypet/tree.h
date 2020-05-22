@@ -3,18 +3,6 @@
 
 #include "pypoly/core/pypet/expr.h"
 
-#include <isl/aff.h>
-#include <isl/ctx.h>
-#include <isl/id.h>
-#include <isl/map.h>
-#include <isl/set.h>
-#include <isl/space.h>
-#include <isl/stream.h>
-#include <isl/union_map.h>
-#include <isl/union_set.h>
-#include <isl/val.h>
-#include <torch/csrc/jit/frontend/source_range.h>
-
 namespace pypoly {
 namespace pypet {
 

@@ -3,16 +3,7 @@
 
 #include "util.h"
 
-#include <isl/aff.h>
-#include <isl/arg.h>
-#include <isl/map.h>
-#include <isl/schedule.h>
-#include <isl/set.h>
-#include <isl/union_map.h>
 #include <torch/csrc/jit/frontend/source_range.h>
-
-#include <memory>
-#include <vector>
 
 namespace pypoly {
 namespace pypet {
