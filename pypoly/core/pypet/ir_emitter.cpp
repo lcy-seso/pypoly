@@ -237,6 +237,7 @@ PypetExpr* PypetExprAccessSubscript(PypetExpr* expr, PypetExpr* index) {
       isl_pw_aff_from_aff(isl_aff_var_on_domain(local_space, isl_dim_set, n));
   expr->acc.index = PypetArraySubscript(expr->acc.index, pw_aff);
   CHECK(expr->acc.index);
+  expr->acc.depth = isl_multi_pw_aff_dim(expr->acc.index, isl_dim_out);
   return expr;
 }
 
