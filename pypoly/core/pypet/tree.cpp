@@ -83,50 +83,55 @@ __isl_null PypetTree* PypetTreeFree(__isl_take PypetTree* tree) {
 
 void TreePrettyPrinter::Print(std::ostream& out,
                               const __isl_keep PypetTree* tree, int indent) {
-  if (!tree) return;
+  CHECK(tree);
+
+  out << std::string(indent, ' ');
+  out << std::string(tree_type_str[tree->type]) << std::endl;
 
   if (tree->label) {
     out << std::string(indent, ' ');
-    out << std::string(isl_id_to_str(tree->label));
+    out << std::string(isl_id_to_str(tree->label)) << std::endl;
+    ;
   }
 
-  // TODO: The indention is not tested for compliated PypetTree structurem which
-  // requires further implementations.
   switch (tree->type) {
     case PYPET_TREE_ERROR:
-      out << "ERROR!";
-      return;
+      UNIMPLEMENTED();
+      break;
     case PYPET_TREE_BLOCK:
       for (int i = 0; i < tree->ast.Block.n; ++i) {
         Print(out, tree->ast.Block.children[i], indent + 2);
       }
       break;
+    case PYPET_TREE_EXPR:
+      DumpPypetExprWithIndent(out, tree->ast.Expr.expr, indent + 2);
+      break;
     case PYPET_TREE_BREAK:
     case PYPET_TREE_CONTINUE:
-    case PYPET_TREE_EXPR:
     case PYPET_TREE_RETURN:
-      out << tree->ast.Expr.expr;
-      break;
     case PYPET_TREE_DECL:
-      out << tree->ast.Decl.var;
-      out << std::string(indent, ' ');
-      out << tree->ast.Decl.init;
+      UNIMPLEMENTED();
       break;
     case PYPET_TREE_IF:
     case PYPET_TREE_IF_ELSE:
-      out << tree->ast.IfElse.cond;
-      out << std::string(indent, ' ');
-      out << tree->ast.IfElse.if_body;
+      out << std::string(indent, ' ') << "condition:" << std::endl;
+      DumpPypetExprWithIndent(out, tree->ast.IfElse.cond, indent + 2);
+      out << std::string(indent, ' ') << "then:" << std::endl;
+      Print(out, tree->ast.IfElse.if_body, indent + 2);
       if (tree->type != PYPET_TREE_IF_ELSE) break;
-      out << tree->ast.IfElse.else_body;
+      out << std::string(indent, ' ') << "else:" << std::endl;
+      Print(out, tree->ast.IfElse.else_body, indent + 2);
       break;
     case PYPET_TREE_FOR: {
-      out << std::string(indent, ' ');
-      out << tree->ast.Loop.iv;
-      out << tree->ast.Loop.init;
-      out << tree->ast.Loop.cond;
-      out << tree->ast.Loop.inc;
-      out << tree->ast.Loop.body;
+      out << std::string(indent, ' ') << "var:" << std::endl;
+      DumpPypetExprWithIndent(out, tree->ast.Loop.iv, indent + 2);
+      out << std::string(indent, ' ') << "init:" << std::endl;
+      DumpPypetExprWithIndent(out, tree->ast.Loop.init, indent + 2);
+      out << std::string(indent, ' ') << "cond:" << std::endl;
+      DumpPypetExprWithIndent(out, tree->ast.Loop.cond, indent + 2);
+      out << std::string(indent, ' ') << "inc:" << std::endl;
+      DumpPypetExprWithIndent(out, tree->ast.Loop.inc, indent + 2);
+      Print(out, tree->ast.Loop.body, indent + 2);
       break;
     }
     default:

@@ -141,8 +141,9 @@ PypetExpr* PypetExprFromIntVal(isl_ctx* ctx, long val) {
   return PypetExprFromIslVal(expr_val);
 }
 
-void ExprPrettyPrinter::Print(std::ostream& out, int indent) {
-  if (!expr) return;
+void ExprPrettyPrinter::Print(std::ostream& out, const PypetExpr* expr,
+                              int indent) {
+  CHECK(expr);
 
   isl_printer* p = isl_printer_to_str(expr->ctx);
   p = isl_printer_set_indent(p, indent);

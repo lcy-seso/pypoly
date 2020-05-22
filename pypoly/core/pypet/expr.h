@@ -163,12 +163,7 @@ __isl_give PypetExpr* PypetExprCreateCall(isl_ctx* ctx, const char* name,
                                           size_t arg_num);
 
 struct ExprPrettyPrinter {
-  ExprPrettyPrinter(const __isl_keep PypetExpr* expr) : expr(expr) {}
-  ~ExprPrettyPrinter() = default;
-
-  const PypetExpr* expr;
-
-  void Print(std::ostream& out, int indent = 2);
+  static void Print(std::ostream& out, const PypetExpr* expr, int indent = 2);
   static __isl_give isl_printer* PrintExpr(const PypetExpr* expr,
                                            __isl_take isl_printer* p);
   static __isl_give isl_printer* PrintArguments(
@@ -178,15 +173,18 @@ struct ExprPrettyPrinter {
       const __isl_keep PypetFuncSummary* summary, __isl_take isl_printer* p);
 };
 
-static inline std::ostream& operator<<(std::ostream& out, ExprPrettyPrinter p) {
-  p.Print(out, 0);
+static inline std::ostream& operator<<(std::ostream& out,
+                                       const PypetExpr* expr) {
+  ExprPrettyPrinter::Print(out, expr, 0);
   return out << std::endl;
 };
 
-static inline std::ostream& operator<<(std::ostream& out,
-                                       const PypetExpr* expr) {
-  return out << ExprPrettyPrinter(expr);
-};
+static inline std::ostream& DumpPypetExprWithIndent(std::ostream& out,
+                                                    const PypetExpr* expr,
+                                                    int indent) {
+  ExprPrettyPrinter::Print(out, expr, indent);
+  return out << std::endl;
+}
 
 }  // namespace pypet
 }  // namespace pypoly

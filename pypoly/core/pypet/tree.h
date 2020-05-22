@@ -21,7 +21,7 @@ namespace pypet {
 struct PypetExpr;
 
 enum PypetTreeType {
-  PYPET_TREE_ERROR = -1,
+  PYPET_TREE_ERROR = 0,
   PYPET_TREE_EXPR,
   PYPET_TREE_BLOCK,
   PYPET_TREE_BREAK,
@@ -31,6 +31,19 @@ enum PypetTreeType {
   PYPET_TREE_IF_ELSE, /* An if with an else branch */
   PYPET_TREE_FOR,
   PYPET_TREE_RETURN,
+};
+
+static constexpr const char* tree_type_str[] = {
+    [PYPET_TREE_ERROR] = "error",
+    [PYPET_TREE_EXPR] = "expression",
+    [PYPET_TREE_BLOCK] = "block",
+    [PYPET_TREE_BREAK] = "break",
+    [PYPET_TREE_CONTINUE] = "continue",
+    [PYPET_TREE_DECL] = "declaration",
+    [PYPET_TREE_IF] = "if",
+    [PYPET_TREE_IF_ELSE] = "if-else",
+    [PYPET_TREE_FOR] = "for",
+    [PYPET_TREE_RETURN] = "return",
 };
 
 struct PypetTree {
