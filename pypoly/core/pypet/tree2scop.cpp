@@ -51,28 +51,7 @@ __isl_give PypetContext* PypetContextAddParameter(__isl_keep PypetTree* tree,
 
 __isl_keep PypetScop* TreeToScop::ScopFromBlock(__isl_keep PypetTree* tree,
                                                 __isl_keep PypetContext* pc) {
-  //   isl_space* space = pet_context_get_space(pc);
-  //   isl_set* domain = pet_context_get_domain(pc);
-
-  struct PypetScop* scop;
-
-  //   pc = pet_context_copy(pc);
-  //   scop = pet_scop_empty(isl_space_copy(space));
-  //
-  //   for (int i = 0; i < tree->ast.Block.n; ++i) {
-  //     struct PypetScop* scop_i;
-  //
-  //     scop_i = ScopFromTree(tree->ast.Block.child[i]);
-  //     // scop = PypetScopAddSeq(ctx, scop, scop_i);
-  //     if (!scop) break;
-  //   }
-  //   isl_set_free(domain);
-
-  // scop = PypetScopAddSeq(ctx, scop, kills);
-
-  // pet_context_free(pc);
-
-  return scop;
+  return nullptr;
 }
 
 __isl_keep PypetScop* TreeToScop::ScopFromBreak(__isl_keep PypetTree* tree,

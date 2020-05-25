@@ -13,8 +13,7 @@ namespace pypoly {
 namespace pypet {
 
 struct EmitStatements {
-  EmitStatements(isl_ctx* ctx, std::shared_ptr<PypetScop> scop)
-      : ctx(ctx), scop(scop){};
+  EmitStatements(isl_ctx* ctx, PypetScop* scop) : ctx(ctx), scop(scop){};
   std::vector<PypetTree*> operator()(
       const torch::jit::List<torch::jit::Stmt>& statements);
 

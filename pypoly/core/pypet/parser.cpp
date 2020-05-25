@@ -31,9 +31,9 @@ void ScopParser::Parse() { pImpl->ParseFunction(); }
 
 void ParserImpl::ParseDecl(isl_ctx* ctx) { LOG(INFO) << ast_.name(); }
 
-PypetTree* ParserImpl::ParseBody(isl_ctx* ctx) {
+std::vector<PypetTree*> ParserImpl::ParseBody(isl_ctx* ctx) {
   EmitStatements emitter(ctx, parsed_data_);
-  return emitter.Extract(ast_.statements());
+  return emitter(ast_.statements());
 }
 
 bool ParserImpl::CheckScop() {
@@ -52,10 +52,11 @@ PypetScop* ParserImpl::ParseFunction() {
   isl_ctx* ctx = isl_ctx_alloc_with_options(&isl_options_args, options);
 
   ParseDecl(ctx);
-  PypetTree* tree = ParseBody(ctx);
+  std::vector<PypetTree*> trees = ParseBody(ctx);
+  CHECK(trees.size() == 1U);
 
   TreeToScop converter(ctx);
-  parsed_data_ = converter.ScopFromTree(tree);
+  parsed_data_ = converter.ScopFromTree(trees[0]);
 
   isl_ctx_free(ctx);
   return parsed_data_;

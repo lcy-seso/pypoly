@@ -39,25 +39,6 @@ __isl_give PypetTree* CreatePypetTreeBlock(isl_ctx* ctx, int block, int n) {
   return tree;
 }
 
-__isl_give PypetTree* CreatePypetTreeFor(isl_ctx* ctx,
-                                         const torch::jit::SourceRange& range,
-                                         int block, int n) {
-  PypetTree* tree;
-
-  tree = CreatePypetTree(ctx, range, PYPET_TREE_FOR);
-  if (!tree) return nullptr;
-
-  tree->ast.Block.block = block;
-  tree->ast.Block.n = 0;
-  tree->ast.Block.max = n;
-  tree->ast.Block.children = isl_calloc_array(ctx, PypetTree*, n);
-  if (n && !tree->ast.Block.children) {
-    return PypetTreeFree(tree);
-  }
-
-  return tree;
-}
-
 __isl_null PypetTree* PypetTreeFree(__isl_take PypetTree* tree) {
   if (!tree) return nullptr;
   if (--tree->ref > 0) return nullptr;
