@@ -3,17 +3,6 @@
 
 #include "pypoly/core/pypet/pypet.h"
 
-#include <isl/aff.h>
-#include <isl/ctx.h>
-#include <isl/id.h>
-#include <isl/map.h>
-#include <isl/set.h>
-#include <isl/space.h>
-#include <isl/union_map.h>
-#include <isl/union_set.h>
-#include <isl/val.h>
-#include <string.h>
-
 namespace pypoly {
 namespace pypet {
 
@@ -42,15 +31,17 @@ enum PypetOpType {
   PYPET_XOR,
   PYPET_OR,
   PYPET_NOT,
+  PYPET_APPLY,
+  PYPET_UNKNOWN,
 };
 
 static constexpr const char* op_type_to_string[] = {
-    [PYPET_ASSIGN] = "=", [PYPET_ADD] = "+", [PYPET_SUB] = "-",
-    [PYPET_MUL] = "*",    [PYPET_DIV] = "/", [PYPET_MOD] = "%",
-    [PYPET_EQ] = "==",    [PYPET_NE] = "!=", [PYPET_LE] = "<=",
-    [PYPET_GE] = ">=",    [PYPET_LT] = "<",  [PYPET_GT] = ">",
-    [PYPET_AND] = "&",    [PYPET_XOR] = "^", [PYPET_OR] = "or",
-    [PYPET_NOT] = "not",
+    [PYPET_ASSIGN] = "=", [PYPET_ADD] = "+",       [PYPET_SUB] = "-",
+    [PYPET_MUL] = "*",    [PYPET_DIV] = "/",       [PYPET_MOD] = "%",
+    [PYPET_EQ] = "==",    [PYPET_NE] = "!=",       [PYPET_LE] = "<=",
+    [PYPET_GE] = ">=",    [PYPET_LT] = "<",        [PYPET_GT] = ">",
+    [PYPET_AND] = "&",    [PYPET_XOR] = "^",       [PYPET_OR] = "or",
+    [PYPET_NOT] = "not",  [PYPET_APPLY] = "apply",
 };
 
 enum PypetExprAccessType {
@@ -160,13 +151,45 @@ __isl_keep PypetExpr* PypetExprFromIntVal(__isl_keep isl_ctx* ctx, long val);
 __isl_give PypetExpr* PypetExprCreateCall(isl_ctx* ctx, const char* name,
                                           size_t arg_num);
 
+PypetExpr* PypetExprAccessSetIndex(PypetExpr* expr, isl_multi_pw_aff* index);
+
+PypetExpr* PypetExprFromIndex(isl_multi_pw_aff* index);
+
+PypetExpr* PypetExprSetNArgs(PypetExpr* expr, int n);
+
+PypetExpr* PypetExprCopy(PypetExpr* expr);
+
+PypetExpr* PypetExprGetArg(PypetExpr* expr, int pos);
+
+PypetExpr* PypetExprSetArg(PypetExpr* expr, int pos, PypetExpr* arg);
+
+isl_space* PypetExprAccessGetAugmentedDomainSpace(PypetExpr* expr);
+
+isl_space* PypetExprAccessGetDomainSpace(PypetExpr* expr);
+
+PypetExpr* PypetExprAccessPullbackMultiAff(PypetExpr* expr,
+                                           isl_multi_aff* multi_aff);
+
+PypetExpr* PypetExprInsertArg(PypetExpr* expr, int pos, PypetExpr* arg);
+
+isl_multi_pw_aff* PypetArraySubscript(isl_multi_pw_aff* base,
+                                      isl_pw_aff* index);
+
+PypetExpr* PypetExprAccessSubscript(PypetExpr* expr, PypetExpr* index);
+
+PypetExpr* BuildPypetBinaryOpExpr(isl_ctx* ctx, PypetOpType op_type,
+                                  PypetExpr* lhs, PypetExpr* rhs);
+
+char* PypetArrayMemberAccessName(isl_ctx* ctx, const char* base,
+                                 const char* field);
+
+isl_multi_pw_aff* PypetArrayMember(isl_multi_pw_aff* base,
+                                   isl_multi_pw_aff* field);
+
+PypetExpr* PypetExprAccessMember(PypetExpr* expr, isl_id* id);
+
 struct ExprPrettyPrinter {
-  ExprPrettyPrinter(const __isl_keep PypetExpr* expr) : expr(expr) {}
-  ~ExprPrettyPrinter() = default;
-
-  const PypetExpr* expr;
-
-  void Print(std::ostream& out, int indent = 2);
+  static void Print(std::ostream& out, const PypetExpr* expr, int indent = 2);
   static __isl_give isl_printer* PrintExpr(const PypetExpr* expr,
                                            __isl_take isl_printer* p);
   static __isl_give isl_printer* PrintArguments(
@@ -176,15 +199,18 @@ struct ExprPrettyPrinter {
       const __isl_keep PypetFuncSummary* summary, __isl_take isl_printer* p);
 };
 
-static inline std::ostream& operator<<(std::ostream& out, ExprPrettyPrinter p) {
-  p.Print(out, 0);
+static inline std::ostream& operator<<(std::ostream& out,
+                                       const PypetExpr* expr) {
+  ExprPrettyPrinter::Print(out, expr, 0);
   return out << std::endl;
 };
 
-static inline std::ostream& operator<<(std::ostream& out,
-                                       const PypetExpr* expr) {
-  return out << ExprPrettyPrinter(expr);
-};
+static inline std::ostream& DumpPypetExprWithIndent(std::ostream& out,
+                                                    const PypetExpr* expr,
+                                                    int indent) {
+  ExprPrettyPrinter::Print(out, expr, indent);
+  return out << std::endl;
+}
 
 }  // namespace pypet
 }  // namespace pypoly

@@ -13,34 +13,16 @@ namespace pypoly {
 namespace pypet {
 
 struct EmitStatements {
-  EmitStatements(isl_ctx* ctx, PypetScop* scop) : ctx(ctx), scop(scop){};
-  PypetTree* Extract(const torch::jit::List<torch::jit::Stmt>& statements);
+  EmitStatements(isl_ctx* ctx, std::shared_ptr<PypetScop> scop)
+      : ctx(ctx), scop(scop){};
+  std::vector<PypetTree*> operator()(
+      const torch::jit::List<torch::jit::Stmt>& statements);
 
  private:
+  PypetTree* EmitBlockStatements(
+      const torch::jit::List<torch::jit::Stmt>& statements);
+  PypetTree* EmitStatement(const torch::jit::Stmt& stmt);
   PypetTree* EmitFor(const torch::jit::For& stmt);
-
-  PypetTree* EmitForImpl(const torch::jit::List<torch::jit::Expr>& targets,
-                         const torch::jit::List<torch::jit::Expr>& itrs,
-                         const torch::jit::SourceRange& loc,
-                         const std::function<PypetTree*()>& emit_body);
-
-  std::shared_ptr<SugaredValue> EmitApplyExpr(
-      torch::jit::Apply& apply, size_t n_binders,
-      const torch::jit::TypePtr& type_hint = nullptr);
-
-  std::shared_ptr<SugaredValue> EmitSugaredExpr(
-      const torch::jit::Expr& tree, size_t n_binders,
-      const torch::jit::TypePtr& type_hint = nullptr);
-
-  SugaredValuePtr GetSugaredVar(const torch::jit::Ident& ident,
-                                bool required = true);
-
-  PypetTree* EmitLoopCommon(
-      torch::jit::SourceRange range,
-      const std::function<PypetTree*()>& emit_body,
-      const SugaredValuePtr& iter_val,
-      c10::optional<torch::jit::List<torch::jit::Expr>> targets,
-      c10::optional<torch::jit::Expr> cond);
 
   PypetTree* EmitIf(const torch::jit::If& stmt);
   PypetTree* EmitWhile(const torch::jit::While& stmt);

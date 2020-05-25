@@ -1,168 +1,386 @@
 #include "pypoly/core/pypet/ir_emitter.h"
 
-#include "pypoly/core/pypet/tree.h"
-
 namespace pypoly {
 namespace pypet {
 
-PypetTree* EmitStatements::Extract(
-    const torch::jit::List<torch::jit::Stmt>& statements) {
-  PypetTree* tree;
-  for (auto begin = statements.begin(); begin != statements.end(); ++begin) {
-    auto stmt = *begin;
-    switch (stmt.kind()) {
-      case torch::jit::TK_IF: {
-        tree = EmitIf(torch::jit::If(stmt));
-      } break;
-      case torch::jit::TK_WHILE: {
-        tree = EmitWhile(torch::jit::While(stmt));
-      } break;
-      case torch::jit::TK_FOR: {
-        tree = EmitFor(torch::jit::For(stmt));
-      } break;
-      case torch::jit::TK_ASSIGN: {
-        tree = EmitAssignment(torch::jit::Assign(stmt));
-      } break;
-      case torch::jit::TK_AUG_ASSIGN: {
-        tree = EmitAugAssignment(torch::jit::AugAssign(stmt));
-      } break;
-      case torch::jit::TK_EXPR_STMT: {
-        auto expr = torch::jit::ExprStmt(stmt).expr();
-        tree = EmitExpr(expr);
-      } break;
-      case torch::jit::TK_RAISE: {
-        tree = EmitRaise(torch::jit::Raise(stmt));
-      } break;
-      case torch::jit::TK_ASSERT: {
-        tree = EmitAssert(torch::jit::Assert(stmt));
-      } break;
-      case torch::jit::TK_RETURN: {
-        tree = EmitReturn(torch::jit::Return(stmt));
-      } break;
-      case torch::jit::TK_CONTINUE: {
-        tree = EmitContinue(torch::jit::Continue(stmt));
-      } break;
-      case torch::jit::TK_BREAK: {
-        tree = EmitBreak(torch::jit::Break(stmt));
-      } break;
-      case torch::jit::TK_PASS:
-        // Emit nothing for pass
-        break;
-      case torch::jit::TK_DEF: {
-        tree = EmitClosure(torch::jit::Def(stmt));
-        break;
-      }
-      case torch::jit::TK_DELETE: {
-        tree = EmitDelete(torch::jit::Delete(stmt));
-      } break;
-      default:
-        throw std::invalid_argument("Unrecognized statement kind ");
+namespace {
+
+PypetExpr* ExtractExpr(isl_ctx* ctx, const torch::jit::Expr& expr);
+
+PypetExpr* ExtractIndexExprFromVar(isl_ctx* ctx, const torch::jit::Var& expr) {
+  CHECK(expr.kind() == torch::jit::TK_VAR);
+  torch::jit::Ident ident_expr = torch::jit::Ident(expr.name());
+  const std::string& name = ident_expr.name();
+  isl_id* id = isl_id_alloc(ctx, name.c_str(), nullptr);
+  isl_space* space = isl_space_alloc(ctx, 0, 0, 0);
+  space = isl_space_set_tuple_id(space, isl_dim_out, id);
+  return PypetExprFromIndex(isl_multi_pw_aff_zero(space));
+}
+
+PypetExpr* ExtractIndexExprFromConst(isl_ctx* ctx,
+                                     const torch::jit::Const& expr) {
+  CHECK(expr.isIntegral());
+  return PypetExprFromIntVal(ctx, static_cast<int>(expr.asIntegral()));
+}
+
+PypetExpr* ExtractIndexExpr(isl_ctx* ctx, const torch::jit::Expr& expr);
+
+PypetExpr* ExtractIndexExprFromSubscript(isl_ctx* ctx,
+                                         const torch::jit::Subscript& expr) {
+  const torch::jit::Expr& base = expr.value();
+  const torch::jit::List<torch::jit::Expr>& indexes = expr.subscript_exprs();
+  CHECK_EQ(indexes.size(), 1);
+  PypetExpr* base_expr = ExtractIndexExpr(ctx, base);
+  PypetExpr* index_expr = ExtractExpr(ctx, indexes[0]);
+  return PypetExprAccessSubscript(base_expr, index_expr);
+}
+
+PypetExpr* ExtractSelectExpr(isl_ctx* ctx, const torch::jit::Expr& expr);
+
+PypetExpr* ExtractIndexExpr(isl_ctx* ctx, const torch::jit::Expr& expr) {
+  switch (expr.kind()) {
+    case torch::jit::TK_VAR: {
+      torch::jit::Var var_expr = torch::jit::Var(expr);
+      return ExtractIndexExprFromVar(ctx, var_expr);
     }
+    case torch::jit::TK_CONST: {
+      torch::jit::Const const_expr = torch::jit::Const(expr);
+      return ExtractIndexExprFromConst(ctx, const_expr);
+    }
+    case torch::jit::TK_SUBSCRIPT: {
+      torch::jit::Subscript subscript_expr = torch::jit::Subscript(expr);
+      return ExtractIndexExprFromSubscript(ctx, subscript_expr);
+    }
+    case '.':
+      return ExtractSelectExpr(ctx, expr);
+    default:
+      LOG(FATAL) << "Unexpected expr kind "
+                 << torch::jit::kindToString(expr.kind());
+      break;
+  }
+  return nullptr;
+}
+
+PypetExpr* PypetExprAccessFromIndex(const torch::jit::Expr& expr,
+                                    PypetExpr* index) {
+  // TODO: depth
+  // TODO: type_size
+  return index;
+}
+
+PypetExpr* ExtractAccessExpr(isl_ctx* ctx, const torch::jit::Expr& expr) {
+  PypetExpr* index = ExtractIndexExpr(ctx, expr);
+  if (index->type == PypetExprType::PYPET_EXPR_INT) {
+    return index;
+  }
+  return PypetExprAccessFromIndex(expr, index);
+}
+
+PypetExpr* ExtractAssignExpr(isl_ctx* ctx, const torch::jit::Assign& stmt) {
+  const torch::jit::Expr& lhs = stmt.lhs();
+  const torch::jit::Maybe<torch::jit::Expr>& rhs = stmt.rhs();
+  const torch::jit::Maybe<torch::jit::Expr>& type = stmt.type();
+  CHECK(rhs.present());
+  CHECK(!type.present());
+  PypetExpr* ret = PypetExprAlloc(ctx, PypetExprType::PYPET_EXPR_OP);
+  // TODO: type_size
+  ret->arg_num = 2;
+  ret->args = new PypetExpr*[2];
+  ret->args[0] = ExtractExpr(ctx, lhs);
+  ret->args[1] = ExtractExpr(ctx, rhs.get());
+  ret->op = PypetOpType::PYPET_ASSIGN;
+  return ret;
+}
+
+PypetOpType TorchKind2PypetOpType(int kind) {
+  switch (kind) {
+    case torch::jit::TK_AND:
+      return PypetOpType::PYPET_AND;
+    case torch::jit::TK_OR:
+      return PypetOpType::PYPET_OR;
+    case '<':
+      return PypetOpType::PYPET_LT;
+    case '>':
+      return PypetOpType::PYPET_GT;
+    case torch::jit::TK_EQ:
+      return PypetOpType::PYPET_EQ;
+    case torch::jit::TK_LE:
+      return PypetOpType::PYPET_LE;
+    case torch::jit::TK_GE:
+      return PypetOpType::PYPET_GE;
+    case torch::jit::TK_NE:
+      return PypetOpType::PYPET_NE;
+    case '+':
+      return PypetOpType::PYPET_ADD;
+    case '-':
+      return PypetOpType::PYPET_SUB;
+    case '*':
+      return PypetOpType::PYPET_MUL;
+    case '/':
+      return PypetOpType::PYPET_DIV;
+    default:
+      break;
+  }
+  UNIMPLEMENTED();
+  return PypetOpType::PYPET_UNKNOWN;
+}
+
+PypetExpr* ExtractBinaryExpr(isl_ctx* ctx, const torch::jit::Expr& expr) {
+  torch::jit::BinOp bin_expr = torch::jit::BinOp(expr);
+  PypetExpr* ret = PypetExprAlloc(ctx, PypetExprType::PYPET_EXPR_OP);
+  ret->op = TorchKind2PypetOpType(expr.kind());
+  ret->arg_num = 2;
+  ret->args = new PypetExpr*[2];
+  ret->args[0] = ExtractExpr(ctx, bin_expr.lhs());
+  ret->args[1] = ExtractExpr(ctx, bin_expr.rhs());
+  return ret;
+}
+
+PypetExpr* ExtractSelectExpr(isl_ctx* ctx, const torch::jit::Expr& expr) {
+  torch::jit::Select select_expr = torch::jit::Select(expr);
+  const torch::jit::Expr& base = select_expr.value();
+  PypetExpr* base_index = ExtractIndexExpr(ctx, base);
+  const torch::jit::Ident& selector = select_expr.selector();
+  isl_id* id = isl_id_alloc(ctx, selector.name().c_str(),
+                            const_cast<void*>(static_cast<const void*>(&expr)));
+  return PypetExprAccessMember(base_index, id);
+}
+
+// currently we do not recursively scan the function call
+PypetExpr* ExtractApplyExpr(isl_ctx* ctx, const torch::jit::Expr& expr) {
+  torch::jit::Apply apply_expr(expr);
+  PypetExpr* ret = PypetExprAlloc(ctx, PypetExprType::PYPET_EXPR_OP);
+  const torch::jit::Expr& callee = apply_expr.callee();
+  const torch::jit::List<torch::jit::Expr>& inputs = apply_expr.inputs();
+  // TODO: attributes
+  ret->arg_num = inputs.size() + 1;
+  ret->args = new PypetExpr*[ret->arg_num];
+  ret->args[0] = ExtractExpr(ctx, callee);
+  ret->op = PypetOpType::PYPET_APPLY;
+  for (int i = 0; i < inputs.size(); ++i) {
+    ret->args[i + 1] = ExtractExpr(ctx, inputs[i]);
+  }
+  return ret;
+}
+
+PypetExpr* ExtractExpr(isl_ctx* ctx, const torch::jit::Expr& expr) {
+  switch (expr.kind()) {
+    case torch::jit::TK_VAR:
+    case torch::jit::TK_CONST:
+    case torch::jit::TK_SUBSCRIPT:
+      return ExtractIndexExpr(ctx, expr);
+    case torch::jit::TK_AND:
+    case torch::jit::TK_OR:
+    case '<':
+    case '>':
+    case torch::jit::TK_EQ:
+    case torch::jit::TK_LE:
+    case torch::jit::TK_GE:
+    case torch::jit::TK_NE:
+    case '+':
+    case '-':
+    case '*':
+    case '/':
+      return ExtractBinaryExpr(ctx, expr);
+    case '.':
+      return ExtractSelectExpr(ctx, expr);
+    case torch::jit::TK_APPLY:
+      return ExtractApplyExpr(ctx, expr);
+    default:
+      LOG(FATAL) << torch::jit::kindToString(expr.kind());
+      break;
+  }
+  return nullptr;
+}
+
+}  // namespace
+
+std::vector<PypetTree*> EmitStatements::operator()(
+    const torch::jit::List<torch::jit::Stmt>& statements) {
+  std::vector<PypetTree*> ret(statements.size(), nullptr);
+  for (size_t i = 0; i < statements.size(); ++i) {
+    ret[i] = EmitStatement(statements[i]);
+    std::cout << ret[i];
+  }
+  return ret;
+}
+
+PypetTree* EmitStatements::EmitBlockStatements(
+    const torch::jit::List<torch::jit::Stmt>& statements) {
+  PypetTree* tree = CreatePypetTreeBlock(ctx, 1, statements.size());
+  for (size_t i = 0; i < statements.size(); ++i) {
+    tree->ast.Block.children[i] = EmitStatement(statements[i]);
   }
   return tree;
 }
 
-PypetTree* EmitStatements::EmitForImpl(
-    const torch::jit::List<torch::jit::Expr>& targets,
-    const torch::jit::List<torch::jit::Expr>& itrs,
-    const torch::jit::SourceRange& loc,
-    const std::function<PypetTree*()>& emit_body) {
-  if (itrs.size() != 1) {
-    throw torch::jit::ErrorReport(loc)
-        << "List of iterables is not supported currently";
+PypetTree* EmitStatements::EmitStatement(const torch::jit::Stmt& stmt) {
+  switch (stmt.kind()) {
+    case torch::jit::TK_IF:
+      return EmitIf(torch::jit::If(stmt));
+    case torch::jit::TK_WHILE:
+      return EmitWhile(torch::jit::While(stmt));
+    case torch::jit::TK_FOR:
+      return EmitFor(torch::jit::For(stmt));
+    case torch::jit::TK_ASSIGN:
+      return EmitAssignment(torch::jit::Assign(stmt));
+    case torch::jit::TK_AUG_ASSIGN:
+      return EmitAugAssignment(torch::jit::AugAssign(stmt));
+    case torch::jit::TK_EXPR_STMT: {
+      auto expr = torch::jit::ExprStmt(stmt).expr();
+      return EmitExpr(expr);
+    }
+    case torch::jit::TK_RAISE:
+      return EmitRaise(torch::jit::Raise(stmt));
+    case torch::jit::TK_ASSERT:
+      return EmitAssert(torch::jit::Assert(stmt));
+    case torch::jit::TK_RETURN:
+      return EmitReturn(torch::jit::Return(stmt));
+    case torch::jit::TK_CONTINUE:
+      return EmitContinue(torch::jit::Continue(stmt));
+    case torch::jit::TK_BREAK:
+      return EmitBreak(torch::jit::Break(stmt));
+    case torch::jit::TK_PASS:
+      break;
+    case torch::jit::TK_DEF:
+      return EmitClosure(torch::jit::Def(stmt));
+    case torch::jit::TK_DELETE:
+      return EmitDelete(torch::jit::Delete(stmt));
+    default:
+      UNIMPLEMENTED();
+      break;
   }
-
-  // Emit loop information for builtinFunction values like range(), zip(),
-  // enumerate() or SimpleValue like List, Tensor, Dict, etc.
-  SugaredValuePtr sv = EmitSugaredExpr(itrs[0], 1 /* n_binders */);
-  SugaredValuePtr iterable = sv->iter(loc);
-
-  EmitLoopCommon(loc, emit_body, iterable, targets, {});
-
-  // TODO(Ying) To decide whether to unroll the loop for iterables that
-  // contain computation graphs.
-  // if (!iterable->shouldEmitUnrolled()) {
-  // } else {
-  // }
-}
-
-PypetTree* EmitStatements::EmitLoopCommon(
-    torch::jit::SourceRange range, const std::function<PypetTree*()>& emit_body,
-    const SugaredValuePtr& iter_val,
-    c10::optional<torch::jit::List<torch::jit::Expr>> targets,
-    c10::optional<torch::jit::Expr> cond) {
-  // recursively parse statements.
-  return emit_body();
+  return nullptr;
 }
 
 PypetTree* EmitStatements::EmitFor(const torch::jit::For& stmt) {
-  PypetTree* tree = CreatePypetTreeBlock(
-      ctx, stmt.range(), 1 /*whether has its own scop*/, stmt.body().size());
+  // assume the format is: for iter_var in range(a, b, c)
+  const torch::jit::List<torch::jit::Expr>& targets = stmt.targets();
+  const torch::jit::List<torch::jit::Expr>& itrs = stmt.itrs();
+  CHECK_EQ(targets.size(), 1) << "List of iterables is not supported currently";
+  CHECK_EQ(itrs.size(), 1) << "List of iterables is not supported currently";
 
-  auto emit_body = [&]() -> PypetTree* {
-    EmitStatements emitter(get_isl_ctx(), get_scop());
-    return emitter.Extract(stmt.body());
-  };
-  return EmitForImpl(stmt.targets(), stmt.itrs(), stmt.range(), emit_body);
-}
+  PypetTree* tree =
+      CreatePypetTree(ctx, &stmt.range(), PypetTreeType::PYPET_TREE_FOR);
+  PypetExpr* iv = ExtractAccessExpr(ctx, targets[0]);
 
-std::shared_ptr<SugaredValue> EmitStatements::EmitApplyExpr(
-    torch::jit::Apply& apply, size_t n_binders,
-    const torch::jit::TypePtr& type_hint) {
-  auto sv = EmitSugaredExpr(apply.callee(), 1);
+  CHECK(itrs[0].kind() == torch::jit::TK_APPLY);
+  torch::jit::Apply apply = torch::jit::Apply(itrs[0]);
+  CHECK(apply.callee().kind() == torch::jit::TK_VAR);
 
-  auto loc = apply.callee().range();
-  if (auto special_form =
-          dynamic_cast<torch::jit::SpecialFormValue*>(sv.get())) {
-    // this branch handles expressions that look like apply statements
-    // but have special evaluation rules for the arguments.
-    // TODO(ying) Check code pattens that fall in this branch.
-    throw Error(apply.range()) << "Unsupported code pattern.";
-  }
+  const torch::jit::List<torch::jit::Expr>& args = apply.inputs();
 
-  return sv->call(loc);
-}
+  PypetExpr* init = nullptr;
+  PypetExpr* bound = nullptr;
+  PypetExpr* cond = nullptr;
+  PypetExpr* inc = nullptr;
 
-std::shared_ptr<SugaredValue> EmitStatements::EmitSugaredExpr(
-    const torch::jit::Expr& tree, size_t n_binders,
-    const torch::jit::TypePtr& type_hint) {
-  switch (tree.kind()) {
-    case torch::jit::TK_VAR:
-      return GetSugaredVar(torch::jit::Var(tree).name());
-    case '.': {
-      LOG(INFO) << ". = " << tree.range().text();
-      throw Error(tree) << "Not implemented yet.";
+  switch (args.size()) {
+    case 1: {
+      init = PypetExprFromIntVal(ctx, 0);
+      bound = ExtractAccessExpr(ctx, args[0]);
+      inc = PypetExprFromIntVal(ctx, 1);
+      break;
     }
-    case torch::jit::TK_APPLY: {
-      auto apply = torch::jit::Apply(tree);
-      return EmitApplyExpr(apply, n_binders, type_hint);
-    } break;
+    case 2: {
+      init = ExtractAccessExpr(ctx, args[0]);
+      bound = ExtractAccessExpr(ctx, args[1]);
+      inc = PypetExprFromIntVal(ctx, 1);
+      break;
+    }
+    case 3: {
+      init = ExtractAccessExpr(ctx, args[0]);
+      bound = ExtractAccessExpr(ctx, args[1]);
+      inc = ExtractAccessExpr(ctx, args[2]);
+      break;
+    }
     default:
-      throw Error(tree) << "Not implemented yet.";
+      LOG(FATAL) << "Range parameter num: " << args.size();
+      break;
   }
+  // TODO: or PYPET_GT
+  cond = BuildPypetBinaryOpExpr(ctx, PypetOpType::PYPET_LT, iv, bound);
+
+  tree->ast.Loop.iv = iv;
+  tree->ast.Loop.init = init;
+  tree->ast.Loop.cond = cond;
+  tree->ast.Loop.inc = inc;
+
+  tree->ast.Loop.body = EmitBlockStatements(stmt.body());
+  return tree;
 }
 
-SugaredValuePtr EmitStatements::GetSugaredVar(const torch::jit::Ident& ident,
-                                              bool required) {
-  LOG(INFO) << "Var = " << ident.range().text();
+PypetTree* EmitStatements::EmitIf(const torch::jit::If& stmt) {
+  bool has_false_branch = stmt.falseBranch().size() > 0;
+  PypetTree* tree =
+      CreatePypetTree(ctx, &stmt.range(),
+                      has_false_branch ? PypetTreeType::PYPET_TREE_IF_ELSE
+                                       : PypetTreeType::PYPET_TREE_IF);
+  tree->ast.IfElse.cond = ExtractExpr(ctx, stmt.cond());
+  tree->ast.IfElse.if_body = EmitBlockStatements(stmt.trueBranch());
+  if (has_false_branch == true) {
+    tree->ast.IfElse.else_body = EmitBlockStatements(stmt.falseBranch());
+  }
+  return tree;
 }
 
-PypetTree* EmitStatements::EmitIf(const torch::jit::If& stmt) {}
 PypetTree* EmitStatements::EmitWhile(const torch::jit::While& stmt) {
-  throw std::invalid_argument("while statement is not supported.");
+  UNIMPLEMENTED();
+  return nullptr;
 }
 
-PypetTree* EmitStatements::EmitAssignment(const torch::jit::Assign& stmt) {}
+PypetTree* EmitStatements::EmitAssignment(const torch::jit::Assign& stmt) {
+  PypetTree* tree =
+      CreatePypetTree(ctx, &stmt.range(), PypetTreeType::PYPET_TREE_EXPR);
+  tree->ast.Expr.expr = ExtractAssignExpr(ctx, stmt);
+  return tree;
+}
+
 PypetTree* EmitStatements::EmitAugAssignment(
-    const torch::jit::AugAssign& stmt) {}
-PypetTree* EmitStatements::EmitRaise(const torch::jit::Raise& stmt) {}
-PypetTree* EmitStatements::EmitAssert(const torch::jit::Assert& stmt) {}
-PypetTree* EmitStatements::EmitReturn(const torch::jit::Return& stmt) {}
-PypetTree* EmitStatements::EmitContinue(const torch::jit::Continue& stmt) {}
-PypetTree* EmitStatements::EmitBreak(const torch::jit::Break& stmt) {}
-PypetTree* EmitStatements::EmitClosure(const torch::jit::Def& stmt) {}
-PypetTree* EmitStatements::EmitDelete(const torch::jit::Delete& stmt) {}
-PypetTree* EmitStatements::EmitExpr(const torch::jit::Expr& tree) {}
+    const torch::jit::AugAssign& stmt) {
+  UNIMPLEMENTED();
+  return nullptr;
+}
+
+PypetTree* EmitStatements::EmitRaise(const torch::jit::Raise& stmt) {
+  UNIMPLEMENTED();
+  return nullptr;
+}
+
+PypetTree* EmitStatements::EmitAssert(const torch::jit::Assert& stmt) {
+  UNIMPLEMENTED();
+  return nullptr;
+}
+
+PypetTree* EmitStatements::EmitReturn(const torch::jit::Return& stmt) {
+  UNIMPLEMENTED();
+  return nullptr;
+}
+
+PypetTree* EmitStatements::EmitContinue(const torch::jit::Continue& stmt) {
+  UNIMPLEMENTED();
+  return nullptr;
+}
+
+PypetTree* EmitStatements::EmitBreak(const torch::jit::Break& stmt) {
+  UNIMPLEMENTED();
+  return nullptr;
+}
+
+PypetTree* EmitStatements::EmitClosure(const torch::jit::Def& stmt) {
+  UNIMPLEMENTED();
+  return nullptr;
+}
+
+PypetTree* EmitStatements::EmitDelete(const torch::jit::Delete& stmt) {
+  UNIMPLEMENTED();
+  return nullptr;
+}
+
+PypetTree* EmitStatements::EmitExpr(const torch::jit::Expr& tree) {
+  UNIMPLEMENTED();
+  return nullptr;
+}
 
 }  // namespace pypet
 }  // namespace pypoly
