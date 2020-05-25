@@ -1,5 +1,5 @@
-#ifndef _PYPET_TREE_H
-#define _PYPET_TREE_H
+#ifndef PYPOLY_CORE_PYPET_TREE_H_
+#define PYPOLY_CORE_PYPET_TREE_H_
 
 #include "pypoly/core/pypet/expr.h"
 
@@ -77,6 +77,17 @@ struct PypetTree {
       PypetTree* else_body;
     } IfElse;  // if-else construct
   } ast;
+
+  int get_lineno() const {
+    // Block statement does not correspond to a line in source codes.
+    // return -1 instead.
+    if (!range) {
+      return -1;
+    }
+
+    const std::shared_ptr<torch::jit::Source> src = range->source();
+    return src->lineno_to_source_lineno(src->lineno_for_offset(range->start()));
+  }
 };
 
 __isl_give PypetTree* CreatePypetTree(isl_ctx* ctx,
@@ -103,4 +114,4 @@ static inline std::ostream& operator<<(std::ostream& out, const PypetTree* t) {
 }
 }  // namespace pypet
 }  // namespace pypoly
-#endif
+#endif  // PYPOLY_CORE_PYPET_TREE_H_

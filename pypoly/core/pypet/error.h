@@ -1,5 +1,5 @@
-#ifndef _PYPET_ERRORS_H
-#define _PYPET_ERRORS_H
+#ifndef PYPOLY_CORE_PYPET_ERROR_H_
+#define PYPOLY_CORE_PYPET_ERROR_H_
 
 #include <torch/csrc/jit/frontend/source_range.h>
 #include <torch/csrc/jit/frontend/tree.h>
@@ -29,4 +29,4 @@ struct Error : public std::exception {
 }  // namespace pypet
 }  // namespace pypoly
 
-#endif
+#endif  // PYPOLY_CORE_PYPET_ERROR_H_

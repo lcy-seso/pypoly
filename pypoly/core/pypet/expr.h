@@ -1,5 +1,5 @@
-#ifndef _PYPET_EXPR_H
-#define _PYPET_EXPR_H
+#ifndef PYPOLY_CORE_PYPET_EXPR_H_
+#define PYPOLY_CORE_PYPET_EXPR_H_
 
 #include "pypoly/core/pypet/pypet.h"
 
@@ -215,4 +215,4 @@ static inline std::ostream& DumpPypetExprWithIndent(std::ostream& out,
 }  // namespace pypet
 }  // namespace pypoly
 
-#endif
+#endif  // PYPOLY_CORE_PYPET_EXPR_H_

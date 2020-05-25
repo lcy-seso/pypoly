@@ -1,5 +1,5 @@
-#ifndef UTIL_H_
-#define UTIL_H_
+#ifndef PYPOLY_CORE_PYPET_UTIL_H_
+#define PYPOLY_CORE_PYPET_UTIL_H_
 
 #include "c10/util/Logging.h"
 
@@ -28,4 +28,4 @@ namespace pypet {
 }  // namespace pypet
 }  // namespace pypoly
 
-#endif  // UTIL_H_
+#endif  // PYPOLY_CORE_PYPET_UTIL_H_

@@ -1,9 +1,8 @@
-#ifndef _IR_EMITTER_H
-#define _IR_EMITTER_H
+#ifndef PYPOLY_CORE_PYPET_IR_EMITTER_H_
+#define PYPOLY_CORE_PYPET_IR_EMITTER_H_
 
 #include "pypoly/core/pypet/error.h"
 #include "pypoly/core/pypet/pypet.h"
-#include "pypoly/core/pypet/sugared_value.h"
 #include "pypoly/core/pypet/tree.h"
 
 #include <torch/csrc/jit/frontend/lexer.h>
@@ -49,4 +48,4 @@ struct EmitStatements {
 }  // namespace pypet
 }  // namespace pypoly
 
-#endif
+#endif  // PYPOLY_CORE_PYPET_IR_EMITTER_H_

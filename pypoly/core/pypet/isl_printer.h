@@ -1,5 +1,5 @@
-#ifndef ISL_PRINTER_H
-#define ISL_PRINTER_H
+#ifndef PYPOLY_CORE_PYPET_ISL_PRINTER_H_
+#define PYPOLY_CORE_PYPET_ISL_PRINTER_H_
 
 #include "util.h"
 
@@ -28,4 +28,4 @@ inline void print_isl_pw_aff(isl_pw_aff* pw_aff) {
 }  // namespace pypet
 }  // namespace pypoly
 
-#endif  // ISL_PRINTER_H
+#endif  // PYPOLY_CORE_PYPET_ISL_PRINTER_H_

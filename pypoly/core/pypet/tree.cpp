@@ -34,6 +34,7 @@ __isl_give PypetTree* CreatePypetTreeBlock(isl_ctx* ctx, int block, int n) {
   tree->ast.Block.n = n;
   tree->ast.Block.max = n;
   tree->ast.Block.children = isl_calloc_array(ctx, PypetTree*, n);
+  tree->range = nullptr;
   if (n && !tree->ast.Block.children) return PypetTreeFree(tree);
 
   return tree;
@@ -88,10 +89,12 @@ void TreePrettyPrinter::Print(std::ostream& out,
   out << std::string(indent, ' ');
   out << std::string(tree_type_str[tree->type]) << std::endl;
 
+  out << std::string(indent, ' ');
+  out << "line : " << tree->get_lineno() << std::endl;
+
   if (tree->label) {
     out << std::string(indent, ' ');
     out << std::string(isl_id_to_str(tree->label)) << std::endl;
-    ;
   }
 
   switch (tree->type) {
@@ -100,6 +103,8 @@ void TreePrettyPrinter::Print(std::ostream& out,
       break;
     case PYPET_TREE_BLOCK:
       for (int i = 0; i < tree->ast.Block.n; ++i) {
+        std::cout << std::string(indent, ' ') << "block child " << i << ":"
+                  << std::endl;
         Print(out, tree->ast.Block.children[i], indent + 2);
       }
       break;
@@ -131,6 +136,7 @@ void TreePrettyPrinter::Print(std::ostream& out,
       DumpPypetExprWithIndent(out, tree->ast.Loop.cond, indent + 2);
       out << std::string(indent, ' ') << "inc:" << std::endl;
       DumpPypetExprWithIndent(out, tree->ast.Loop.inc, indent + 2);
+      std::cout << std::string(indent, ' ') << "for body" << std::endl;
       Print(out, tree->ast.Loop.body, indent + 2);
       break;
     }
