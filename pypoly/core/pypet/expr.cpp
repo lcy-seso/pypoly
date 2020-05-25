@@ -49,9 +49,9 @@ __isl_give PypetExpr* PypetExprAlloc(isl_ctx* ctx, PypetExprType expr_type) {
     case PYPET_EXPR_ACCESS:
       expr->acc.ref_id = nullptr;
       expr->acc.index = nullptr;
-      expr->acc.depth = 1;
-      expr->acc.write = 1;
-      expr->acc.kill = 1;
+      expr->acc.depth = 0;
+      expr->acc.write = 0;
+      expr->acc.kill = 0;
       for (int i = 0; i < PYPET_EXPR_ACCESS_END; ++i)
         expr->acc.access[i] = nullptr;
       break;

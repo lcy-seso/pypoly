@@ -76,6 +76,16 @@ PypetExpr* ExtractAccessExpr(isl_ctx* ctx, const torch::jit::Expr& expr) {
   return PypetExprAccessFromIndex(expr, index);
 }
 
+void MarkWrite(PypetExpr* access) {
+  access->acc.read = 0;
+  access->acc.write = 1;
+}
+
+void MarkRead(PypetExpr* access) {
+  access->acc.read = 1;
+  access->acc.write = 0;
+}
+
 PypetExpr* ExtractAssignExpr(isl_ctx* ctx, const torch::jit::Assign& stmt) {
   const torch::jit::Expr& lhs = stmt.lhs();
   const torch::jit::Maybe<torch::jit::Expr>& rhs = stmt.rhs();
@@ -89,6 +99,9 @@ PypetExpr* ExtractAssignExpr(isl_ctx* ctx, const torch::jit::Assign& stmt) {
   ret->args[0] = ExtractExpr(ctx, lhs);
   ret->args[1] = ExtractExpr(ctx, rhs.get());
   ret->op = PypetOpType::PYPET_ASSIGN;
+  if (ret->args[0]->type == PypetExprType::PYPET_EXPR_ACCESS) {
+    MarkWrite(ret->args[0]);
+  }
   return ret;
 }
 
@@ -299,8 +312,11 @@ PypetTree* EmitStatements::EmitFor(const torch::jit::For& stmt) {
       break;
   }
   // TODO: or PYPET_GT
-  cond = BuildPypetBinaryOpExpr(ctx, PypetOpType::PYPET_LT, iv, bound);
+  PypetExpr* iv2 = PypetExprCopy(iv);
+  MarkRead(iv2);
+  cond = BuildPypetBinaryOpExpr(ctx, PypetOpType::PYPET_LT, iv2, bound);
 
+  MarkWrite(iv);
   tree->ast.Loop.iv = iv;
   tree->ast.Loop.init = init;
   tree->ast.Loop.cond = cond;
