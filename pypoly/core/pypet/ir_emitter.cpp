@@ -176,6 +176,19 @@ PypetExpr* ExtractApplyExpr(isl_ctx* ctx, const torch::jit::Expr& expr) {
   return ret;
 }
 
+PypetExpr* ExtractListLiteralExpr(isl_ctx* ctx, const torch::jit::Expr& expr) {
+  torch::jit::ListLiteral list_literal_expr(expr);
+  PypetExpr* ret = PypetExprAlloc(ctx, PypetExprType::PYPET_EXPR_OP);
+  const torch::jit::List<torch::jit::Expr>& inputs = list_literal_expr.inputs();
+  ret->arg_num = inputs.size();
+  ret->args = isl_alloc_array(ctx, PypetExpr*, inputs.size());
+  for (int i = 0; i < inputs.size(); ++i) {
+    ret->args[i] = ExtractExpr(ctx, inputs[i]);
+  }
+  ret->op = PypetOpType::PYPET_LIST_LITERAL;
+  return ret;
+}
+
 PypetExpr* ExtractExpr(isl_ctx* ctx, const torch::jit::Expr& expr) {
   switch (expr.kind()) {
     case torch::jit::TK_VAR:
@@ -199,6 +212,8 @@ PypetExpr* ExtractExpr(isl_ctx* ctx, const torch::jit::Expr& expr) {
       return ExtractSelectExpr(ctx, expr);
     case torch::jit::TK_APPLY:
       return ExtractApplyExpr(ctx, expr);
+    case torch::jit::TK_LIST_LITERAL:
+      return ExtractListLiteralExpr(ctx, expr);
     default:
       LOG(FATAL) << torch::jit::kindToString(expr.kind());
       break;
@@ -276,6 +291,7 @@ PypetTree* EmitStatements::EmitFor(const torch::jit::For& stmt) {
   PypetTree* tree =
       CreatePypetTree(ctx, &stmt.range(), PypetTreeType::PYPET_TREE_FOR);
   PypetExpr* iv = ExtractAccessExpr(ctx, targets[0]);
+  MarkWrite(iv);
 
   CHECK(itrs[0].kind() == torch::jit::TK_APPLY);
   torch::jit::Apply apply = torch::jit::Apply(itrs[0]);
@@ -312,11 +328,10 @@ PypetTree* EmitStatements::EmitFor(const torch::jit::For& stmt) {
       break;
   }
   // TODO: or PYPET_GT
-  PypetExpr* iv2 = PypetExprCopy(iv);
+  PypetExpr* iv2 = PypetExprDup(iv);
   MarkRead(iv2);
   cond = BuildPypetBinaryOpExpr(ctx, PypetOpType::PYPET_LT, iv2, bound);
 
-  MarkWrite(iv);
   tree->ast.Loop.iv = iv;
   tree->ast.Loop.init = init;
   tree->ast.Loop.cond = cond;

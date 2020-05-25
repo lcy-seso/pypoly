@@ -114,8 +114,46 @@ __isl_give PypetExpr* PypetExprCreateCall(isl_ctx* ctx, const char* name,
 }
 
 PypetExpr* PypetExprDup(PypetExpr* expr) {
-  UNIMPLEMENTED();
-  return nullptr;
+  CHECK(expr);
+  PypetExpr* dup = PypetExprAlloc(expr->ctx, expr->type);
+  // TODO: type_size
+  dup->arg_num = expr->arg_num;
+  for (int i = 0; i < expr->arg_num; ++i) {
+    dup = PypetExprSetArg(dup, i, PypetExprCopy(expr->args[i]));
+  }
+
+  switch (expr->type) {
+    case PypetExprType::PYPET_EXPR_ACCESS:
+      if (expr->acc.ref_id) {
+        dup->acc.ref_id = isl_id_copy(expr->acc.ref_id);
+      }
+      dup =
+          PypetExprAccessSetIndex(dup, isl_multi_pw_aff_copy(expr->acc.index));
+      dup->acc.depth = expr->acc.depth;
+      for (int type = PypetExprAccessType::PYPET_EXPR_ACCESS_BEGIN;
+           type < PypetExprAccessType::PYPET_EXPR_ACCESS_END; ++type) {
+        if (expr->acc.access[type] == nullptr) {
+          continue;
+        }
+        dup->acc.access[type] = isl_union_map_copy(expr->acc.access[type]);
+      }
+      dup->acc.read = expr->acc.read;
+      dup->acc.write = expr->acc.write;
+      dup->acc.kill = expr->acc.kill;
+      break;
+    case PypetExprType::PYPET_EXPR_CALL:
+      UNIMPLEMENTED();
+      break;
+    case PypetExprType::PYPET_EXPR_INT:
+      dup->i = isl_val_copy(expr->i);
+      break;
+    case PypetExprType::PYPET_EXPR_OP:
+      dup->op = expr->op;
+    default:
+      UNIMPLEMENTED();
+      break;
+  }
+  return dup;
 }
 
 PypetExpr* PypetExprCow(PypetExpr* expr) {
