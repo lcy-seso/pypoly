@@ -58,7 +58,7 @@ __isl_null PypetTree* PypetTreeFree(__isl_take PypetTree* tree) {
     case PYPET_TREE_BREAK:
     case PYPET_TREE_CONTINUE:
       break;
-    case PYPET_TREE_DECL:
+    case PYPET_TREE_DECL_INIT:
       PypetExprFree(tree->ast.Decl.var);
       break;
     case PYPET_TREE_EXPR:
@@ -105,39 +105,41 @@ void TreePrettyPrinter::Print(std::ostream& out,
       for (int i = 0; i < tree->ast.Block.n; ++i) {
         std::cout << std::string(indent, ' ') << "block child " << i << ":"
                   << std::endl;
-        Print(out, tree->ast.Block.children[i], indent + 2);
+        TreePrettyPrinter::Print(out, tree->ast.Block.children[i], indent + 2);
       }
       break;
     case PYPET_TREE_EXPR:
-      DumpPypetExprWithIndent(out, tree->ast.Expr.expr, indent + 2);
+      ExprPrettyPrinter::Print(out, tree->ast.Expr.expr, indent + 2);
       break;
     case PYPET_TREE_BREAK:
     case PYPET_TREE_CONTINUE:
     case PYPET_TREE_RETURN:
-    case PYPET_TREE_DECL:
+    case PYPET_TREE_DECL_INIT:
       UNIMPLEMENTED();
       break;
     case PYPET_TREE_IF:
     case PYPET_TREE_IF_ELSE:
       out << std::string(indent, ' ') << "condition:" << std::endl;
-      DumpPypetExprWithIndent(out, tree->ast.IfElse.cond, indent + 2);
-      out << std::string(indent, ' ') << "then:" << std::endl;
-      Print(out, tree->ast.IfElse.if_body, indent + 2);
+      ExprPrettyPrinter::Print(out, tree->ast.IfElse.cond, indent + 2);
+      out << std::string(indent, ' ') << "if:" << std::endl;
+      TreePrettyPrinter::Print(out, tree->ast.IfElse.if_body, indent + 2);
       if (tree->type != PYPET_TREE_IF_ELSE) break;
       out << std::string(indent, ' ') << "else:" << std::endl;
-      Print(out, tree->ast.IfElse.else_body, indent + 2);
+      TreePrettyPrinter::Print(out, tree->ast.IfElse.else_body, indent + 2);
       break;
     case PYPET_TREE_FOR: {
       out << std::string(indent, ' ') << "var:" << std::endl;
-      DumpPypetExprWithIndent(out, tree->ast.Loop.iv, indent + 2);
+      ExprPrettyPrinter::Print(out, tree->ast.Loop.iv, indent + 2);
       out << std::string(indent, ' ') << "init:" << std::endl;
-      DumpPypetExprWithIndent(out, tree->ast.Loop.init, indent + 2);
+      ExprPrettyPrinter::Print(out, tree->ast.Loop.init, indent + 2);
+      out << std::endl;
       out << std::string(indent, ' ') << "cond:" << std::endl;
-      DumpPypetExprWithIndent(out, tree->ast.Loop.cond, indent + 2);
+      ExprPrettyPrinter::Print(out, tree->ast.Loop.cond, indent + 2);
       out << std::string(indent, ' ') << "inc:" << std::endl;
-      DumpPypetExprWithIndent(out, tree->ast.Loop.inc, indent + 2);
-      std::cout << std::string(indent, ' ') << "for body" << std::endl;
-      Print(out, tree->ast.Loop.body, indent + 2);
+      ExprPrettyPrinter::Print(out, tree->ast.Loop.inc, indent + 2);
+      out << std::endl;
+      std::cout << std::string(indent, ' ') << "for body:" << std::endl;
+      TreePrettyPrinter::Print(out, tree->ast.Loop.body, indent + 2);
       break;
     }
     default:
