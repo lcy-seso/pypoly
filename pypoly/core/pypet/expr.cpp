@@ -116,7 +116,7 @@ __isl_give PypetExpr* PypetExprCreateCall(isl_ctx* ctx, const char* name,
 PypetExpr* PypetExprDup(PypetExpr* expr) {
   CHECK(expr);
   PypetExpr* dup = PypetExprAlloc(expr->ctx, expr->type);
-  // TODO: type_size
+  // TODO(yizhu1): fix type_size case
   dup->arg_num = expr->arg_num;
   for (int i = 0; i < expr->arg_num; ++i) {
     dup = PypetExprSetArg(dup, i, PypetExprCopy(expr->args[i]));
