@@ -32,16 +32,31 @@ enum PypetOpType {
   PYPET_OR,
   PYPET_NOT,
   PYPET_APPLY,
+  PYPET_LIST_LITERAL,
+  PYPET_ATTRIBUTE,
   PYPET_UNKNOWN,
 };
 
 static constexpr const char* op_type_to_string[] = {
-    [PYPET_ASSIGN] = "=", [PYPET_ADD] = "+",       [PYPET_SUB] = "-",
-    [PYPET_MUL] = "*",    [PYPET_DIV] = "/",       [PYPET_MOD] = "%",
-    [PYPET_EQ] = "==",    [PYPET_NE] = "!=",       [PYPET_LE] = "<=",
-    [PYPET_GE] = ">=",    [PYPET_LT] = "<",        [PYPET_GT] = ">",
-    [PYPET_AND] = "&",    [PYPET_XOR] = "^",       [PYPET_OR] = "or",
-    [PYPET_NOT] = "not",  [PYPET_APPLY] = "apply",
+    [PYPET_ASSIGN] = "=",
+    [PYPET_ADD] = "+",
+    [PYPET_SUB] = "-",
+    [PYPET_MUL] = "*",
+    [PYPET_DIV] = "/",
+    [PYPET_MOD] = "%",
+    [PYPET_EQ] = "==",
+    [PYPET_NE] = "!=",
+    [PYPET_LE] = "<=",
+    [PYPET_GE] = ">=",
+    [PYPET_LT] = "<",
+    [PYPET_GT] = ">",
+    [PYPET_AND] = "&",
+    [PYPET_XOR] = "^",
+    [PYPET_OR] = "or",
+    [PYPET_NOT] = "not",
+    [PYPET_APPLY] = "apply",
+    [PYPET_LIST_LITERAL] = "[]",
+    [PYPET_ATTRIBUTE] = "attribute",
 };
 
 enum PypetExprAccessType {
