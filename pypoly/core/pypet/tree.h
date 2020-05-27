@@ -14,6 +14,7 @@ enum PypetTreeType {
   PYPET_TREE_BLOCK,
   PYPET_TREE_BREAK,
   PYPET_TREE_CONTINUE,
+  PYPET_TREE_DECL,
   PYPET_TREE_DECL_INIT,
   PYPET_TREE_IF,      /* An if without an else branch */
   PYPET_TREE_IF_ELSE, /* An if with an else branch */
@@ -27,6 +28,7 @@ static constexpr const char* tree_type_str[] = {
     [PYPET_TREE_BLOCK] = "block",
     [PYPET_TREE_BREAK] = "break",
     [PYPET_TREE_CONTINUE] = "continue",
+    [PYPET_TREE_DECL] = "declaration",
     [PYPET_TREE_DECL_INIT] = "declaration-init",
     [PYPET_TREE_IF] = "if",
     [PYPET_TREE_IF_ELSE] = "if-else",

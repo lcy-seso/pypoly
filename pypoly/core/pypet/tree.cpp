@@ -58,6 +58,7 @@ __isl_null PypetTree* PypetTreeFree(__isl_take PypetTree* tree) {
     case PYPET_TREE_BREAK:
     case PYPET_TREE_CONTINUE:
       break;
+    case PYPET_TREE_DECL:
     case PYPET_TREE_DECL_INIT:
       PypetExprFree(tree->ast.Decl.var);
       break;
@@ -106,6 +107,7 @@ int PypetTreeForeachSubTree(
     case PYPET_TREE_BREAK:
     case PYPET_TREE_CONTINUE:
     case PYPET_TREE_DECL:
+    case PYPET_TREE_DECL_INIT:
     case PYPET_TREE_EXPR:
     case PYPET_TREE_RETURN:
       break;

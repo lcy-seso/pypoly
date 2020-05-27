@@ -105,6 +105,7 @@ __isl_keep PypetScop* TreeToScop::ToScop(__isl_take PypetTree* tree,
     case PYPET_TREE_CONTINUE:
       return ScopFromContinue(tree, pc);
     case PYPET_TREE_DECL:
+    case PYPET_TREE_DECL_INIT:
       return ScopFromDecl(tree, pc);
     case PYPET_TREE_EXPR:
       return ScopFromTreeExpr(tree, pc);
