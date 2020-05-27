@@ -1,5 +1,5 @@
-#ifndef _PYPET_H
-#define _PYPET_H
+#ifndef PYPOLY_CORE_PYPET_PYPET_H_
+#define PYPOLY_CORE_PYPET_PYPET_H_
 
 #include "util.h"
 
@@ -78,4 +78,4 @@ struct PypetScop {
 
 }  // namespace pypet
 }  // namespace pypoly
-#endif
+#endif  // PYPOLY_CORE_PYPET_PYPET_H_

@@ -1,5 +1,5 @@
-#ifndef _PYPET_TREE_H
-#define _PYPET_TREE_H
+#ifndef PYPOLY_CORE_PYPET_TREE_H_
+#define PYPOLY_CORE_PYPET_TREE_H_
 
 #include "pypoly/core/pypet/expr.h"
 
@@ -14,7 +14,7 @@ enum PypetTreeType {
   PYPET_TREE_BLOCK,
   PYPET_TREE_BREAK,
   PYPET_TREE_CONTINUE,
-  PYPET_TREE_DECL,
+  PYPET_TREE_DECL_INIT,
   PYPET_TREE_IF,      /* An if without an else branch */
   PYPET_TREE_IF_ELSE, /* An if with an else branch */
   PYPET_TREE_FOR,
@@ -27,7 +27,7 @@ static constexpr const char* tree_type_str[] = {
     [PYPET_TREE_BLOCK] = "block",
     [PYPET_TREE_BREAK] = "break",
     [PYPET_TREE_CONTINUE] = "continue",
-    [PYPET_TREE_DECL] = "declaration",
+    [PYPET_TREE_DECL_INIT] = "declaration-init",
     [PYPET_TREE_IF] = "if",
     [PYPET_TREE_IF_ELSE] = "if-else",
     [PYPET_TREE_FOR] = "for",
@@ -77,6 +77,17 @@ struct PypetTree {
       PypetTree* else_body;
     } IfElse;  // if-else construct
   } ast;
+
+  int get_lineno() const {
+    // Block statement does not correspond to a line in source codes.
+    // return -1 instead.
+    if (!range) {
+      return -1;
+    }
+
+    const std::shared_ptr<torch::jit::Source> src = range->source();
+    return src->lineno_to_source_lineno(src->lineno_for_offset(range->start()));
+  }
 };
 
 __isl_give PypetTree* CreatePypetTree(isl_ctx* ctx,
@@ -91,21 +102,14 @@ int PypetTreeForeachSubTree(
     void* user /* points to user data that can be any type.*/);
 
 struct TreePrettyPrinter {
-  TreePrettyPrinter(const __isl_keep PypetTree* tree) : tree(tree) {}
-  const PypetTree* tree;
-
-  void Print(std::ostream& out, const __isl_keep PypetTree* tree,
-             int indent = 2);
+  static void Print(std::ostream& out, const __isl_keep PypetTree* tree,
+                    int indent = 2);
 };
 
-static inline std::ostream& operator<<(std::ostream& out, TreePrettyPrinter t) {
-  t.Print(out, t.tree, 0);
-  return out << std::endl;
-}
-
 static inline std::ostream& operator<<(std::ostream& out, const PypetTree* t) {
-  return out << TreePrettyPrinter(t);
+  TreePrettyPrinter::Print(out, t);
+  return out;
 }
 }  // namespace pypet
 }  // namespace pypoly
-#endif
+#endif  // PYPOLY_CORE_PYPET_TREE_H_

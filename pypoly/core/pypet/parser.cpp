@@ -18,11 +18,11 @@ void InitGLOG(const std::string& prog_name) {
 PYBIND11_MODULE(_parser, m) {
   m.def("init_glog", InitGLOG);
 
-  m.def("parse_scop", [](const std::string& src) {
-    TorchParser p(src);
+  m.def("parse_scop", [](const std::string& src, const std::string& filename,
+                         size_t file_lineno) {
+    TorchParser p(src, filename, file_lineno);
 
     ScopParser scop_parser(p.Parse());
-    // scop_parser.DumpAST();
     scop_parser.Parse();
   });
 }

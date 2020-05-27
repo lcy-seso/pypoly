@@ -1,5 +1,5 @@
-#ifndef _PARSER_H
-#define _PARSER_H
+#ifndef PYPOLY_CORE_PYPET_PARSER_H_
+#define PYPOLY_CORE_PYPET_PARSER_H_
 
 #include "pypoly/core/pypet/ir_emitter.h"
 #include "pypoly/core/pypet/pypet.h"
@@ -26,15 +26,23 @@ struct PypetScop;
 struct TorchParser {
   // TODO(Ying) for experiment with TS parser only. Parsing is a recursive
   // process. Not implemented yet.
-  TorchParser(std::string src) : src(std::move(src)) {}
+  TorchParser(std::string src)
+      : src(std::move(src)), filename(""), file_lineno(0) {}
+  explicit TorchParser(std::string src, std::string filename,
+                       size_t file_lineno)
+      : src(std::move(src)), filename(filename), file_lineno(file_lineno) {}
 
   TorchDef Parse() {
-    torch::jit::Parser p(std::make_shared<torch::jit::Source>(src));
+    torch::jit::Parser p(
+        std::make_shared<torch::jit::Source>(src, filename, file_lineno));
     auto ast = TorchDef(p.parseFunction(/*is_method=*/true));
     return ast;
   }
 
   std::string src;
+  std::string filename;
+  // start line of the function to be parsed in the original file.
+  size_t file_lineno;
 };
 
 class ParserImpl {
@@ -70,4 +78,4 @@ struct ScopParser {
 
 }  // namespace pypet
 }  // namespace pypoly
-#endif
+#endif  // PYPOLY_CORE_PYPET_PARSER_H_

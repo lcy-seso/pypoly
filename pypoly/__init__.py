@@ -32,7 +32,7 @@ def scop(nn_module):
         sourcelines, file_lineno = inspect.getsourcelines(method)
         source = ''.join(sourcelines)
 
-        parsed = _parser.parse_scop(source)
+        parsed = _parser.parse_scop(source, filename, file_lineno)
 
     else:
         raise NotImplementedError(

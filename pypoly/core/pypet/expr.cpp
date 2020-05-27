@@ -49,9 +49,9 @@ __isl_give PypetExpr* PypetExprAlloc(isl_ctx* ctx, PypetExprType expr_type) {
     case PYPET_EXPR_ACCESS:
       expr->acc.ref_id = nullptr;
       expr->acc.index = nullptr;
-      expr->acc.depth = 1;
-      expr->acc.write = 1;
-      expr->acc.kill = 1;
+      expr->acc.depth = 0;
+      expr->acc.write = 0;
+      expr->acc.kill = 0;
       for (int i = 0; i < PYPET_EXPR_ACCESS_END; ++i)
         expr->acc.access[i] = nullptr;
       break;
@@ -114,8 +114,46 @@ __isl_give PypetExpr* PypetExprCreateCall(isl_ctx* ctx, const char* name,
 }
 
 PypetExpr* PypetExprDup(PypetExpr* expr) {
-  UNIMPLEMENTED();
-  return nullptr;
+  CHECK(expr);
+  PypetExpr* dup = PypetExprAlloc(expr->ctx, expr->type);
+  // TODO(yizhu1): fix type_size case
+  dup->arg_num = expr->arg_num;
+  for (int i = 0; i < expr->arg_num; ++i) {
+    dup = PypetExprSetArg(dup, i, PypetExprCopy(expr->args[i]));
+  }
+
+  switch (expr->type) {
+    case PypetExprType::PYPET_EXPR_ACCESS:
+      if (expr->acc.ref_id) {
+        dup->acc.ref_id = isl_id_copy(expr->acc.ref_id);
+      }
+      dup =
+          PypetExprAccessSetIndex(dup, isl_multi_pw_aff_copy(expr->acc.index));
+      dup->acc.depth = expr->acc.depth;
+      for (int type = PypetExprAccessType::PYPET_EXPR_ACCESS_BEGIN;
+           type < PypetExprAccessType::PYPET_EXPR_ACCESS_END; ++type) {
+        if (expr->acc.access[type] == nullptr) {
+          continue;
+        }
+        dup->acc.access[type] = isl_union_map_copy(expr->acc.access[type]);
+      }
+      dup->acc.read = expr->acc.read;
+      dup->acc.write = expr->acc.write;
+      dup->acc.kill = expr->acc.kill;
+      break;
+    case PypetExprType::PYPET_EXPR_CALL:
+      UNIMPLEMENTED();
+      break;
+    case PypetExprType::PYPET_EXPR_INT:
+      dup->i = isl_val_copy(expr->i);
+      break;
+    case PypetExprType::PYPET_EXPR_OP:
+      dup->op = expr->op;
+    default:
+      UNIMPLEMENTED();
+      break;
+  }
+  return dup;
 }
 
 PypetExpr* PypetExprCow(PypetExpr* expr) {
@@ -380,7 +418,7 @@ isl_multi_pw_aff* PypetArrayMember(isl_multi_pw_aff* base,
 
 void ExprPrettyPrinter::Print(std::ostream& out, const PypetExpr* expr,
                               int indent) {
-  CHECK(expr);
+  CHECK(expr) << "null pointer.";
 
   isl_printer* p = isl_printer_to_str(expr->ctx);
   p = isl_printer_set_indent(p, indent);
@@ -393,8 +431,8 @@ void ExprPrettyPrinter::Print(std::ostream& out, const PypetExpr* expr,
 
 __isl_give isl_printer* ExprPrettyPrinter::PrintExpr(
     const PypetExpr* expr, __isl_take isl_printer* p) {
-  CHECK(expr);
   CHECK(p);
+  if (!expr) return isl_printer_free(p);
 
   switch (expr->type) {
     case PypetExprType::PYPET_EXPR_INT:
