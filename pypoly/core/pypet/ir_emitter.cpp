@@ -159,6 +159,7 @@ PypetExpr* ExtractSelectExpr(isl_ctx* ctx, const torch::jit::Expr& expr) {
   const torch::jit::Expr& base = select_expr.value();
   PypetExpr* base_index = ExtractIndexExpr(ctx, base);
   const torch::jit::Ident& selector = select_expr.selector();
+
   isl_id* id = isl_id_alloc(ctx, selector.name().c_str(),
                             const_cast<void*>(static_cast<const void*>(&expr)));
   return PypetExprAccessMember(base_index, id);
@@ -243,7 +244,8 @@ PypetExpr* ExtractExpr(isl_ctx* ctx, const torch::jit::Expr& expr) {
     case torch::jit::TK_ATTRIBUTE:
       return ExtractAttributeExpr(ctx, expr);
     default:
-      LOG(FATAL) << torch::jit::kindToString(expr.kind());
+      LOG(FATAL) << torch::jit::kindToString(expr.kind()) << std::endl
+                 << expr.range();
       break;
   }
   return nullptr;

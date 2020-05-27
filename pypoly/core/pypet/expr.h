@@ -204,7 +204,8 @@ isl_multi_pw_aff* PypetArrayMember(isl_multi_pw_aff* base,
 PypetExpr* PypetExprAccessMember(PypetExpr* expr, isl_id* id);
 
 struct ExprPrettyPrinter {
-  static void Print(std::ostream& out, const PypetExpr* expr, int indent = 2);
+  static void Print(std::ostream& out, const PypetExpr* expr, int indent = 0);
+
   static __isl_give isl_printer* PrintExpr(const PypetExpr* expr,
                                            __isl_take isl_printer* p);
   static __isl_give isl_printer* PrintArguments(
@@ -216,17 +217,9 @@ struct ExprPrettyPrinter {
 
 static inline std::ostream& operator<<(std::ostream& out,
                                        const PypetExpr* expr) {
-  ExprPrettyPrinter::Print(out, expr, 0);
-  return out << std::endl;
-};
-
-static inline std::ostream& DumpPypetExprWithIndent(std::ostream& out,
-                                                    const PypetExpr* expr,
-                                                    int indent) {
-  ExprPrettyPrinter::Print(out, expr, indent);
-  return out << std::endl;
+  ExprPrettyPrinter::Print(out, expr);
+  return out;
 }
-
 }  // namespace pypet
 }  // namespace pypoly
 

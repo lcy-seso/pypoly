@@ -418,7 +418,7 @@ isl_multi_pw_aff* PypetArrayMember(isl_multi_pw_aff* base,
 
 void ExprPrettyPrinter::Print(std::ostream& out, const PypetExpr* expr,
                               int indent) {
-  CHECK(expr);
+  CHECK(expr) << "null pointer.";
 
   isl_printer* p = isl_printer_to_str(expr->ctx);
   p = isl_printer_set_indent(p, indent);
@@ -431,8 +431,8 @@ void ExprPrettyPrinter::Print(std::ostream& out, const PypetExpr* expr,
 
 __isl_give isl_printer* ExprPrettyPrinter::PrintExpr(
     const PypetExpr* expr, __isl_take isl_printer* p) {
-  CHECK(expr);
   CHECK(p);
+  if (!expr) return isl_printer_free(p);
 
   switch (expr->type) {
     case PypetExprType::PYPET_EXPR_INT:
