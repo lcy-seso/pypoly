@@ -20,6 +20,7 @@ __isl_give PypetTree* CreatePypetTree(isl_ctx* ctx,
   } else {
     tree->range = nullptr;
   }
+  tree->label = nullptr;
 
   return tree;
 }
@@ -44,7 +45,9 @@ __isl_null PypetTree* PypetTreeFree(__isl_take PypetTree* tree) {
   if (!tree) return nullptr;
   if (--tree->ref > 0) return nullptr;
 
-  isl_id_free(tree->label);
+  if (tree->label != nullptr) {
+    isl_id_free(tree->label);
+  }
 
   switch (tree->type) {
     case PYPET_TREE_ERROR:
@@ -70,8 +73,11 @@ __isl_null PypetTree* PypetTreeFree(__isl_take PypetTree* tree) {
       PypetExprFree(tree->ast.Loop.iv);
       PypetExprFree(tree->ast.Loop.init);
       PypetExprFree(tree->ast.Loop.inc);
+      PypetTreeFree(tree->ast.Loop.body);
+      break;
     case PYPET_TREE_IF_ELSE:
       PypetTreeFree(tree->ast.IfElse.else_body);
+      break;
     case PYPET_TREE_IF:
       PypetExprFree(tree->ast.IfElse.cond);
       PypetTreeFree(tree->ast.IfElse.if_body);

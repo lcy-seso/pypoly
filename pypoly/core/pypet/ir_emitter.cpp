@@ -337,20 +337,20 @@ PypetTree* EmitStatements::EmitFor(const torch::jit::For& stmt) {
   switch (args.size()) {
     case 1: {
       init = PypetExprFromIntVal(ctx, 0);
-      bound = ExtractAccessExpr(ctx, args[0]);
+      bound = ExtractExpr(ctx, args[0]);
       inc = PypetExprFromIntVal(ctx, 1);
       break;
     }
     case 2: {
-      init = ExtractAccessExpr(ctx, args[0]);
-      bound = ExtractAccessExpr(ctx, args[1]);
+      init = ExtractExpr(ctx, args[0]);
+      bound = ExtractExpr(ctx, args[1]);
       inc = PypetExprFromIntVal(ctx, 1);
       break;
     }
     case 3: {
-      init = ExtractAccessExpr(ctx, args[0]);
-      bound = ExtractAccessExpr(ctx, args[1]);
-      inc = ExtractAccessExpr(ctx, args[2]);
+      init = ExtractExpr(ctx, args[0]);
+      bound = ExtractExpr(ctx, args[1]);
+      inc = ExtractExpr(ctx, args[2]);
       break;
     }
     default:
