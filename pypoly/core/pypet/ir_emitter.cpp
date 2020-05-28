@@ -320,6 +320,7 @@ PypetTree* EmitStatements::EmitFor(const torch::jit::For& stmt) {
 
   PypetTree* tree =
       CreatePypetTree(ctx, &stmt.range(), PypetTreeType::PYPET_TREE_FOR);
+  tree->ast.Loop.declared = 1;
   PypetExpr* iv = ExtractAccessExpr(ctx, targets[0]);
   MarkWrite(iv);
 

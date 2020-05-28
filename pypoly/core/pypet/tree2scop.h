@@ -11,6 +11,8 @@
 namespace pypoly {
 namespace pypet {
 
+struct PypetState;
+
 struct PypetContext {
   PypetContext();
   ~PypetContext() = default;
@@ -39,23 +41,47 @@ struct TreeToScop {
   isl_ctx* ctx;
 
   __isl_keep PypetScop* ToScop(__isl_take PypetTree* tree,
-                               __isl_take PypetContext* pc);
+                               __isl_take PypetContext* pc,
+                               __isl_take PypetState* state);
   __isl_keep PypetScop* ScopFromBlock(__isl_keep PypetTree* tree,
-                                      __isl_keep PypetContext* pc);
+                                      __isl_keep PypetContext* pc,
+                                      __isl_take PypetState* state);
   __isl_keep PypetScop* ScopFromBreak(__isl_keep PypetTree* tree,
-                                      __isl_keep PypetContext* pc);
+                                      __isl_keep PypetContext* pc,
+                                      __isl_take PypetState* state);
   __isl_keep PypetScop* ScopFromContinue(__isl_keep PypetTree* tree,
-                                         __isl_keep PypetContext* pc);
+                                         __isl_keep PypetContext* pc,
+                                         __isl_take PypetState* state);
   __isl_keep PypetScop* ScopFromDecl(__isl_keep PypetTree* tree,
-                                     __isl_keep PypetContext* pc);
+                                     __isl_keep PypetContext* pc,
+                                     __isl_take PypetState* state);
   __isl_keep PypetScop* ScopFromTreeExpr(__isl_keep PypetTree* tree,
-                                         __isl_keep PypetContext* pc);
+                                         __isl_keep PypetContext* pc,
+                                         __isl_take PypetState* state);
   __isl_keep PypetScop* ScopFromReturn(__isl_keep PypetTree* tree,
-                                       __isl_keep PypetContext* pc);
+                                       __isl_keep PypetContext* pc,
+                                       __isl_take PypetState* state);
   __isl_keep PypetScop* ScopFromIf(__isl_keep PypetTree* tree,
-                                   __isl_keep PypetContext* pc);
+                                   __isl_keep PypetContext* pc,
+                                   __isl_take PypetState* state);
   __isl_keep PypetScop* ScopFromFor(__isl_keep PypetTree* tree,
-                                    __isl_keep PypetContext* pc);
+                                    __isl_keep PypetContext* pc,
+                                    __isl_take PypetState* state);
+
+  __isl_keep PypetScop* ScopFromAffineFor(__isl_keep PypetTree* tree,
+                                          __isl_take isl_pw_aff* init_val,
+                                          __isl_take isl_pw_aff* pa_inc,
+                                          __isl_take isl_val* inc,
+                                          __isl_take PypetContext* pc,
+                                          __isl_take PypetState* state);
+
+  __isl_keep PypetScop* ScopFromAffineForInit(__isl_keep PypetTree* tree,
+                                              __isl_take isl_pw_aff* init_val,
+                                              __isl_take isl_pw_aff* pa_inc,
+                                              __isl_take isl_val* inc,
+                                              __isl_keep PypetContext* pc_init,
+                                              __isl_take PypetContext* pc,
+                                              __isl_take PypetState* state);
 };
 
 }  // namespace pypet

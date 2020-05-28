@@ -11,6 +11,8 @@ namespace pypet {
 struct PypetScop;
 struct PypetExpr;
 struct PypetTree;
+struct PypetContext;
+struct PypetState;
 
 struct PypetArray {
   PypetArray(){};
@@ -58,6 +60,11 @@ struct PypetScop {
 
   PypetScop() = default;
   ~PypetScop() = default;
+
+  void ResetSkips() {}
+  void ResolveNested() {}
+  void SetIndependence(PypetTree*, isl_set*, int, PypetContext*, PypetState*) {}
+  void RestrictContext(isl_set*) {}
 
   // program parameters. A unit set.
   isl_set* context;
