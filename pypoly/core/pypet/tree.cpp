@@ -135,6 +135,78 @@ int PypetTreeForeachSubTree(
   return 0;
 }
 
+struct ForeachExprData {
+  std::function<int(PypetExpr*, void*)> func;
+  void* user;
+};
+
+int ForeachExpr(PypetTree* tree, void* user) {
+  CHECK(tree);
+  ForeachExprData* data = static_cast<ForeachExprData*>(user);
+  CHECK(data);
+  const std::function<int(PypetExpr*, void*)>& func_user = data->func;
+  void* data_user = data->user;
+  switch (tree->type) {
+    case PypetTreeType::PYPET_TREE_EXPR:
+    case PypetTreeType::PYPET_TREE_RETURN:
+      if (func_user(tree->ast.Expr.expr, data_user) < 0) {
+        return -1;
+      }
+      break;
+    case PypetTreeType::PYPET_TREE_DECL:
+    case PypetTreeType::PYPET_TREE_DECL_INIT:
+      UNIMPLEMENTED();
+      break;
+    case PypetTreeType::PYPET_TREE_IF:
+    case PypetTreeType::PYPET_TREE_IF_ELSE:
+      if (func_user(tree->ast.IfElse.cond, data_user) < 0) {
+        return -1;
+      }
+      break;
+    case PypetTreeType::PYPET_TREE_FOR:
+      if (func_user(tree->ast.Loop.iv, data_user) < 0) {
+        return -1;
+      }
+      if (func_user(tree->ast.Loop.init, data_user) < 0) {
+        return -1;
+      }
+      if (func_user(tree->ast.Loop.cond, data_user) < 0) {
+        return -1;
+      }
+      if (func_user(tree->ast.Loop.inc, data_user) < 0) {
+        return -1;
+      }
+      break;
+    case PypetTreeType::PYPET_TREE_BLOCK:
+    case PypetTreeType::PYPET_TREE_BREAK:
+    case PypetTreeType::PYPET_TREE_CONTINUE:
+      break;
+    case PypetTreeType::PYPET_TREE_ERROR:
+    default:
+      return -1;
+  }
+  return 0;
+}
+
+int PypetTreeForeachExpr(
+    __isl_keep PypetTree* tree,
+    const std::function<int(PypetExpr* expr, void* user)>& fn, void* user) {
+  struct ForeachExprData data = {fn, user};
+  return PypetTreeForeachSubTree(tree, &ForeachExpr, &data);
+}
+
+int ForeachAccessExpr(PypetExpr* expr, void* user) {
+  struct ForeachExprData* data = static_cast<ForeachExprData*>(user);
+  return PypetExprForeachAccessExpr(expr, data->func, data->user);
+}
+
+int PypetTreeForeachAccessExpr(
+    PypetTree* tree, const std::function<int(PypetExpr* expr, void* user)>& fn,
+    void* user) {
+  struct ForeachExprData data = {fn, user};
+  return PypetTreeForeachExpr(tree, &ForeachAccessExpr, &data);
+}
+
 void TreePrettyPrinter::Print(std::ostream& out,
                               const __isl_keep PypetTree* tree, int indent) {
   CHECK(tree);

@@ -23,6 +23,8 @@ struct PypetContext {
   // anywhere in "tree" or in any of the size expressions for any of the arrays
   // accessed in "tree".
   isl_id_to_pw_aff* assignments;
+  bool allow_nested;
+  std::map<PypetExpr*, isl_pw_aff*> extracted_affine;
 };
 
 __isl_give PypetContext* CreatePypetContext(__isl_take isl_set* domain);

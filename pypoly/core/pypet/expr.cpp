@@ -416,6 +416,40 @@ isl_multi_pw_aff* PypetArrayMember(isl_multi_pw_aff* base,
   return access;
 }
 
+int PypetExprForeachExprOfType(PypetExpr* expr, PypetExprType type,
+                               const std::function<int(PypetExpr*, void*)>& fn,
+                               void* user) {
+  CHECK(expr);
+  for (int i = 0; i < expr->arg_num; ++i) {
+    if (PypetExprForeachExprOfType(expr->args[i], type, fn, user) < 0) {
+      return -1;
+    }
+  }
+  if (expr->type == type) {
+    return fn(expr, user);
+  } else {
+    return 0;
+  }
+}
+
+int PypetExprForeachAccessExpr(PypetExpr* expr,
+                               const std::function<int(PypetExpr*, void*)>& fn,
+                               void* user) {
+  return PypetExprForeachExprOfType(expr, PypetExprType::PYPET_EXPR_ACCESS, fn,
+                                    user);
+}
+
+int PypetExprIsScalarAccess(PypetExpr* expr) {
+  CHECK(expr);
+  if (expr->type != PypetExprType::PYPET_EXPR_ACCESS) {
+    return 0;
+  }
+  if (isl_multi_pw_aff_range_is_wrapping(expr->acc.index)) {
+    return 0;
+  }
+  return expr->acc.depth == 0;
+}
+
 void ExprPrettyPrinter::Print(std::ostream& out, const PypetExpr* expr,
                               int indent) {
   CHECK(expr) << "null pointer.";
@@ -427,6 +461,22 @@ void ExprPrettyPrinter::Print(std::ostream& out, const PypetExpr* expr,
   p = PrintExpr(expr, p);
   out << std::string(isl_printer_get_str(p));
   isl_printer_free(p);
+}
+
+bool PypetExprIsAffine(PypetExpr* expr) {
+  CHECK(expr);
+  CHECK(expr->type == PypetExprType::PYPET_EXPR_ACCESS);
+  int has_id = isl_multi_pw_aff_has_tuple_id(expr->acc.index, isl_dim_out);
+  CHECK_GE(has_id, 0);
+  return !has_id;
+}
+
+isl_pw_aff* PypetExprGetAffine(PypetExpr* expr) {
+  CHECK(PypetExprIsAffine(expr));
+  isl_multi_pw_aff* multi_pw_aff = expr->acc.index;
+  isl_pw_aff* pw_aff = isl_multi_pw_aff_get_pw_aff(multi_pw_aff, 0);
+  isl_multi_pw_aff_free(multi_pw_aff);
+  return pw_aff;
 }
 
 __isl_give isl_printer* ExprPrettyPrinter::PrintExpr(

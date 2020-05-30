@@ -21,12 +21,14 @@ enum PypetOpType {
   PYPET_MUL,
   PYPET_DIV,
   PYPET_MOD,
+  PYPET_MINUS,
   PYPET_EQ,
   PYPET_NE,
   PYPET_LE,
   PYPET_GE,
   PYPET_LT,
   PYPET_GT,
+  PYPET_COND,
   PYPET_AND,
   PYPET_XOR,
   PYPET_OR,
@@ -44,12 +46,14 @@ static constexpr const char* op_type_to_string[] = {
     [PYPET_MUL] = "*",
     [PYPET_DIV] = "/",
     [PYPET_MOD] = "%",
+    [PYPET_MINUS] = "-",
     [PYPET_EQ] = "==",
     [PYPET_NE] = "!=",
     [PYPET_LE] = "<=",
     [PYPET_GE] = ">=",
     [PYPET_LT] = "<",
     [PYPET_GT] = ">",
+    [PYPET_COND] = "?:",
     [PYPET_AND] = "&",
     [PYPET_XOR] = "^",
     [PYPET_OR] = "or",
@@ -202,6 +206,20 @@ isl_multi_pw_aff* PypetArrayMember(isl_multi_pw_aff* base,
                                    isl_multi_pw_aff* field);
 
 PypetExpr* PypetExprAccessMember(PypetExpr* expr, isl_id* id);
+
+int PypetExprForeachExprOfType(PypetExpr* expr, PypetExprType type,
+                               const std::function<int(PypetExpr*, void*)>& fn,
+                               void* user);
+
+int PypetExprForeachAccessExpr(PypetExpr* expr,
+                               const std::function<int(PypetExpr*, void*)>& fn,
+                               void* user);
+
+int PypetExprIsScalarAccess(PypetExpr* expr);
+
+bool PypetExprIsAffine(PypetExpr* expr);
+
+isl_pw_aff* PypetExprGetAffine(PypetExpr* expr);
 
 struct ExprPrettyPrinter {
   static void Print(std::ostream& out, const PypetExpr* expr, int indent = 0);

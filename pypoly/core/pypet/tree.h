@@ -98,10 +98,20 @@ __isl_give PypetTree* CreatePypetTree(isl_ctx* ctx,
 __isl_give PypetTree* CreatePypetTreeBlock(isl_ctx* ctx, int block, int n);
 __isl_null PypetTree* PypetTreeFree(__isl_take PypetTree* tree);
 
+int ForeachExpr(PypetTree* tree, void* user);
+
 int PypetTreeForeachSubTree(
     __isl_keep PypetTree* tree,
     const std::function<int(PypetTree* tree, void* user)>& fn,
     void* user /* points to user data that can be any type.*/);
+
+int PypetTreeForeachExpr(
+    __isl_keep PypetTree* tree,
+    const std::function<int(PypetExpr* expr, void* user)>& fn, void* user);
+
+int PypetTreeForeachAccessExpr(
+    PypetTree* tree, const std::function<int(PypetExpr* expr, void* user)>& fn,
+    void* user);
 
 struct TreePrettyPrinter {
   static void Print(std::ostream& out, const __isl_keep PypetTree* tree,
