@@ -479,6 +479,64 @@ isl_pw_aff* PypetExprGetAffine(PypetExpr* expr) {
   return pw_aff;
 }
 
+bool PypetExpr::IsComparison() {
+  CHECK(type == PypetExprType::PYPET_EXPR_OP);
+  switch (op) {
+    case PypetOpType::PYPET_EQ:
+    case PypetOpType::PYPET_NE:
+    case PypetOpType::PYPET_LE:
+    case PypetOpType::PYPET_GE:
+    case PypetOpType::PYPET_LT:
+    case PypetOpType::PYPET_GT:
+      return true;
+    default:
+      return false;
+  }
+}
+
+bool PypetExpr::IsBoolean() {
+  // TODO(yizhu1): add support for land, lor and lnot
+  return false;
+}
+
+bool PypetExpr::IsMin() {
+  if (type != PypetExprType::PYPET_EXPR_OP) {
+    return false;
+  }
+  if (op != PypetOpType::PYPET_APPLY) {
+    return false;
+  }
+  if (arg_num != 3) {
+    return false;
+  }
+  isl_space* space = isl_multi_pw_aff_get_space(acc.index);
+  isl_id* id = isl_space_get_tuple_id(space, isl_dim_out);
+
+  if (strcmp(isl_id_get_name(id), "min") != 0) {
+    return false;
+  }
+  return true;
+}
+
+bool PypetExpr::IsMax() {
+  if (type != PypetExprType::PYPET_EXPR_OP) {
+    return false;
+  }
+  if (op != PypetOpType::PYPET_APPLY) {
+    return false;
+  }
+  if (arg_num != 3) {
+    return false;
+  }
+  isl_space* space = isl_multi_pw_aff_get_space(acc.index);
+  isl_id* id = isl_space_get_tuple_id(space, isl_dim_out);
+
+  if (strcmp(isl_id_get_name(id), "max") != 0) {
+    return false;
+  }
+  return true;
+}
+
 __isl_give isl_printer* ExprPrettyPrinter::PrintExpr(
     const PypetExpr* expr, __isl_take isl_printer* p) {
   CHECK(p);

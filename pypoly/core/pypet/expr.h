@@ -132,6 +132,11 @@ struct PypetExpr {
   PypetExpr() = default;
   ~PypetExpr() = default;
 
+  bool IsComparison();
+  bool IsBoolean();
+  bool IsMin();
+  bool IsMax();
+
   int ref;
   isl_ctx* ctx;
 
