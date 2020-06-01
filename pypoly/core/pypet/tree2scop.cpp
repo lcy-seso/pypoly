@@ -466,14 +466,24 @@ isl_set* PypetContextGetDomain(PypetContext* context) {
   return isl_set_copy(context->domain);
 }
 
-PypetExpr* PypetExprInsertDomain(PypetExpr* expr, isl_space* space) {
-  // TODO
-  return nullptr;
+PypetExpr* AccessPlugInAffineRead(PypetExpr* expr, void* user) {
+  CHECK(expr->type == PypetExprType::PYPET_EXPR_ACCESS);
+  PypetContext* context = static_cast<PypetContext*>(user);
+  if (expr->acc.write) {
+    return expr;
+  }
+  if (!PypetExprIsScalarAccess(expr)) {
+    return expr;
+  }
+
+  isl_pw_aff* pw_aff = PypetExprExtractAffine(expr, context);
+  PypetExprFree(expr);
+  return PypetExprFromIndex(isl_multi_pw_aff_from_pw_aff(pw_aff));
 }
 
 PypetExpr* PlugInAffineRead(PypetExpr* expr, PypetContext* context) {
-  // TODO
-  return nullptr;
+  return PypetExprMapExprOfType(expr, PypetExprType::PYPET_EXPR_ACCESS,
+                                AccessPlugInAffineRead, context);
 }
 
 PypetExpr* PypetExprPlugInArgs(PypetExpr* expr, PypetContext* context) {
@@ -497,7 +507,7 @@ PypetExpr* PlugInSummaries(PypetExpr* expr, PypetContext* context) {
 }
 
 PypetExpr* PypetContextEvaluateExpr(PypetContext* context, PypetExpr* expr) {
-  expr = PypetExprInsertDomain(expr, PypetContextGetSpace(context));
+  expr = expr->InsertDomain(PypetContextGetSpace(context));
   expr = PlugInAffineRead(expr, context);
   expr = PypetExprPlugInArgs(expr, context);
   expr = PlugInAffine(expr, context);

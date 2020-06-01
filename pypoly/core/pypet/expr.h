@@ -136,6 +136,23 @@ struct PypetExpr {
   bool IsBoolean();
   bool IsMin();
   bool IsMax();
+  bool HasRelevantAccessRelation();
+
+  PypetExpr* InsertDomain(isl_space* space);
+
+  PypetExpr* Dup();
+  PypetExpr* Cow();
+
+  PypetExpr* RemoveDuplicateArgs();
+  bool IsEqual(PypetExpr* rhs);
+  PypetExpr* EquateArg(int i, int j);
+
+  PypetExpr* AccessUpdateDomain(isl_multi_pw_aff* update);
+  PypetExpr* AccessPullbackMultiAff(isl_multi_aff* multi_aff);
+  PypetExpr* AccessPullbackMultiPwAff(isl_multi_pw_aff* multi_pw_aff);
+  PypetExpr* AccessProjectOutArg(int dim, int pos);
+
+  PypetExpr* PlugIn(int pos, isl_pw_aff* value);
 
   int ref;
   isl_ctx* ctx;
@@ -225,6 +242,10 @@ int PypetExprIsScalarAccess(PypetExpr* expr);
 bool PypetExprIsAffine(PypetExpr* expr);
 
 isl_pw_aff* PypetExprGetAffine(PypetExpr* expr);
+
+PypetExpr* PypetExprMapExprOfType(
+    PypetExpr* expr, PypetExprType type,
+    const std::function<PypetExpr*(PypetExpr*, void*)>& fn, void* user);
 
 struct ExprPrettyPrinter {
   static void Print(std::ostream& out, const PypetExpr* expr, int indent = 0);

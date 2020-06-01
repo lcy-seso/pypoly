@@ -32,6 +32,19 @@ __isl_null PypetFuncSummary* PypetFuncSummaryFree(
   }
   return nullptr;
 }
+
+int MultiPwAffIsEqual(isl_multi_pw_aff* lhs, isl_multi_pw_aff* rhs) {
+  int equal = isl_multi_pw_aff_plain_is_equal(lhs, rhs);
+  if (equal < 0 || equal) {
+    return equal;
+  }
+  rhs = isl_multi_pw_aff_copy(rhs);
+  rhs = isl_multi_pw_aff_align_params(rhs, isl_multi_pw_aff_get_space(lhs));
+  equal = isl_multi_pw_aff_plain_is_equal(lhs, rhs);
+  isl_multi_pw_aff_free(rhs);
+  return equal;
+}
+
 }  // namespace
 
 __isl_give PypetExpr* PypetExprAlloc(isl_ctx* ctx, PypetExprType expr_type) {
@@ -450,6 +463,20 @@ int PypetExprIsScalarAccess(PypetExpr* expr) {
   return expr->acc.depth == 0;
 }
 
+PypetExpr* PypetExprMapExprOfType(
+    PypetExpr* expr, PypetExprType type,
+    const std::function<PypetExpr*(PypetExpr*, void*)>& fn, void* user) {
+  for (int i = 0; i < expr->arg_num; ++i) {
+    PypetExpr* arg = PypetExprCopy(expr->args[i]);
+    arg = PypetExprMapExprOfType(arg, type, fn, user);
+    expr = PypetExprSetArg(expr, i, arg);
+  }
+  if (expr->type == type) {
+    expr = fn(expr, user);
+  }
+  return expr;
+}
+
 void ExprPrettyPrinter::Print(std::ostream& out, const PypetExpr* expr,
                               int indent) {
   CHECK(expr) << "null pointer.";
@@ -535,6 +562,311 @@ bool PypetExpr::IsMax() {
     return false;
   }
   return true;
+}
+
+PypetExpr* PypetExpr::InsertDomain(isl_space* space) {
+  space = isl_space_from_domain(space);
+  isl_multi_pw_aff* multi_pw_aff = isl_multi_pw_aff_zero(space);
+  return AccessUpdateDomain(multi_pw_aff);
+}
+
+PypetExpr* PypetExpr::AccessUpdateDomain(isl_multi_pw_aff* update) {
+  PypetExpr* expr = Cow();
+  CHECK(expr);
+  CHECK(expr->type == PypetExprType::PYPET_EXPR_ACCESS);
+
+  update = isl_multi_pw_aff_copy(update);
+  if (expr->arg_num > 0) {
+    isl_space* space = isl_multi_pw_aff_get_space(expr->acc.index);
+    space = isl_space_domain(space);
+    space = isl_space_unwrap(space);
+    space = isl_space_range(space);
+    space = isl_space_map_from_set(space);
+    isl_multi_pw_aff* identity = isl_multi_pw_aff_identity(space);
+    update = isl_multi_pw_aff_product(update, identity);
+  }
+
+  for (int type = PypetExprAccessType::PYPET_EXPR_ACCESS_BEGIN;
+       type < PypetExprAccessType::PYPET_EXPR_ACCESS_END; ++type) {
+    if (expr->acc.access[type] == nullptr) {
+      continue;
+    }
+    expr->acc.access[type] = isl_union_map_preimage_domain_multi_pw_aff(
+        expr->acc.access[type], isl_multi_pw_aff_copy(update));
+    CHECK(expr->acc.access[type]);
+  }
+  return expr;
+}
+
+PypetExpr* PypetExpr::Dup() {
+  PypetExpr* dup = PypetExprAlloc(ctx, type);
+  // TODO(yizhu1): fix type_size case
+  dup->arg_num = arg_num;
+  for (int i = 0; i < arg_num; ++i) {
+    dup = PypetExprSetArg(dup, i, PypetExprCopy(args[i]));
+  }
+
+  switch (type) {
+    case PypetExprType::PYPET_EXPR_ACCESS:
+      if (acc.ref_id) {
+        dup->acc.ref_id = isl_id_copy(acc.ref_id);
+      }
+      dup = PypetExprAccessSetIndex(dup, isl_multi_pw_aff_copy(acc.index));
+      dup->acc.depth = acc.depth;
+      for (int type = PypetExprAccessType::PYPET_EXPR_ACCESS_BEGIN;
+           type < PypetExprAccessType::PYPET_EXPR_ACCESS_END; ++type) {
+        if (acc.access[type] == nullptr) {
+          continue;
+        }
+        dup->acc.access[type] = isl_union_map_copy(acc.access[type]);
+      }
+      dup->acc.read = acc.read;
+      dup->acc.write = acc.write;
+      dup->acc.kill = acc.kill;
+      break;
+    case PypetExprType::PYPET_EXPR_CALL:
+      UNIMPLEMENTED();
+      break;
+    case PypetExprType::PYPET_EXPR_INT:
+      dup->i = isl_val_copy(i);
+      break;
+    case PypetExprType::PYPET_EXPR_OP:
+      dup->op = op;
+    default:
+      UNIMPLEMENTED();
+      break;
+  }
+  return dup;
+}
+
+PypetExpr* PypetExpr::Cow() {
+  if (ref == 1) {
+    hash = 0;
+    return this;
+  } else {
+    --ref;
+    return Dup();
+  }
+}
+
+PypetExpr* PypetExpr::RemoveDuplicateArgs() {
+  if (arg_num < 2) {
+    return this;
+  }
+  PypetExpr* expr = this;
+  for (int i = arg_num - 1; i >= 0; --i) {
+    for (int j = 0; j < i; ++j) {
+      if (args[i]->IsEqual(args[j])) {
+        expr = expr->EquateArg(j, i);
+        break;
+      }
+    }
+  }
+  return expr;
+}
+
+bool PypetExpr::HasRelevantAccessRelation() {
+  // TODO(yizhu1): fake killed, may read, may write
+  return false;
+}
+
+bool PypetExpr::IsEqual(PypetExpr* rhs) {
+  CHECK(rhs);
+  if (type != rhs->type) {
+    return false;
+  }
+  if (arg_num != rhs->arg_num) {
+    return false;
+  }
+  for (int i = 0; i < arg_num; ++i) {
+    if (!args[i]->IsEqual(rhs->args[i])) {
+      return false;
+    }
+  }
+  switch (type) {
+    case PypetExprType::PYPET_EXPR_INT:
+      if (!isl_val_eq(i, rhs->i)) {
+        return false;
+      }
+      break;
+    case PypetExprType::PYPET_EXPR_ACCESS:
+      if (acc.read != rhs->acc.read) {
+        return false;
+      }
+      if (acc.write != rhs->acc.write) {
+        return false;
+      }
+      if (acc.kill != rhs->acc.kill) {
+        return false;
+      }
+      if (acc.ref_id != rhs->acc.ref_id) {
+        return false;
+      }
+      if (!acc.index || !rhs->acc.index) {
+        return false;
+      }
+      if (!MultiPwAffIsEqual(acc.index, rhs->acc.index)) {
+        return false;
+      }
+      if (acc.depth != rhs->acc.depth) {
+        return false;
+      }
+      if (HasRelevantAccessRelation() != rhs->HasRelevantAccessRelation()) {
+        UNIMPLEMENTED();
+      }
+      for (int type = PypetExprAccessType::PYPET_EXPR_ACCESS_BEGIN;
+           type < PypetExprAccessType::PYPET_EXPR_ACCESS_END; ++type) {
+        if (!acc.access[type] != !rhs->acc.access[type]) {
+          return false;
+        }
+        if (!acc.access[type]) {
+          continue;
+        }
+        if (!isl_union_map_is_equal(acc.access[type], rhs->acc.access[type])) {
+          return false;
+        }
+      }
+      break;
+    case PypetExprType::PYPET_EXPR_OP:
+      if (op != rhs->op) {
+        return false;
+      }
+      break;
+    default:
+      UNIMPLEMENTED();
+      break;
+  }
+  return true;
+}
+
+PypetExpr* PypetExpr::EquateArg(int i, int j) {
+  if (i == j) {
+    return this;
+  }
+  if (i > j) {
+    return EquateArg(j, i);
+  }
+  CHECK_GE(i, 0);
+  CHECK_LT(j, arg_num);
+  isl_space* space = isl_multi_pw_aff_get_domain_space(acc.index);
+  space = isl_space_unwrap(space);
+  int in_dim = isl_space_dim(space, isl_dim_in);
+  isl_space_free(space);
+
+  i += in_dim;
+  j += in_dim;
+  space = isl_multi_pw_aff_get_domain_space(acc.index);
+  space = isl_space_map_from_set(space);
+  isl_multi_aff* multi_aff = isl_multi_aff_identity(space);
+  multi_aff =
+      isl_multi_aff_set_aff(multi_aff, j, isl_multi_aff_get_aff(multi_aff, i));
+
+  PypetExpr* expr = AccessPullbackMultiAff(multi_aff);
+  return expr->AccessProjectOutArg(in_dim, j - in_dim);
+}
+
+PypetExpr* PypetExpr::AccessPullbackMultiAff(isl_multi_aff* multi_aff) {
+  PypetExpr* expr = Cow();
+  CHECK(expr);
+  CHECK(multi_aff);
+  CHECK(expr->type == PypetExprType::PYPET_EXPR_ACCESS);
+  for (int type = PypetExprAccessType::PYPET_EXPR_ACCESS_BEGIN;
+       type < PypetExprAccessType::PYPET_EXPR_ACCESS_END; ++type) {
+    if (expr->acc.access[type] == nullptr) {
+      continue;
+    }
+    expr->acc.access[type] = isl_union_map_preimage_domain_multi_aff(
+        expr->acc.access[type], isl_multi_aff_copy(multi_aff));
+    CHECK(expr->acc.access[type]);
+  }
+  expr->acc.index =
+      isl_multi_pw_aff_pullback_multi_aff(expr->acc.index, multi_aff);
+  CHECK(expr->acc.index);
+  return expr;
+}
+
+PypetExpr* PypetExpr::AccessPullbackMultiPwAff(isl_multi_pw_aff* multi_pw_aff) {
+  PypetExpr* expr = Cow();
+  CHECK(expr);
+  CHECK(multi_pw_aff);
+  CHECK(expr->type == PypetExprType::PYPET_EXPR_ACCESS);
+  for (int type = PypetExprAccessType::PYPET_EXPR_ACCESS_BEGIN;
+       type < PypetExprAccessType::PYPET_EXPR_ACCESS_END; ++type) {
+    if (expr->acc.access[type] == nullptr) {
+      continue;
+    }
+    expr->acc.access[type] = isl_union_map_preimage_domain_multi_pw_aff(
+        expr->acc.access[type], isl_multi_pw_aff_copy(multi_pw_aff));
+    CHECK(expr->acc.access[type]);
+  }
+  expr->acc.index =
+      isl_multi_pw_aff_pullback_multi_pw_aff(expr->acc.index, multi_pw_aff);
+  CHECK(expr->acc.index);
+  return expr;
+}
+
+PypetExpr* PypetExpr::AccessProjectOutArg(int dim, int pos) {
+  PypetExpr* expr = Cow();
+  CHECK(expr);
+  CHECK(expr->type == PypetExprType::PYPET_EXPR_ACCESS);
+  CHECK_GE(pos, 0);
+  CHECK_LT(pos, expr->arg_num);
+  isl_bool involves =
+      isl_multi_pw_aff_involves_dims(expr->acc.index, isl_dim_in, dim + pos, 1);
+  CHECK(involves == 0);
+  isl_space* space = isl_multi_pw_aff_get_domain_space(expr->acc.index);
+  isl_map* map = isl_map_identity(isl_space_map_from_set(space));
+  map = isl_map_eliminate(map, isl_dim_out, dim + pos, 1);
+  isl_union_map* umap = isl_union_map_from_map(map);
+  for (int type = PypetExprAccessType::PYPET_EXPR_ACCESS_BEGIN;
+       type < PypetExprAccessType::PYPET_EXPR_ACCESS_END; ++type) {
+    if (!expr->acc.access[type]) {
+      continue;
+    }
+    expr->acc.access[type] = isl_union_map_apply_domain(
+        expr->acc.access[type], isl_union_map_copy(umap));
+    CHECK(expr->acc.access[type]);
+  }
+  isl_union_map_free(umap);
+
+  space = isl_multi_pw_aff_get_domain_space(expr->acc.index);
+  space = isl_space_unwrap(space);
+  isl_space* dom =
+      isl_space_map_from_set(isl_space_domain(isl_space_copy(space)));
+  isl_multi_aff* ma1 = isl_multi_aff_identity(dom);
+  if (expr->arg_num == 1) {
+    isl_multi_aff* ma2 = isl_multi_aff_zero(space);
+    ma1 = isl_multi_aff_range_product(ma1, ma2);
+  } else {
+    isl_space* ran = isl_space_map_from_set(isl_space_range(space));
+    isl_multi_aff* ma2 = isl_multi_aff_identity(ran);
+    ma2 = isl_multi_aff_drop_dims(ma2, isl_dim_in, pos, 1);
+    ma1 = isl_multi_aff_product(ma1, ma2);
+  }
+
+  expr = expr->AccessPullbackMultiAff(ma1);
+  PypetExprFree(expr->args[pos]);
+  for (int i = pos; i + 1 < expr->arg_num; ++i) {
+    expr->args[i] = expr->args[i + 1];
+  }
+  --expr->arg_num;
+  return expr;
+}
+
+PypetExpr* PypetExpr::PlugIn(int pos, isl_pw_aff* value) {
+  isl_space* space = isl_multi_pw_aff_get_space(acc.index);
+  space = isl_space_unwrap(isl_space_domain(space));
+  int in_dim = isl_space_dim(space, isl_dim_in);
+  isl_multi_aff* multi_aff = isl_multi_aff_domain_map(space);
+  value = isl_pw_aff_pullback_multi_aff(value, multi_aff);
+
+  space = isl_multi_pw_aff_get_space(acc.index);
+  space = isl_space_map_from_set(isl_space_domain(space));
+  isl_multi_pw_aff* multi_pw_aff = isl_multi_pw_aff_identity(space);
+  multi_pw_aff = isl_multi_pw_aff_set_pw_aff(multi_pw_aff, in_dim + pos, value);
+
+  PypetExpr* expr = AccessPullbackMultiPwAff(multi_pw_aff);
+  return expr->AccessProjectOutArg(in_dim, pos);
 }
 
 __isl_give isl_printer* ExprPrettyPrinter::PrintExpr(
