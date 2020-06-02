@@ -30,6 +30,23 @@ PypetContext* PypetContextCow(PypetContext* context) {
   return PypetContextDup(context);
 }
 
+isl_id* PypetExprAccessGetId(PypetExpr* expr) {
+  CHECK(expr);
+  CHECK(expr->type == PypetExprType::PYPET_EXPR_ACCESS);
+  if (isl_multi_pw_aff_range_is_wrapping(expr->acc.index)) {
+    isl_space* space = isl_multi_pw_aff_get_space(expr->acc.index);
+    space = isl_space_range(space);
+    while (space != nullptr && isl_space_is_wrapping(space)) {
+      space = isl_space_domain(isl_space_unwrap(space));
+    }
+    isl_id* id = isl_space_get_tuple_id(space, isl_dim_set);
+    isl_space_free(space);
+    return id;
+  } else {
+    return isl_multi_pw_aff_get_tuple_id(expr->acc.index, isl_dim_out);
+  }
+}
+
 PypetContext* ExtendDomain(PypetContext* context, isl_id* id) {
   CHECK(context);
   context = PypetContextCow(context);
@@ -47,7 +64,7 @@ bool PypetNestedInId(isl_id* id) {
     return false;
   }
   const char* name = isl_id_get_name(id);
-  return !strcmp(name, "__PypetExpr");
+  return !strcmp(name, "_PypetExpr");
 }
 
 bool PypetNestedInSpace(isl_space* space, int pos) {
@@ -142,67 +159,18 @@ PypetContext* PypetContextClearWritesInTree(PypetContext* context,
 }
 
 bool PypetContextIsAssigned(PypetContext* context, isl_id* id) {
-  return isl_id_to_pw_aff_has(context->assignments, id) > 0;
-}
-
-isl_multi_aff* PypetPrefixProjection(isl_space* space, int n) {
-  int dim = isl_space_dim(space, isl_dim_set);
-  return isl_multi_aff_project_out_map(space, isl_dim_set, n, dim - n);
-}
-
-isl_pw_aff* PypetContextGetValue(PypetContext* context, isl_id* id) {
-  CHECK(context);
-  CHECK(id);
-  isl_pw_aff* pa = isl_id_to_pw_aff_get(context->assignments, id);
-  int dim = isl_pw_aff_dim(pa, isl_dim_in);
-  if (dim == isl_set_dim(context->domain, isl_dim_set)) {
-    return pa;
-  }
-  isl_multi_aff* ma = PypetPrefixProjection(PypetContextGetSpace(context), dim);
-  pa = isl_pw_aff_pullback_multi_aff(pa, ma);
-  return pa;
-}
-
-void PypetExprFreeWrap(void* user) { PypetExprFree((PypetExpr*)user); }
-
-isl_id* PypetNestedPypetExpr(PypetExpr* expr) {
-  isl_id* id = isl_id_alloc(PypetExprGetCtx(expr), "__PypetExpr", expr);
-  id = isl_id_set_free_user(id, &PypetExprFreeWrap);
-  return id;
-}
-
-bool PypetNestedAnyInSpace(isl_space* space) {
-  int param_num = isl_space_dim(space, isl_dim_param);
-  for (int i = 0; i < param_num; ++i) {
-    if (PypetNestedInSpace(space, i)) {
-      return true;
-    }
-  }
+  // TODO
   return false;
 }
 
-isl_pw_aff* NestedAccess(PypetExpr* expr, PypetContext* context) {
-  CHECK(expr);
-  CHECK(context);
-  CHECK(context->allow_nested);
-  CHECK(expr->type == PypetExprType::PYPET_EXPR_ACCESS);
-  if (expr->arg_num > 0) {
-    return NonAffine(PypetContextGetSpace(context));
-  }
-  isl_space* space = PypetExprAccessGetParameterSpace(expr);
-  bool nested = PypetNestedAnyInSpace(space);
-  isl_space_free(space);
-  if (nested) {
-    return NonAffine(PypetContextGetSpace(context));
-  }
-  isl_id* id = PypetNestedPypetExpr(PypetExprCopy(expr));
-  space = PypetContextGetSpace(context);
-  space = isl_space_insert_dims(space, isl_dim_param, 0, 1);
+isl_pw_aff* PypetContextGetValue(PypetContext* context, isl_id* id) {
+  // TODO
+  return nullptr;
+}
 
-  space = isl_space_set_dim_id(space, isl_dim_param, 0, id);
-  isl_local_space* ls = isl_local_space_from_space(space);
-  isl_aff* aff = isl_aff_var_on_domain(ls, isl_dim_param, 0);
-  return isl_pw_aff_from_aff(aff);
+isl_pw_aff* NestedAccess(PypetExpr* expr, PypetContext* context) {
+  // TODO
+  return nullptr;
 }
 
 isl_pw_aff* ExtractAffineFromAccess(PypetExpr* expr, PypetContext* context) {
@@ -555,51 +523,23 @@ PypetExpr* PypetExprPlugInArgs(PypetExpr* expr, PypetContext* context) {
   return expr;
 }
 
-int CheckOnlyAffine(PypetExpr* expr, void* user) {
-  int* only_affine = static_cast<int*>(user);
+// TODO(yizhu1): check correctness
+void CheckOnlyAffine(PypetExpr* expr, int* only_affine) {
   if (!PypetExprIsAffine(expr)) {
     *only_affine = 0;
-    return -1;
   } else {
     *only_affine = 1;
-    return 0;
   }
-}
-
-bool HasOnlyAffineAccessSubExpr(PypetExpr* expr) {
-  int only_affine = -1;
-  PypetExprForeachAccessExpr(expr, &CheckOnlyAffine, &only_affine);
-  return only_affine > 0;
-}
-
-PypetExpr* ExprPlugInAffine(PypetExpr* expr, void* user) {
-  CHECK(expr);
-  PypetExprType type = expr->type;
-  PypetContext* context = static_cast<PypetContext*>(user);
-  if (type != PypetExprType::PYPET_EXPR_CALL &&
-      type != PypetExprType::PYPET_EXPR_OP) {
-    return expr;
-  }
-  bool contains_access = HasOnlyAffineAccessSubExpr(expr);
-  if (!contains_access) {
-    return expr;
-  }
-
-  isl_pw_aff* pw_aff = PypetExprExtractAffine(expr, context);
-  CHECK_EQ(isl_pw_aff_involves_nan(pw_aff), 0);
-
-  PypetExprFree(expr);
-  expr = PypetExprFromIndex(isl_multi_pw_aff_from_pw_aff(pw_aff));
-  return expr;
 }
 
 PypetExpr* PlugInAffine(PypetExpr* expr, PypetContext* context) {
-  return PypetExprMapTopDown(expr, ExprPlugInAffine, context);
+  // TODO
+  return nullptr;
 }
 
 PypetExpr* MergeConditionalAccesses(PypetExpr* expr) {
-  // TODO(yizhu1): PYPET_COND
-  return expr;
+  // TODO
+  return nullptr;
 }
 
 PypetExpr* PlugInSummaries(PypetExpr* expr, PypetContext* context) {
@@ -617,141 +557,44 @@ PypetExpr* PypetContextEvaluateExpr(PypetContext* context, PypetExpr* expr) {
   return expr;
 }
 
-PypetContext* PypetContextSetAllowNested(PypetContext* context, bool val) {
-  CHECK(context);
-  if (context->allow_nested == val) {
-    return context;
-  }
-  context = PypetContextCow(context);
-  CHECK(context);
-  context->allow_nested = val;
-  return context;
-}
-
-int IsAssigned(PypetExpr* expr, PypetTree* tree) {
-  isl_id* id = PypetExprAccessGetId(expr);
-  int assigned = PypetTreeWrites(tree, id);
-  isl_id_free(id);
-  return assigned;
-}
-
-bool PypetNestedAnyInPwAff(isl_pw_aff* pa) {
-  isl_space* space = isl_pw_aff_get_space(pa);
-  bool nested = PypetNestedAnyInSpace(space);
-  isl_space_free(space);
-  return nested;
-}
-
-PypetExpr* PypetNestedExtractExpr(isl_id* id) {
-  return PypetExprCopy(static_cast<PypetExpr*>(isl_id_get_user(id)));
+PypetContext* PypetContextSetAllowNested(PypetContext* pc, int val) {
+  // TODO
+  return nullptr;
 }
 
 bool IsNestedAllowed(isl_pw_aff* pa, PypetTree* tree) {
-  CHECK(tree);
-  if (!PypetNestedAnyInPwAff(pa)) {
-    return true;
-  }
-  if (PypetTreeHasContinueOrBreak(tree)) {
-    return false;
-  }
-  int param_num = isl_pw_aff_dim(pa, isl_dim_param);
-  for (int i = 0; i < param_num; ++i) {
-    isl_id* id = isl_pw_aff_get_dim_id(pa, isl_dim_param, i);
-    if (!PypetNestedExtractExpr(id)) {
-      isl_id_free(id);
-      continue;
-    }
-    PypetExpr* expr = PypetNestedExtractExpr(id);
-    bool allowed = expr->type == PypetExprType::PYPET_EXPR_ACCESS &&
-                   !IsAssigned(expr, tree);
-    PypetExprFree(expr);
-    isl_id_free(id);
-    if (!allowed) {
-      return false;
-    }
-  }
-  return true;
+  // TODO
+  return false;
 }
 
-bool CanWrap(isl_set* cond, PypetExpr* iv, isl_val* inc) {
-  isl_set* test = isl_set_copy(cond);
-  isl_ctx* ctx = isl_set_get_ctx(test);
-  isl_val* limit = nullptr;
-  if (isl_val_is_neg(inc)) {
-    limit = isl_val_zero(ctx);
-  } else {
-    limit = isl_val_int_from_ui(ctx, iv->type_size);
-    limit = isl_val_2exp(limit);
-    limit = isl_val_sub_ui(limit, 1);
-  }
-  test = isl_set_fix_val(cond, isl_dim_set, 0, limit);
-  bool ret = !isl_set_is_empty(test);
-  isl_set_free(test);
-  return ret;
+bool CanWrap(isl_set* cond, PypetExpr* expr, isl_val* inc) {
+  // TODO
+  return false;
 }
 
-isl_set* EnforceSubset(isl_set* lhs, isl_set* rhs) {
-  int pos = isl_set_dim(lhs, isl_dim_set) - 1;
-  lhs = isl_set_subtract(lhs, rhs);
-  lhs = isl_set_eliminate(lhs, isl_dim_set, pos, 1);
-  return isl_set_complement(lhs);
+isl_set* EnforceSubset(isl_set* init_val_map, isl_set* valid_cond) {
+  // TODO
+  return nullptr;
 }
 
-isl_set* StridedDomain(isl_pw_aff* init, isl_val* inc) {
-  int dim = isl_pw_aff_dim(init, isl_dim_in);
-
-  init = isl_pw_aff_add_dims(init, isl_dim_in, 1);
-  isl_space* space = isl_pw_aff_get_domain_space(init);
-  isl_local_space* ls = isl_local_space_from_space(space);
-  isl_aff* aff = isl_aff_zero_on_domain(isl_local_space_copy(ls));
-  aff = isl_aff_add_coefficient_val(aff, isl_dim_in, dim, inc);
-  init = isl_pw_aff_add(init, isl_pw_aff_from_aff(aff));
-
-  aff = isl_aff_var_on_domain(ls, isl_dim_set, dim - 1);
-  isl_set* set = isl_pw_aff_eq_set(isl_pw_aff_from_aff(aff), init);
-
-  set = isl_set_lower_bound_si(set, isl_dim_set, dim, 0);
-  set = isl_set_project_out(set, isl_dim_set, dim, 1);
-  return set;
+isl_set* StridedDomain(isl_pw_aff* init_val, isl_val* inc) {
+  // TODO
+  return nullptr;
 }
 
-isl_multi_aff* MapToLast(PypetContext* pc, int loop_nr, isl_id* id) {
-  char name[50];
-  isl_space* space = PypetContextGetSpace(pc);
-  int pos = isl_space_dim(space, isl_dim_set) - 1;
-  isl_local_space* ls = isl_local_space_from_space(space);
-  isl_aff* aff = isl_aff_var_on_domain(ls, isl_dim_set, pos);
-  isl_multi_aff* multi_aff = isl_multi_aff_from_aff(aff);
-
-  isl_id* label = nullptr;
-  if (id) {
-    label = isl_id_copy(id);
-  } else {
-    snprintf(name, sizeof(name), "L_%d", loop_nr);
-    label = isl_id_alloc(isl_set_get_ctx(pc->domain), name, nullptr);
-  }
-  multi_aff = isl_multi_aff_set_tuple_id(multi_aff, isl_dim_out, label);
-  return multi_aff;
+isl_multi_aff* MapToLast(PypetContext* pc, int, isl_id* label) {
+  // TODO
+  return nullptr;
 }
 
-isl_set* ValidOnNext(isl_set* cond, isl_set* dom, isl_val* inc) {
-  int pos = isl_set_dim(dom, isl_dim_set) - 1;
-  isl_space* space = isl_set_get_space(dom);
-  space = isl_space_map_from_set(space);
-  isl_multi_aff* multi_aff = isl_multi_aff_identity(space);
-  isl_aff* aff = isl_multi_aff_get_aff(multi_aff, pos);
-  aff = isl_aff_add_constant_val(aff, inc);
-  multi_aff = isl_multi_aff_set_aff(multi_aff, pos, aff);
-  cond = isl_set_preimage_multi_aff(cond, multi_aff);
-  return EnforceSubset(dom, cond);
+isl_set* ValidOnNext(isl_set* valid_cond, isl_set* domain, isl_val* inc) {
+  // TODO
+  return nullptr;
 }
 
 PypetContext* PypetContextIntersectDomain(PypetContext* pc, isl_set* domain) {
-  CHECK(pc);
-  pc = PypetContextCow(pc);
-  pc->domain = isl_set_intersect(pc->domain, domain);
-  CHECK(pc->domain);
-  return pc;
+  // TODO
+  return nullptr;
 }
 
 }  // namespace
@@ -851,7 +694,7 @@ __isl_keep PypetScop* TreeToScop::ScopFromAffineFor(
   PypetExpr* cond_expr = PypetExprCopy(tree->ast.Loop.cond);
   cond_expr = PypetContextEvaluateExpr(pc, cond_expr);
   PypetContext* pc_nested = PypetContextCopy(pc);
-  pc_nested = PypetContextSetAllowNested(pc_nested, true);
+  pc_nested = PypetContextSetAllowNested(pc_nested, 1);
 
   isl_pw_aff* pa = PypetExprExtractAffineCondition(cond_expr, pc_nested);
   FreePypetContext(pc_nested);
@@ -897,7 +740,8 @@ __isl_keep PypetScop* TreeToScop::ScopFromAffineFor(
   cond = isl_set_align_params(cond, isl_set_get_space(domain));
   domain = isl_set_intersect(domain, cond);
 
-  isl_multi_aff* sched = MapToLast(pc, state->loop_num++, tree->label);
+  // isl_multi_aff* sched = MapToLast(pc, state->n_loop++, tree->label);
+  isl_multi_aff* sched = MapToLast(pc, -1, tree->label);
   if (isl_val_is_neg(inc)) {
     sched = isl_multi_aff_neg(sched);
   }

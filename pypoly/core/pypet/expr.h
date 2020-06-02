@@ -247,6 +247,20 @@ PypetExpr* PypetExprMapExprOfType(
     PypetExpr* expr, PypetExprType type,
     const std::function<PypetExpr*(PypetExpr*, void*)>& fn, void* user);
 
+PypetExpr* PypetExprMapTopDown(
+    PypetExpr* expr, const std::function<PypetExpr*(PypetExpr*, void*)>& fn,
+    void* user);
+
+int PypetExprWrites(PypetExpr* expr, isl_id* id);
+
+isl_id* PypetExprAccessGetId(PypetExpr* expr);
+
+isl_pw_aff* NonAffine(isl_space* space);
+
+isl_space* PypetExprAccessGetParameterSpace(PypetExpr* expr);
+
+isl_ctx* PypetExprGetCtx(PypetExpr* expr);
+
 struct ExprPrettyPrinter {
   static void Print(std::ostream& out, const PypetExpr* expr, int indent = 0);
 

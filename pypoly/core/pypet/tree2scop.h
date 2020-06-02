@@ -11,7 +11,15 @@
 namespace pypoly {
 namespace pypet {
 
-struct PypetState;
+struct PypetState {
+  isl_ctx* ctx;
+  void* user;
+  int int_size;
+
+  int loop_num;
+  int stmt_num;
+  int test_num;
+};
 
 struct PypetContext {
   PypetContext();

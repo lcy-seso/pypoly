@@ -207,6 +207,33 @@ int PypetTreeForeachAccessExpr(
   return PypetTreeForeachExpr(tree, &ForeachAccessExpr, &data);
 }
 
+struct PypetTreeWritesData {
+  isl_id* id;
+  int writes;
+};
+
+int CheckWrites(PypetExpr* expr, void* user) {
+  PypetTreeWritesData* data = static_cast<PypetTreeWritesData*>(user);
+  data->writes = PypetExprWrites(expr, data->id);
+  if (data->writes < 0 || data->writes) {
+    return -1;
+  }
+  return 0;
+}
+
+int PypetTreeWrites(PypetTree* tree, isl_id* id) {
+  struct PypetTreeWritesData data = {id, 0};
+  if (PypetTreeForeachExpr(tree, CheckWrites, &data) < 0 && !data.writes) {
+    return -1;
+  }
+  return data.writes;
+}
+
+bool PypetTreeHasContinueOrBreak(PypetTree* tree) {
+  // TODO(yizhu1): add support for continue and break
+  return false;
+}
+
 void TreePrettyPrinter::Print(std::ostream& out,
                               const __isl_keep PypetTree* tree, int indent) {
   CHECK(tree);

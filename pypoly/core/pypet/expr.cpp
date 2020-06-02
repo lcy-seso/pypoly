@@ -477,6 +477,84 @@ PypetExpr* PypetExprMapExprOfType(
   return expr;
 }
 
+PypetExpr* PypetExprMapTopDown(
+    PypetExpr* expr, const std::function<PypetExpr*(PypetExpr*, void*)>& fn,
+    void* user) {
+  CHECK(expr);
+  expr = fn(expr, user);
+  for (int i = 0; i < expr->arg_num; ++i) {
+    PypetExpr* arg = expr->args[i];
+    arg = PypetExprMapTopDown(arg, fn, user);
+    expr = PypetExprSetArg(expr, i, arg);
+  }
+  return expr;
+}
+
+isl_id* PypetExprAccessGetId(PypetExpr* expr) {
+  CHECK(expr);
+  CHECK(expr->type == PypetExprType::PYPET_EXPR_ACCESS);
+  if (isl_multi_pw_aff_range_is_wrapping(expr->acc.index)) {
+    isl_space* space = isl_multi_pw_aff_get_space(expr->acc.index);
+    space = isl_space_range(space);
+    while (space != nullptr && isl_space_is_wrapping(space)) {
+      space = isl_space_domain(isl_space_unwrap(space));
+    }
+    isl_id* id = isl_space_get_tuple_id(space, isl_dim_set);
+    isl_space_free(space);
+    return id;
+  } else {
+    return isl_multi_pw_aff_get_tuple_id(expr->acc.index, isl_dim_out);
+  }
+}
+
+struct PypetExprWritesData {
+  isl_id* id;
+  int found;
+};
+
+int Writes(PypetExpr* expr, void* user) {
+  PypetExprWritesData* data = static_cast<PypetExprWritesData*>(user);
+
+  if (!expr->acc.write) {
+    return 0;
+  }
+  if (PypetExprIsAffine(expr)) {
+    return 0;
+  }
+
+  isl_id* write_id = PypetExprAccessGetId(expr);
+  isl_id_free(write_id);
+  if (!write_id) {
+    return -1;
+  }
+  if (write_id != data->id) {
+    return 0;
+  }
+  data->found = 1;
+  return -1;
+}
+
+int PypetExprWrites(PypetExpr* expr, isl_id* id) {
+  PypetExprWritesData data = {id, 0};
+  if (PypetExprForeachAccessExpr(expr, Writes, &data) < 0 && !data.found) {
+    return -1;
+  }
+  return data.found;
+}
+
+isl_pw_aff* NonAffine(isl_space* space) {
+  return isl_pw_aff_nan_on_domain(isl_local_space_from_space(space));
+}
+
+isl_space* PypetExprAccessGetParameterSpace(PypetExpr* expr) {
+  CHECK(expr);
+  CHECK(expr->type == PypetExprType::PYPET_EXPR_ACCESS);
+  isl_space* space = isl_multi_pw_aff_get_space(expr->acc.index);
+  return isl_space_params(space);
+}
+
+isl_ctx* PypetExprGetCtx(PypetExpr* expr) { return expr->ctx; }
+
 void ExprPrettyPrinter::Print(std::ostream& out, const PypetExpr* expr,
                               int indent) {
   CHECK(expr) << "null pointer.";

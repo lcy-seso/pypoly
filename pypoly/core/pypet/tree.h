@@ -113,6 +113,10 @@ int PypetTreeForeachAccessExpr(
     PypetTree* tree, const std::function<int(PypetExpr* expr, void* user)>& fn,
     void* user);
 
+int PypetTreeWrites(PypetTree* tree, isl_id* id);
+
+bool PypetTreeHasContinueOrBreak(PypetTree* tree);
+
 struct TreePrettyPrinter {
   static void Print(std::ostream& out, const __isl_keep PypetTree* tree,
                     int indent = 2);
