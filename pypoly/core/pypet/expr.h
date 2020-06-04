@@ -182,6 +182,8 @@ __isl_keep PypetExpr* PypetExprDup(__isl_keep PypetExpr* expr);
 
 __isl_keep PypetExpr* PypetExprCow(__isl_keep PypetExpr* expr);
 
+PypetExpr* PypetExprSetTypeSize(PypetExpr* expr, int type_size);
+
 __isl_keep PypetExpr* PypetExprFromIslVal(__isl_keep isl_val* val);
 
 __isl_keep PypetExpr* PypetExprFromIntVal(__isl_keep isl_ctx* ctx, long val);

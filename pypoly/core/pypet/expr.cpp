@@ -131,13 +131,9 @@ __isl_give PypetExpr* PypetExprCreateCall(isl_ctx* ctx, const char* name,
 PypetExpr* PypetExprDup(PypetExpr* expr) {
   CHECK(expr);
   PypetExpr* dup = PypetExprAlloc(expr->ctx, expr->type);
-  dup->type_size = expr->type_size;
-  dup->arg_num = expr->arg_num;
-  if (expr->arg_num > 0) {
-    dup->args = isl_alloc_array(expr->ctx, PypetExpr*, expr->arg_num);
-  }
+  dup = PypetExprSetTypeSize(dup, expr->type_size);
+  dup = PypetExprSetNArgs(dup, expr->arg_num);
   for (int i = 0; i < expr->arg_num; ++i) {
-    dup->args[i] = nullptr;
     dup = PypetExprSetArg(dup, i, PypetExprCopy(expr->args[i]));
   }
 
@@ -185,6 +181,13 @@ PypetExpr* PypetExprCow(PypetExpr* expr) {
     expr->ref--;
     return PypetExprDup(expr);
   }
+}
+
+PypetExpr* PypetExprSetTypeSize(PypetExpr* expr, int type_size) {
+  expr = PypetExprCow(expr);
+  CHECK(expr);
+  expr->type_size = type_size;
+  return expr;
 }
 
 PypetExpr* PypetExprFromIslVal(isl_val* val) {
@@ -476,7 +479,7 @@ PypetExpr* PypetExprMapExprOfType(
     PypetExpr* expr, PypetExprType type,
     const std::function<PypetExpr*(PypetExpr*, void*)>& fn, void* user) {
   for (int i = 0; i < expr->arg_num; ++i) {
-    PypetExpr* arg = PypetExprCopy(expr->args[i]);
+    PypetExpr* arg = PypetExprGetArg(expr, i);
     arg = PypetExprMapExprOfType(arg, type, fn, user);
     expr = PypetExprSetArg(expr, i, arg);
   }
@@ -567,8 +570,8 @@ isl_ctx* PypetExprGetCtx(PypetExpr* expr) { return expr->ctx; }
 void ExprPrettyPrinter::Print(std::ostream& out, const PypetExpr* expr,
                               int indent) {
   CHECK(expr) << "null pointer.";
-
   isl_printer* p = isl_printer_to_str(expr->ctx);
+  CHECK(p);
   p = isl_printer_set_indent(p, indent);
   p = isl_printer_set_yaml_style(p, ISL_YAML_STYLE_BLOCK);
   p = isl_printer_start_line(p);
@@ -587,7 +590,7 @@ bool PypetExprIsAffine(PypetExpr* expr) {
 
 isl_pw_aff* PypetExprGetAffine(PypetExpr* expr) {
   CHECK(PypetExprIsAffine(expr));
-  isl_multi_pw_aff* multi_pw_aff = expr->acc.index;
+  isl_multi_pw_aff* multi_pw_aff = isl_multi_pw_aff_copy(expr->acc.index);
   isl_pw_aff* pw_aff = isl_multi_pw_aff_get_pw_aff(multi_pw_aff, 0);
   isl_multi_pw_aff_free(multi_pw_aff);
   return pw_aff;

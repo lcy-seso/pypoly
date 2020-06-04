@@ -94,7 +94,7 @@ PypetContext* PypetContextSetValue(PypetContext* context, isl_id* id,
                                    isl_pw_aff* pw_aff) {
   context = PypetContextCow(context);
   CHECK(context);
-  context->assignments[id] = pw_aff;
+  context->assignments[id] = isl_pw_aff_copy(pw_aff);
   return context;
 }
 
@@ -352,8 +352,9 @@ isl_pw_aff* PypetExprExtractComparison(PypetOpType type, PypetExpr* lhs,
           PypetExprExtractComparison(type, lhs->args[2], rhs, context));
     }
   }
-  return PypetComparison(type, PypetExprExtractAffine(lhs, context),
-                         PypetExprExtractAffine(rhs, context));
+  isl_pw_aff* lhs_pw_aff = PypetExprExtractAffine(lhs, context);
+  isl_pw_aff* rhs_pw_aff = PypetExprExtractAffine(rhs, context);
+  return PypetComparison(type, lhs_pw_aff, rhs_pw_aff);
 }
 
 isl_pw_aff* ExtractComparison(PypetExpr* expr, PypetContext* context) {
@@ -483,7 +484,8 @@ isl_pw_aff* PypetExprExtractAffine(PypetExpr* expr, PypetContext* context) {
       break;
   }
 
-  context->extracted_affine.insert(std::make_pair(expr, pw_aff));
+  context->extracted_affine.insert(
+      std::make_pair(PypetExprCopy(expr), isl_pw_aff_copy(pw_aff)));
   return pw_aff;
 }
 
