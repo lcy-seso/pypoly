@@ -138,8 +138,6 @@ struct PypetExpr {
   bool IsMax();
   bool HasRelevantAccessRelation();
 
-  PypetExpr* InsertDomain(isl_space* space);
-
   PypetExpr* Dup();
   PypetExpr* Cow();
 
@@ -147,7 +145,6 @@ struct PypetExpr {
   bool IsEqual(PypetExpr* rhs);
   PypetExpr* EquateArg(int i, int j);
 
-  PypetExpr* AccessUpdateDomain(isl_multi_pw_aff* update);
   PypetExpr* AccessPullbackMultiAff(isl_multi_aff* multi_aff);
   PypetExpr* AccessPullbackMultiPwAff(isl_multi_pw_aff* multi_pw_aff);
   PypetExpr* AccessProjectOutArg(int dim, int pos);
@@ -260,6 +257,13 @@ isl_pw_aff* NonAffine(isl_space* space);
 isl_space* PypetExprAccessGetParameterSpace(PypetExpr* expr);
 
 isl_ctx* PypetExprGetCtx(PypetExpr* expr);
+
+PypetExpr* PypetExprInsertDomain(PypetExpr* expr, isl_space* space);
+
+PypetExpr* PypetExprUpdateDomain(PypetExpr* expr, void* user);
+
+PypetExpr* PypetExprAccessUpdateDomain(PypetExpr* expr,
+                                       isl_multi_pw_aff* update);
 
 struct ExprPrettyPrinter {
   static void Print(std::ostream& out, const PypetExpr* expr, int indent = 0);

@@ -1,5 +1,7 @@
 #include "pypoly/core/pypet/expr.h"
 
+#include "pypoly/core/pypet/isl_printer.h"
+
 namespace pypoly {
 namespace pypet {
 
@@ -129,9 +131,13 @@ __isl_give PypetExpr* PypetExprCreateCall(isl_ctx* ctx, const char* name,
 PypetExpr* PypetExprDup(PypetExpr* expr) {
   CHECK(expr);
   PypetExpr* dup = PypetExprAlloc(expr->ctx, expr->type);
-  // TODO(yizhu1): fix type_size case
+  dup->type_size = expr->type_size;
   dup->arg_num = expr->arg_num;
+  if (expr->arg_num > 0) {
+    dup->args = isl_alloc_array(expr->ctx, PypetExpr*, expr->arg_num);
+  }
   for (int i = 0; i < expr->arg_num; ++i) {
+    dup->args[i] = nullptr;
     dup = PypetExprSetArg(dup, i, PypetExprCopy(expr->args[i]));
   }
 
@@ -162,6 +168,7 @@ PypetExpr* PypetExprDup(PypetExpr* expr) {
       break;
     case PypetExprType::PYPET_EXPR_OP:
       dup->op = expr->op;
+      break;
     default:
       UNIMPLEMENTED();
       break;
@@ -266,7 +273,9 @@ PypetExpr* PypetExprSetArg(PypetExpr* expr, int pos, PypetExpr* arg) {
 
   expr = PypetExprCow(expr);
   CHECK(expr);
-  PypetExprFree(expr->args[pos]);
+  if (expr->args[pos] != nullptr) {
+    PypetExprFree(expr->args[pos]);
+  }
   expr->args[pos] = arg;
   return expr;
 }
@@ -642,14 +651,21 @@ bool PypetExpr::IsMax() {
   return true;
 }
 
-PypetExpr* PypetExpr::InsertDomain(isl_space* space) {
+PypetExpr* PypetExprInsertDomain(PypetExpr* expr, isl_space* space) {
   space = isl_space_from_domain(space);
   isl_multi_pw_aff* multi_pw_aff = isl_multi_pw_aff_zero(space);
-  return AccessUpdateDomain(multi_pw_aff);
+  return PypetExprMapExprOfType(expr, PypetExprType::PYPET_EXPR_ACCESS,
+                                PypetExprUpdateDomain, multi_pw_aff);
 }
 
-PypetExpr* PypetExpr::AccessUpdateDomain(isl_multi_pw_aff* update) {
-  PypetExpr* expr = Cow();
+PypetExpr* PypetExprUpdateDomain(PypetExpr* expr, void* user) {
+  isl_multi_pw_aff* update = static_cast<isl_multi_pw_aff*>(user);
+  return PypetExprAccessUpdateDomain(expr, update);
+}
+
+PypetExpr* PypetExprAccessUpdateDomain(PypetExpr* expr,
+                                       isl_multi_pw_aff* update) {
+  expr = PypetExprCow(expr);
   CHECK(expr);
   CHECK(expr->type == PypetExprType::PYPET_EXPR_ACCESS);
 
@@ -673,14 +689,20 @@ PypetExpr* PypetExpr::AccessUpdateDomain(isl_multi_pw_aff* update) {
         expr->acc.access[type], isl_multi_pw_aff_copy(update));
     CHECK(expr->acc.access[type]);
   }
+  expr->acc.index =
+      isl_multi_pw_aff_pullback_multi_pw_aff(expr->acc.index, update);
   return expr;
 }
 
 PypetExpr* PypetExpr::Dup() {
   PypetExpr* dup = PypetExprAlloc(ctx, type);
-  // TODO(yizhu1): fix type_size case
+  dup->type_size = type_size;
   dup->arg_num = arg_num;
+  if (arg_num > 0) {
+    dup->args = isl_alloc_array(ctx, PypetExpr*, arg_num);
+  }
   for (int i = 0; i < arg_num; ++i) {
+    dup->args[i] = nullptr;
     dup = PypetExprSetArg(dup, i, PypetExprCopy(args[i]));
   }
 
@@ -710,6 +732,7 @@ PypetExpr* PypetExpr::Dup() {
       break;
     case PypetExprType::PYPET_EXPR_OP:
       dup->op = op;
+      break;
     default:
       UNIMPLEMENTED();
       break;

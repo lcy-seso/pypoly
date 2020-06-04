@@ -30,8 +30,8 @@ struct PypetContext {
   // for each parameter in "tree". Parameters any integer variable that is read
   // anywhere in "tree" or in any of the size expressions for any of the arrays
   // accessed in "tree".
-  isl_id_to_pw_aff* assignments;
   bool allow_nested;
+  std::map<isl_id*, isl_pw_aff*> assignments;
   std::map<PypetExpr*, isl_pw_aff*> extracted_affine;
 };
 
