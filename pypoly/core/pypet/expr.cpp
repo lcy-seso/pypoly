@@ -597,7 +597,9 @@ isl_pw_aff* PypetExprGetAffine(PypetExpr* expr) {
 }
 
 bool PypetExpr::IsComparison() {
-  CHECK(type == PypetExprType::PYPET_EXPR_OP);
+  if (type != PypetExprType::PYPET_EXPR_OP) {
+    return false;
+  }
   switch (op) {
     case PypetOpType::PYPET_EQ:
     case PypetOpType::PYPET_NE:

@@ -369,9 +369,23 @@ isl_pw_aff* ExtractBoolean(PypetExpr* expr, PypetContext* context) {
   return nullptr;
 }
 
+isl_pw_aff* PypetToBool(isl_pw_aff* pw_aff) {
+  CHECK(pw_aff);
+  if (isl_pw_aff_involves_nan(pw_aff)) {
+    isl_space* space = isl_pw_aff_get_domain_space(pw_aff);
+    isl_local_space* local_space = isl_local_space_from_space(space);
+    isl_pw_aff_free(pw_aff);
+    return isl_pw_aff_nan_on_domain(local_space);
+  }
+  isl_set* dom = isl_pw_aff_domain(isl_pw_aff_copy(pw_aff));
+  isl_set* cond = isl_pw_aff_non_zero_set(pw_aff);
+  pw_aff = IndicatorFunction(cond, dom);
+  return pw_aff;
+}
+
 isl_pw_aff* ExtractImplicitCondition(PypetExpr* expr, PypetContext* context) {
-  UNIMPLEMENTED();
-  return nullptr;
+  isl_pw_aff* ret = PypetExprExtractAffine(expr, context);
+  return PypetToBool(ret);
 }
 
 isl_pw_aff* PypetExprExtractAffineCondition(PypetExpr* expr,
@@ -817,6 +831,18 @@ __isl_null PypetContext* FreePypetContext(__isl_take PypetContext* pc) {
   if (--pc->ref > 0) return nullptr;
 
   isl_set_free(pc->domain);
+  for (auto iter = pc->assignments.begin(); iter != pc->assignments.end();
+       ++iter) {
+    isl_id_free(iter->first);
+    isl_pw_aff_free(iter->second);
+  }
+  pc->assignments.clear();
+  for (auto iter = pc->extracted_affine.begin();
+       iter != pc->extracted_affine.end(); ++iter) {
+    PypetExprFree(iter->first);
+    isl_pw_aff_free(iter->second);
+  }
+  pc->extracted_affine.clear();
   free(pc);
   return nullptr;
 }
@@ -925,7 +951,7 @@ __isl_keep PypetScop* TreeToScop::ScopFromAffineFor(
   isl_set* valid_inc = isl_pw_aff_domain(pa_inc);
 
   bool is_unsigned = tree->ast.Loop.iv->type_size > 0;
-  CHECK(!is_unsigned);
+  CHECK(is_unsigned);
   bool is_non_affine =
       isl_pw_aff_involves_nan(pa) || !IsNestedAllowed(pa, tree->ast.Loop.body);
   CHECK(!is_non_affine);

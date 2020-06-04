@@ -364,7 +364,7 @@ PypetTree* EmitStatements::EmitFor(const torch::jit::For& stmt) {
       LOG(FATAL) << "Range parameter num: " << args.size();
       break;
   }
-  // TODO: or PYPET_GT
+  // TODO(yizhu1): or PYPET_GT
   PypetExpr* iv2 = PypetExprDup(iv);
   MarkRead(iv2);
   cond = BuildPypetBinaryOpExpr(ctx, PypetOpType::PYPET_LT, iv2, bound);
