@@ -57,6 +57,7 @@ __isl_give PypetExpr* PypetExprAlloc(isl_ctx* ctx, PypetExprType expr_type) {
   expr->type = expr_type;
   expr->ref = 1;
 
+  expr->type_size = 0;
   expr->arg_num = 0;
   expr->args = nullptr;
 
@@ -411,7 +412,6 @@ PypetExpr* PypetExprAccessMember(PypetExpr* expr, isl_id* id) {
 PypetExpr* BuildPypetBinaryOpExpr(isl_ctx* ctx, PypetOpType op_type,
                                   PypetExpr* lhs, PypetExpr* rhs) {
   PypetExpr* expr = PypetExprAlloc(ctx, PypetExprType::PYPET_EXPR_OP);
-  // TODO: type_size
   expr->arg_num = 2;
   expr->args = new PypetExpr*[2];
   expr->args[0] = lhs;

@@ -21,7 +21,7 @@ PypetExpr* ExtractIndexExprFromVar(isl_ctx* ctx, const torch::jit::Var& expr) {
   CHECK(expr.kind() == torch::jit::TK_VAR);
   torch::jit::Ident ident_expr(expr.name());
   PypetExpr* ret = ExtractIndexExprFromIdent(ctx, ident_expr);
-  ret->type_size = 8;
+  ret->type_size = -8;
   return ret;
 }
 
@@ -30,7 +30,7 @@ PypetExpr* ExtractIndexExprFromConst(isl_ctx* ctx,
   CHECK(expr.isIntegral());
   PypetExpr* ret =
       PypetExprFromIntVal(ctx, static_cast<int>(expr.asIntegral()));
-  ret->type_size = 8;
+  ret->type_size = -8;
   return ret;
 }
 

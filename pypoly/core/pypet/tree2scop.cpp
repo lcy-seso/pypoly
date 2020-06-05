@@ -30,8 +30,18 @@ PypetContext* PypetContextDup(PypetContext* context) {
   CHECK(context);
   PypetContext* dup =
       ContextAlloc(isl_set_copy(context->domain), context->allow_nested);
-  dup->assignments = context->assignments;
-  dup->extracted_affine = context->extracted_affine;
+  dup->assignments.clear();
+  for (auto iter = context->assignments.begin();
+       iter != context->assignments.end(); ++iter) {
+    dup->assignments.insert(std::make_pair(isl_id_copy(iter->first),
+                                           isl_pw_aff_copy(iter->second)));
+  }
+  dup->extracted_affine.clear();
+  for (auto iter = context->extracted_affine.begin();
+       iter != context->extracted_affine.end(); ++iter) {
+    dup->extracted_affine.insert(std::make_pair(PypetExprCopy(iter->first),
+                                                isl_pw_aff_copy(iter->second)));
+  }
   return dup;
 }
 
@@ -39,6 +49,7 @@ PypetContext* PypetContextCow(PypetContext* context) {
   CHECK(context);
   if (context->ref == 1) {
     // TODO(yizhu1): check pointers
+    context->assignments.clear();
     context->extracted_affine.clear();
     return context;
   }
@@ -649,15 +660,10 @@ PypetExpr* PlugInSummaries(PypetExpr* expr, PypetContext* context) {
 }
 
 PypetExpr* PypetContextEvaluateExpr(PypetContext* context, PypetExpr* expr) {
-  LOG(INFO) << expr;
   expr = PypetExprInsertDomain(expr, PypetContextGetSpace(context));
-  LOG(INFO) << expr;
   expr = PlugInAffineRead(expr, context);
-  LOG(INFO) << expr;
   expr = PypetExprPlugInArgs(expr, context);
-  LOG(INFO) << expr;
   expr = PlugInAffine(expr, context);
-  LOG(INFO) << expr;
   expr = MergeConditionalAccesses(expr);
   expr = PlugInSummaries(expr, context);
   return expr;
@@ -951,7 +957,7 @@ __isl_keep PypetScop* TreeToScop::ScopFromAffineFor(
   isl_set* valid_inc = isl_pw_aff_domain(pa_inc);
 
   bool is_unsigned = tree->ast.Loop.iv->type_size > 0;
-  CHECK(is_unsigned);
+  CHECK(!is_unsigned);
   bool is_non_affine =
       isl_pw_aff_involves_nan(pa) || !IsNestedAllowed(pa, tree->ast.Loop.body);
   CHECK(!is_non_affine);
@@ -977,8 +983,8 @@ __isl_keep PypetScop* TreeToScop::ScopFromAffineFor(
     valid_init = isl_pw_aff_domain(isl_pw_aff_copy(pa));
     valid_init = isl_set_eliminate(valid_init, isl_dim_set,
                                    isl_set_dim(domain, isl_dim_set) - 1, 1);
-    cond = isl_pw_aff_non_zero_set(pa);
-    domain = isl_set_intersect(domain, cond);
+    isl_set* tmp_cond = isl_pw_aff_non_zero_set(pa);
+    domain = isl_set_intersect(domain, tmp_cond);
   } else {
     valid_init = isl_pw_aff_domain(isl_pw_aff_copy(init_val));
     isl_set* strided = StridedDomain(init_val, isl_val_copy(inc));
