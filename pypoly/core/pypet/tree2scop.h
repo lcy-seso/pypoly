@@ -92,6 +92,9 @@ struct TreeToScop {
                                               __isl_keep PypetContext* pc_init,
                                               __isl_take PypetContext* pc,
                                               __isl_take PypetState* state);
+
+  PypetScop* ScopFromAffineIf(PypetTree* tree, isl_pw_aff* cond,
+                              PypetContext* pc, PypetState* state);
 };
 
 }  // namespace pypet

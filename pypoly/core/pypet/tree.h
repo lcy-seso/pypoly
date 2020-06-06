@@ -95,8 +95,12 @@ struct PypetTree {
 __isl_give PypetTree* CreatePypetTree(isl_ctx* ctx,
                                       torch::jit::SourceRange const* range,
                                       enum PypetTreeType tree_type);
+
 __isl_give PypetTree* CreatePypetTreeBlock(isl_ctx* ctx, int block, int n);
+
 __isl_null PypetTree* PypetTreeFree(__isl_take PypetTree* tree);
+
+PypetTree* PypetTreeCopy(PypetTree* tree);
 
 int ForeachExpr(PypetTree* tree, void* user);
 
@@ -113,9 +117,21 @@ int PypetTreeForeachAccessExpr(
     PypetTree* tree, const std::function<int(PypetExpr* expr, void* user)>& fn,
     void* user);
 
+PypetTree* PypetTreeMapExpr(
+    PypetTree* tree, const std::function<PypetExpr*(PypetExpr*, void*)>& fn,
+    void* user);
+
 int PypetTreeWrites(PypetTree* tree, isl_id* id);
 
 bool PypetTreeHasContinueOrBreak(PypetTree* tree);
+
+PypetExpr* PypetTreeDeclGetVar(PypetTree* tree);
+
+PypetExpr* PypetTreeDeclGetInit(PypetTree* tree);
+
+PypetExpr* PypetTreeExprGetExpr(PypetTree* tree);
+
+bool PypetTreeIsAssign(PypetTree* tree);
 
 struct TreePrettyPrinter {
   static void Print(std::ostream& out, const __isl_keep PypetTree* tree,

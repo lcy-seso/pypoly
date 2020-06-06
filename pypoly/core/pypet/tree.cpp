@@ -89,6 +89,11 @@ __isl_null PypetTree* PypetTreeFree(__isl_take PypetTree* tree) {
   return nullptr;
 }
 
+PypetTree* PypetTreeCopy(PypetTree* tree) {
+  ++tree->ref;
+  return tree;
+}
+
 /* DFS traverse the given tree. Call "fn" on each node of "tree", including
  * "tree" itself.
  * Return 0 on success and -1 on error, where "fn" returning a negative value is
@@ -207,6 +212,13 @@ int PypetTreeForeachAccessExpr(
   return PypetTreeForeachExpr(tree, &ForeachAccessExpr, &data);
 }
 
+PypetTree* PypetTreeMapExpr(
+    PypetTree* tree, const std::function<PypetExpr*(PypetExpr*, void*)>& fn,
+    void* user) {
+  // TODO
+  return nullptr;
+}
+
 struct PypetTreeWritesData {
   isl_id* id;
   int writes;
@@ -232,6 +244,32 @@ int PypetTreeWrites(PypetTree* tree, isl_id* id) {
 bool PypetTreeHasContinueOrBreak(PypetTree* tree) {
   // TODO(yizhu1): add support for continue and break
   return false;
+}
+
+PypetExpr* PypetTreeDeclGetVar(PypetTree* tree) {
+  CHECK(tree->type == PypetTreeType::PYPET_TREE_DECL ||
+        tree->type == PypetTreeType::PYPET_TREE_DECL_INIT);
+  return PypetExprCopy(tree->ast.Decl.var);
+}
+
+PypetExpr* PypetTreeDeclGetInit(PypetTree* tree) {
+  CHECK(tree->type == PypetTreeType::PYPET_TREE_DECL_INIT);
+  return PypetExprCopy(tree->ast.Decl.init);
+}
+
+PypetExpr* PypetTreeExprGetExpr(PypetTree* tree) {
+  CHECK(tree->type == PypetTreeType::PYPET_TREE_EXPR);
+  return PypetExprCopy(tree->ast.Expr.expr);
+}
+
+bool PypetTreeIsAssign(PypetTree* tree) {
+  if (tree->type != PypetTreeType::PYPET_TREE_EXPR) {
+    return false;
+  }
+  if (tree->ast.Expr.expr->type != PypetExprType::PYPET_EXPR_OP) {
+    return false;
+  }
+  return tree->ast.Expr.expr->op == PypetOpType::PYPET_ASSIGN;
 }
 
 void TreePrettyPrinter::Print(std::ostream& out,

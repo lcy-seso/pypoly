@@ -1,6 +1,7 @@
 #include "pypoly/core/pypet/tree2scop.h"
 
 #include "pypoly/core/pypet/isl_printer.h"
+#include "pypoly/core/pypet/nest.h"
 #include "pypoly/core/pypet/pypet.h"
 
 namespace pypoly {
@@ -66,32 +67,6 @@ PypetContext* ExtendDomain(PypetContext* context, isl_id* id) {
   context->domain = isl_set_set_dim_id(context->domain, isl_dim_set, pos, id);
   CHECK(context->domain);
   return context;
-}
-
-bool PypetNestedInId(isl_id* id) {
-  CHECK(id);
-  if (isl_id_get_user(id) == nullptr) {
-    return false;
-  }
-  const char* name = isl_id_get_name(id);
-  return !strcmp(name, "__PypetExpr");
-}
-
-bool PypetNestedInSpace(isl_space* space, int pos) {
-  isl_id* id = isl_space_get_dim_id(space, isl_dim_param, pos);
-  bool nested = PypetNestedInId(id);
-  isl_id_free(id);
-  return nested;
-}
-
-isl_space* PypetNestedRemoveFromSpace(isl_space* space) {
-  int param_num = isl_space_dim(space, isl_dim_param);
-  for (int i = param_num - 1; i >= 0; --i) {
-    if (PypetNestedInSpace(space, i)) {
-      space = isl_space_drop_dims(space, isl_dim_param, i, 1);
-    }
-  }
-  return space;
 }
 
 isl_space* PypetContextGetSpace(PypetContext* context) {
@@ -187,24 +162,6 @@ isl_pw_aff* PypetContextGetValue(PypetContext* context, isl_id* id) {
   isl_multi_aff* ma = PypetPrefixProjection(PypetContextGetSpace(context), dim);
   pa = isl_pw_aff_pullback_multi_aff(pa, ma);
   return pa;
-}
-
-void PypetExprFreeWrap(void* user) { PypetExprFree((PypetExpr*)user); }
-
-isl_id* PypetNestedPypetExpr(PypetExpr* expr) {
-  isl_id* id = isl_id_alloc(PypetExprGetCtx(expr), "__PypetExpr", expr);
-  id = isl_id_set_free_user(id, &PypetExprFreeWrap);
-  return id;
-}
-
-bool PypetNestedAnyInSpace(isl_space* space) {
-  int param_num = isl_space_dim(space, isl_dim_param);
-  for (int i = 0; i < param_num; ++i) {
-    if (PypetNestedInSpace(space, i)) {
-      return true;
-    }
-  }
-  return false;
 }
 
 isl_pw_aff* NestedAccess(PypetExpr* expr, PypetContext* context) {
@@ -687,17 +644,6 @@ int IsAssigned(PypetExpr* expr, PypetTree* tree) {
   return assigned;
 }
 
-bool PypetNestedAnyInPwAff(isl_pw_aff* pa) {
-  isl_space* space = isl_pw_aff_get_space(pa);
-  bool nested = PypetNestedAnyInSpace(space);
-  isl_space_free(space);
-  return nested;
-}
-
-PypetExpr* PypetNestedExtractExpr(isl_id* id) {
-  return PypetExprCopy(static_cast<PypetExpr*>(isl_id_get_user(id)));
-}
-
 bool IsNestedAllowed(isl_pw_aff* pa, PypetTree* tree) {
   CHECK(tree);
   if (!PypetNestedAnyInPwAff(pa)) {
@@ -897,21 +843,87 @@ __isl_give PypetContext* PypetContextAddParameter(__isl_keep PypetTree* tree,
   return pc;
 }
 
+PypetContext* ScopHandleWrites(PypetScop* scop, PypetContext* context) {
+  for (int i = 0; i < scop->stmt_num; ++i) {
+    context = PypetContextClearWritesInTree(context, scop->stmts[i]->body);
+  }
+  return context;
+}
+
+PypetContext* HandleAssignment(PypetContext* context, PypetTree* tree) {
+  PypetExpr* var = nullptr;
+  PypetExpr* val = nullptr;
+  isl_id* id = nullptr;
+
+  if (tree->type == PypetTreeType::PYPET_TREE_DECL_INIT) {
+    var = PypetTreeDeclGetVar(tree);
+    var = PypetTreeDeclGetInit(tree);
+  } else {
+    PypetExpr* expr = PypetTreeExprGetExpr(tree);
+    var = PypetExprGetArg(expr, 0);
+    val = PypetExprGetArg(expr, 1);
+    PypetExprFree(expr);
+  }
+
+  if (!PypetExprIsScalarAccess(var)) {
+    PypetExprFree(var);
+    PypetExprFree(val);
+    return context;
+  }
+
+  isl_pw_aff* pw_aff = PypetExprExtractAffine(val, context);
+  CHECK(pw_aff);
+  if (!isl_pw_aff_involves_nan(pw_aff)) {
+    id = PypetExprAccessGetId(var);
+    context = PypetContextSetValue(context, id, pw_aff);
+  } else {
+    isl_pw_aff_free(pw_aff);
+  }
+  PypetExprFree(var);
+  PypetExprFree(val);
+  return context;
+}
+
+bool IsAssignment(PypetTree* tree) {
+  if (tree->type == PypetTreeType::PYPET_TREE_DECL_INIT) {
+    return true;
+  }
+  return PypetTreeIsAssign(tree);
+}
+
 __isl_keep PypetScop* TreeToScop::ScopFromBlock(__isl_keep PypetTree* tree,
                                                 __isl_keep PypetContext* pc,
                                                 __isl_take PypetState* state) {
-  return nullptr;
+  isl_ctx* ctx = tree->ctx;
+  isl_space* space = PypetContextGetSpace(pc);
+  pc = PypetContextCopy(pc);
+  PypetScop* scop = PypetScop::Create(isl_space_copy(space));
+  // TODO(yizhu1): support for kill
+  for (int i = 0; i < tree->ast.Block.n; ++i) {
+    // TODO(yizhu1): support for continue and break
+    PypetScop* cur_scop = ToScop(tree->ast.Block.children[i], pc, state);
+    // TODO(yizhu1): check assume primitive
+    pc = ScopHandleWrites(cur_scop, pc);
+    if (IsAssignment(tree->ast.Block.children[i])) {
+      pc = HandleAssignment(pc, tree->ast.Block.children[i]);
+    }
+    scop = PypetScopAddSeq(ctx, scop, cur_scop);
+  }
+  FreePypetContext(pc);
+  return scop;
 }
 
 __isl_keep PypetScop* TreeToScop::ScopFromBreak(__isl_keep PypetTree* tree,
                                                 __isl_keep PypetContext* pc,
                                                 __isl_take PypetState* state) {
+  UNIMPLEMENTED();
   return nullptr;
 }
 
 __isl_keep PypetScop* TreeToScop::ScopFromContinue(
     __isl_keep PypetTree* tree, __isl_keep PypetContext* pc,
     __isl_take PypetState* state) {
+  UNIMPLEMENTED();
   return nullptr;
 }
 
@@ -921,22 +933,120 @@ __isl_keep PypetScop* TreeToScop::ScopFromDecl(__isl_keep PypetTree* tree,
   return nullptr;
 }
 
+PypetExpr* TreeEvaluateExprWrapper(PypetExpr* expr, void* user) {
+  PypetContext* pc = static_cast<PypetContext*>(user);
+  return PypetContextEvaluateExpr(pc, expr);
+}
+
+PypetTree* PypetContextEvaluateTree(PypetContext* pc, PypetTree* tree) {
+  return PypetTreeMapExpr(tree, &TreeEvaluateExprWrapper, pc);
+}
+
+PypetScop* ScopFromEvaluatedTree(PypetTree* tree, int stmt_num,
+                                 PypetContext* pc) {
+  // TODO
+  return nullptr;
+}
+
+PypetScop* ScopFromUnevaluatedTree(PypetTree* tree, int stmt_num,
+                                   PypetContext* pc) {
+  tree = PypetContextEvaluateTree(pc, tree);
+  return ScopFromEvaluatedTree(tree, stmt_num, pc);
+}
+
 __isl_keep PypetScop* TreeToScop::ScopFromTreeExpr(
     __isl_keep PypetTree* tree, __isl_keep PypetContext* pc,
     __isl_take PypetState* state) {
-  return nullptr;
+  return ScopFromUnevaluatedTree(PypetTreeCopy(tree), state->stmt_num++, pc);
 }
 
 __isl_keep PypetScop* TreeToScop::ScopFromReturn(__isl_keep PypetTree* tree,
                                                  __isl_keep PypetContext* pc,
                                                  __isl_take PypetState* state) {
+  UNIMPLEMENTED();
   return nullptr;
+}
+
+bool IsConditionalAssignment(PypetTree* tree, PypetContext* pc) {
+  // TODO
+  return false;
+}
+
+PypetScop* ScopFromConditionalAssignment(PypetTree* tree,
+                                         isl_pw_aff* cond_pw_aff,
+                                         PypetContext* pc, PypetState* state) {
+  // TODO
+  return nullptr;
+}
+
+PypetScop* TreeToScop::ScopFromAffineIf(PypetTree* tree, isl_pw_aff* cond,
+                                        PypetContext* pc, PypetState* state) {
+  isl_ctx* ctx = tree->ctx;
+  bool has_else = tree->type == PypetTreeType::PYPET_TREE_IF_ELSE;
+  isl_set* valid = isl_pw_aff_domain(isl_pw_aff_copy(cond));
+  isl_set* set = isl_pw_aff_non_zero_set(isl_pw_aff_copy(cond));
+
+  PypetContext* pc_body = PypetContextCopy(pc);
+  pc_body = PypetContextIntersectDomain(pc_body, isl_set_copy(set));
+  PypetScop* scop_if = ToScop(tree->ast.IfElse.if_body, pc_body, state);
+  FreePypetContext(pc_body);
+
+  PypetScop* scop_else = nullptr;
+  if (has_else) {
+    PypetContext* pc_else = PypetContextCopy(pc);
+    isl_set* complement = isl_set_copy(valid);
+    complement = isl_set_subtract(valid, isl_set_copy(set));
+    pc_else = PypetContextIntersectDomain(
+        pc_else, isl_set_copy(isl_set_copy(complement)));
+    scop_else = ToScop(tree->ast.IfElse.else_body, pc_else, state);
+    scop_else = PypetScopRestrict(scop_else, complement);
+    FreePypetContext(pc_else);
+  }
+
+  isl_pw_aff_free(cond);
+
+  PypetScop* scop = PypetScopRestrict(scop_if, set);
+  if (has_else) {
+    scop = PypetScopAddPar(ctx, scop, scop_else);
+  }
+  scop = PypetScopResolveNested(scop);
+  scop = PypetScopRestrictContext(scop, valid);
+
+  FreePypetContext(pc);
+  return scop;
 }
 
 __isl_keep PypetScop* TreeToScop::ScopFromIf(__isl_keep PypetTree* tree,
                                              __isl_keep PypetContext* pc,
                                              __isl_take PypetState* state) {
-  return nullptr;
+  bool has_else = tree->type == PypetTreeType::PYPET_TREE_IF_ELSE;
+  pc = PypetContextCopy(pc);
+  pc = PypetContextClearWritesInTree(pc, tree->ast.IfElse.if_body);
+  if (has_else) {
+    pc = PypetContextClearWritesInTree(pc, tree->ast.IfElse.else_body);
+  }
+  PypetExpr* cond_expr = PypetExprCopy(tree->ast.IfElse.cond);
+  cond_expr = PypetContextEvaluateExpr(pc, cond_expr);
+  PypetContext* pc_nested = PypetContextCopy(pc);
+  pc_nested = PypetContextSetAllowNested(pc_nested, true);
+  isl_pw_aff* cond = PypetExprExtractAffineCondition(cond_expr, pc_nested);
+  FreePypetContext(pc_nested);
+  PypetExprFree(cond_expr);
+  CHECK(cond);
+  CHECK(isl_pw_aff_involves_nan(cond) == 0);
+
+  if (IsConditionalAssignment(tree, pc)) {
+    return ScopFromConditionalAssignment(tree, cond, pc, state);
+  }
+
+  if ((!IsNestedAllowed(cond, tree->ast.IfElse.if_body)) ||
+      (has_else && !IsNestedAllowed(cond, tree->ast.IfElse.else_body))) {
+    isl_pw_aff_free(cond);
+    UNIMPLEMENTED();
+    return nullptr;
+  }
+
+  return ScopFromAffineIf(tree, cond, pc, state);
 }
 
 __isl_keep PypetScop* TreeToScop::ScopFromAffineFor(
@@ -1007,17 +1117,17 @@ __isl_keep PypetScop* TreeToScop::ScopFromAffineFor(
 
   PypetScop* scop = ToScop(tree->ast.Loop.body, pc, state);
   scop->ResetSkips();
-  scop->ResolveNested();
+  scop = PypetScopResolveNested(scop);
   scop->SetIndependence(tree, domain, isl_val_sgn(inc), pc, state);
 
   valid_inc = isl_set_intersect(valid_inc, valid_cond_next);
   valid_inc = isl_set_intersect(valid_inc, valid_cond_init);
   valid_inc = isl_set_project_out(valid_inc, isl_dim_set, pos, 1);
-  scop->RestrictContext(valid_inc);
+  scop = PypetScopRestrictContext(scop, valid_inc);
 
   isl_val_free(inc);
   valid_init = isl_set_project_out(valid_init, isl_dim_set, pos, 1);
-  scop->RestrictContext(valid_init);
+  scop = PypetScopRestrictContext(scop, valid_init);
   FreePypetContext(pc);
   return scop;
 }
