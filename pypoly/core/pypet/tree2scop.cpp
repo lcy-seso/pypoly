@@ -1,5 +1,6 @@
 #include "pypoly/core/pypet/tree2scop.h"
 
+#include "pypoly/core/pypet/aff.h"
 #include "pypoly/core/pypet/isl_printer.h"
 #include "pypoly/core/pypet/nest.h"
 #include "pypoly/core/pypet/pypet.h"
@@ -144,11 +145,6 @@ PypetContext* PypetContextClearWritesInTree(PypetContext* context,
 
 bool PypetContextIsAssigned(PypetContext* context, isl_id* id) {
   return context->assignments.find(id) != context->assignments.end();
-}
-
-isl_multi_aff* PypetPrefixProjection(isl_space* space, int n) {
-  int dim = isl_space_dim(space, isl_dim_set);
-  return isl_multi_aff_project_out_map(space, isl_dim_set, n, dim - n);
 }
 
 isl_pw_aff* PypetContextGetValue(PypetContext* context, isl_id* id) {
@@ -942,10 +938,20 @@ PypetTree* PypetContextEvaluateTree(PypetContext* pc, PypetTree* tree) {
   return PypetTreeMapExpr(tree, &TreeEvaluateExprWrapper, pc);
 }
 
+PypetTree* PypetTreeResolveAssume(PypetTree* tree, PypetContext* pc) {
+  // TODO(yizhu1): assume primitive
+  return tree;
+}
+
 PypetScop* ScopFromEvaluatedTree(PypetTree* tree, int stmt_num,
                                  PypetContext* pc) {
-  // TODO
-  return nullptr;
+  isl_space* space = PypetContextGetSpace(pc);
+  tree = PypetTreeResolveNested(tree, space);
+  tree = PypetTreeResolveAssume(tree, pc);
+
+  isl_set* domain = PypetContextGetDomain(pc);
+  PypetStmt* stmt = PypetStmt::Create(domain, stmt_num, tree);
+  return PypetScop::Create(space, stmt);
 }
 
 PypetScop* ScopFromUnevaluatedTree(PypetTree* tree, int stmt_num,

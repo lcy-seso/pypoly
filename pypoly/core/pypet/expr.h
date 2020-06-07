@@ -210,6 +210,22 @@ isl_space* PypetExprAccessGetDomainSpace(PypetExpr* expr);
 PypetExpr* PypetExprAccessPullbackMultiAff(PypetExpr* expr,
                                            isl_multi_aff* multi_aff);
 
+PypetExpr* PypetExprAccessMoveDims(PypetExpr* expr, enum isl_dim_type dst_type,
+                                   unsigned dst_pos, enum isl_dim_type src_type,
+                                   unsigned src_pos, unsigned n);
+
+PypetExpr* PypetExprAccessAlignParams(PypetExpr* expr);
+
+bool PypetExprAccessHasAnyAccessRelation(PypetExpr* expr);
+
+bool PypetExprIsSubAccess(PypetExpr* lhs, PypetExpr* rhs, int arg_num);
+
+isl_union_map* ConstructAccessRelation(PypetExpr* expr);
+
+isl_map* ExtendRange(isl_map* access, int n);
+
+PypetExpr* IntroduceAccessRelations(PypetExpr* expr);
+
 PypetExpr* PypetExprInsertArg(PypetExpr* expr, int pos, PypetExpr* arg);
 
 isl_multi_pw_aff* PypetArraySubscript(isl_multi_pw_aff* base,

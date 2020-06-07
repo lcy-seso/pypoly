@@ -100,7 +100,11 @@ __isl_give PypetTree* CreatePypetTreeBlock(isl_ctx* ctx, int block, int n);
 
 __isl_null PypetTree* PypetTreeFree(__isl_take PypetTree* tree);
 
+PypetTree* PypetTreeDup(PypetTree* tree);
+
 PypetTree* PypetTreeCopy(PypetTree* tree);
+
+PypetTree* PypetTreeCow(PypetTree* tree);
 
 int ForeachExpr(PypetTree* tree, void* user);
 
@@ -132,6 +136,9 @@ PypetExpr* PypetTreeDeclGetInit(PypetTree* tree);
 PypetExpr* PypetTreeExprGetExpr(PypetTree* tree);
 
 bool PypetTreeIsAssign(PypetTree* tree);
+
+PypetTree* PypetTreeUpdateDomain(PypetTree* tree,
+                                 isl_multi_pw_aff* multi_pw_aff);
 
 struct TreePrettyPrinter {
   static void Print(std::ostream& out, const __isl_keep PypetTree* tree,

@@ -42,6 +42,8 @@ struct PypetStmt {
       : range(range), domain(nullptr), args(nullptr), body(nullptr){};
   ~PypetStmt() = default;
 
+  static PypetStmt* Create(isl_set* domain, int id, PypetTree* tree);
+
   torch::jit::SourceRange range;
   isl_set* domain;
 
@@ -49,10 +51,13 @@ struct PypetStmt {
   // statement that contain control part.
   // the subset of the instance set containing instances of this polyhedral
   // statement;
+  int arg_num;
   PypetExpr** args;
   // Information to print the body of the statement in source program.
   PypetTree* body;
 };
+
+isl_set* StmtExtractContext(PypetStmt* stmt, isl_set* context);
 
 struct PypetScop {
   friend PypetArray;
@@ -62,10 +67,13 @@ struct PypetScop {
   ~PypetScop() = default;
 
   static PypetScop* Create(isl_space* space);
+  static PypetScop* Create(isl_space* space, PypetStmt* stmt);
   static PypetScop* Create(isl_space* space, int n, isl_schedule* schedule);
 
   void ResetSkips() {}
   void SetIndependence(PypetTree*, isl_set*, int, PypetContext*, PypetState*) {}
+
+  torch::jit::SourceRange range;
 
   // program parameters. A unit set.
   isl_set* context;

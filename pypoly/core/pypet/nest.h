@@ -1,5 +1,5 @@
-#ifndef PYPOLY_PYPET_NEST_H_
-#define PYPOLY_PYPET_NEST_H_
+#ifndef PYPOLY_CORE_PYPET_NEST_H_
+#define PYPOLY_CORE_PYPET_NEST_H_
 
 #include "pypoly/core/pypet/expr.h"
 
@@ -20,13 +20,32 @@ isl_id* PypetNestedPypetExpr(PypetExpr* expr);
 
 bool PypetNestedAnyInSpace(isl_space* space);
 
+int PypetNestedNInSpace(isl_space* space);
+
 PypetExpr* PypetNestedExtractExpr(isl_id* id);
 
 bool PypetNestedAnyInPwAff(isl_pw_aff* pa);
 
+int PypetExprDomainDim(PypetExpr* expr);
+
+PypetExpr* Embed(PypetExpr* expr, isl_space* space);
+
+int PypetExtractNestedFromSpace(isl_space* space, int arg_num, PypetExpr** args,
+                                int* param2pos);
+
+PypetExpr* PypetExprExtractNested(PypetExpr* expr, int n, int* param2pos);
+
+PypetExpr* PypetExprResolveNested(PypetExpr* expr, isl_space* domain);
+
+PypetTree* PypetTreeResolveNested(PypetTree* tree, isl_space* space);
+
 PypetStmt* PypetStmtResolveNested(PypetStmt* stmt);
 
 PypetScop* PypetScopResolveNested(PypetScop* scop);
+
+PypetExpr* MarkSelfDependences(PypetExpr* expr, int first);
+
+PypetExpr* RemoveMarkedSelfDependences(PypetExpr* expr, int dim, int first);
 
 }  // namespace pypet
 }  // namespace pypoly

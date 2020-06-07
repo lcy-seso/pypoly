@@ -1,5 +1,6 @@
 #include "pypoly/core/pypet/expr.h"
 
+#include "pypoly/core/pypet/aff.h"
 #include "pypoly/core/pypet/isl_printer.h"
 
 namespace pypoly {
@@ -194,7 +195,7 @@ PypetExpr* PypetExprSetTypeSize(PypetExpr* expr, int type_size) {
 PypetExpr* PypetExprFromIslVal(isl_val* val) {
   isl_ctx* ctx = isl_val_get_ctx(val);
   PypetExpr* expr = PypetExprAlloc(ctx, PypetExprType::PYPET_EXPR_INT);
-  expr->i = val;
+  expr->i = isl_val_copy(val);
   return expr;
 }
 
@@ -350,6 +351,182 @@ PypetExpr* PypetExprAccessPullbackMultiAff(PypetExpr* expr,
   expr->acc.index =
       isl_multi_pw_aff_pullback_multi_aff(expr->acc.index, multi_aff);
   CHECK(expr->acc.index);
+  return expr;
+}
+
+PypetExpr* PypetExprAccessMoveDims(PypetExpr* expr, enum isl_dim_type dst_type,
+                                   unsigned dst_pos, enum isl_dim_type src_type,
+                                   unsigned src_pos, unsigned n) {
+  expr = PypetExprCow(expr);
+  CHECK(expr->type == PypetExprType::PYPET_EXPR_ACCESS);
+
+  for (int type = PypetExprAccessType::PYPET_EXPR_ACCESS_BEGIN;
+       type < PypetExprAccessType::PYPET_EXPR_ACCESS_END; ++type) {
+    if (!expr->acc.access[type]) {
+      continue;
+    }
+    expr->acc.access[type] = PypetUnionMapMoveDims(
+        expr->acc.access[type], dst_type, dst_pos, src_type, src_pos, n);
+  }
+  expr->acc.index = isl_multi_pw_aff_move_dims(expr->acc.index, dst_type,
+                                               dst_pos, src_type, src_pos, n);
+  return expr;
+}
+
+PypetExpr* PypetExprAccessAlignParams(PypetExpr* expr) {
+  expr = PypetExprCow(expr);
+  CHECK(expr->type == PypetExprType::PYPET_EXPR_ACCESS);
+
+  if (!PypetExprAccessHasAnyAccessRelation(expr)) {
+    return expr;
+  }
+
+  isl_space* space = isl_multi_pw_aff_get_space(expr->acc.index);
+  for (int type = PypetExprAccessType::PYPET_EXPR_ACCESS_BEGIN;
+       type < PypetExprAccessType::PYPET_EXPR_ACCESS_END; ++type) {
+    if (!expr->acc.access[type]) {
+      continue;
+    }
+    space = isl_space_align_params(
+        space, isl_union_map_get_space(expr->acc.access[type]));
+  }
+  expr->acc.index =
+      isl_multi_pw_aff_align_params(expr->acc.index, isl_space_copy(space));
+  for (int type = PypetExprAccessType::PYPET_EXPR_ACCESS_BEGIN;
+       type < PypetExprAccessType::PYPET_EXPR_ACCESS_END; ++type) {
+    if (!expr->acc.access[type]) {
+      continue;
+    }
+    expr->acc.access[type] = isl_union_map_align_params(expr->acc.access[type],
+                                                        isl_space_copy(space));
+    CHECK(expr->acc.access[type]);
+  }
+  isl_space_free(space);
+  return expr;
+}
+
+bool PypetExprAccessHasAnyAccessRelation(PypetExpr* expr) {
+  CHECK(expr);
+  CHECK(expr->type == PypetExprType::PYPET_EXPR_ACCESS);
+  for (int type = PypetExprAccessType::PYPET_EXPR_ACCESS_BEGIN;
+       type < PypetExprAccessType::PYPET_EXPR_ACCESS_END; ++type) {
+    if (expr->acc.access[type]) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool PypetExprIsSubAccess(PypetExpr* lhs, PypetExpr* rhs, int arg_num) {
+  if (!lhs || !rhs) {
+    return false;
+  }
+  if (lhs->type != PypetExprType::PYPET_EXPR_ACCESS) {
+    return false;
+  }
+  if (rhs->type != PypetExprType::PYPET_EXPR_ACCESS) {
+    return false;
+  }
+  if (PypetExprIsAffine(lhs) || PypetExprIsAffine(rhs)) {
+    return false;
+  }
+  int lhs_arg_num = lhs->arg_num;
+  int rhs_arg_num = rhs->arg_num;
+  if (lhs_arg_num != rhs_arg_num) {
+    return false;
+  }
+  if (lhs_arg_num > arg_num) {
+    arg_num = lhs_arg_num;
+  }
+  for (int i = 0; i < lhs_arg_num; ++i) {
+    if (lhs->args[i]->IsEqual(rhs->args[i]) == false) {
+      return false;
+    }
+  }
+  isl_id* lhs_id = PypetExprAccessGetId(lhs);
+  isl_id* rhs_id = PypetExprAccessGetId(rhs);
+  isl_id_free(lhs_id);
+  isl_id_free(rhs_id);
+  if (!lhs_id || !rhs_id) {
+    return false;
+  }
+  if (lhs_id != rhs_id) {
+    return false;
+  }
+
+  lhs = PypetExprCopy(lhs);
+  rhs = PypetExprCopy(rhs);
+  lhs = IntroduceAccessRelations(lhs);
+  rhs = IntroduceAccessRelations(rhs);
+
+  int is_subset = isl_union_map_is_subset(
+      lhs->acc.access[PypetExprAccessType::PYPET_EXPR_ACCESS_MAY_READ],
+      rhs->acc.access[PypetExprAccessType::PYPET_EXPR_ACCESS_MAY_READ]);
+  CHECK_GE(is_subset, 0);
+  PypetExprFree(lhs);
+  PypetExprFree(rhs);
+  return is_subset;
+}
+
+isl_union_map* ConstructAccessRelation(PypetExpr* expr) {
+  CHECK(expr);
+  isl_map* access =
+      isl_map_from_multi_pw_aff(isl_multi_pw_aff_copy(expr->acc.index));
+  CHECK(access);
+  int dim = isl_map_dim(access, isl_dim_out);
+  CHECK_LE(dim, expr->acc.depth);
+  if (dim < expr->acc.depth) {
+    access = ExtendRange(access, expr->acc.depth - dim);
+  }
+  return isl_union_map_from_map(access);
+}
+
+isl_map* ExtendRange(isl_map* access, int n) {
+  isl_id* id = isl_map_get_tuple_id(access, isl_dim_out);
+  if (!isl_map_range_is_wrapping(access)) {
+    access = isl_map_add_dims(access, isl_dim_out, n);
+  } else {
+    isl_map* domain = isl_map_copy(access);
+    domain = isl_map_range_factor_domain(domain);
+    access = isl_map_range_factor_range(access);
+    access = ExtendRange(access, n);
+    access = isl_map_range_product(domain, access);
+  }
+  access = isl_map_set_tuple_id(access, isl_dim_out, id);
+  return access;
+}
+
+PypetExpr* IntroduceAccessRelations(PypetExpr* expr) {
+  CHECK(expr);
+  if (expr->HasRelevantAccessRelation()) {
+    return expr;
+  }
+
+  isl_union_map* access = ConstructAccessRelation(expr);
+
+  expr->hash = 0;
+  if (expr->acc.kill &&
+      !expr->acc.access[PypetExprAccessType::PYPET_EXPR_ACCESS_FAKE_KILL]) {
+    expr->acc.access[PypetExprAccessType::PYPET_EXPR_ACCESS_FAKE_KILL] =
+        isl_union_map_copy(access);
+  }
+  if (expr->acc.read &&
+      !expr->acc.access[PypetExprAccessType::PYPET_EXPR_ACCESS_MAY_READ]) {
+    expr->acc.access[PypetExprAccessType::PYPET_EXPR_ACCESS_MAY_READ] =
+        isl_union_map_copy(access);
+  }
+  if (expr->acc.write &&
+      !expr->acc.access[PypetExprAccessType::PYPET_EXPR_ACCESS_MAY_WRITE]) {
+    expr->acc.access[PypetExprAccessType::PYPET_EXPR_ACCESS_MAY_WRITE] =
+        isl_union_map_copy(access);
+  }
+  if (expr->acc.write &&
+      !expr->acc.access[PypetExprAccessType::PYPET_EXPR_ACCESS_MUST_WRITE]) {
+    expr->acc.access[PypetExprAccessType::PYPET_EXPR_ACCESS_MUST_WRITE] =
+        isl_union_map_copy(access);
+  }
+  isl_union_map_free(access);
+  CHECK(expr->HasRelevantAccessRelation());
   return expr;
 }
 

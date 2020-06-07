@@ -3,6 +3,15 @@
 namespace pypoly {
 namespace pypet {
 
+namespace {
+
+PypetExpr* UpdateDomainWrapperFunc(PypetExpr* expr, void* user) {
+  isl_multi_pw_aff* update = static_cast<isl_multi_pw_aff*>(user);
+  return PypetExprUpdateDomain(expr, isl_multi_pw_aff_copy(update));
+}
+
+}  // namespace
+
 __isl_give PypetTree* CreatePypetTree(isl_ctx* ctx,
                                       torch::jit::SourceRange const* range,
                                       enum PypetTreeType tree_type) {
@@ -89,9 +98,24 @@ __isl_null PypetTree* PypetTreeFree(__isl_take PypetTree* tree) {
   return nullptr;
 }
 
+PypetTree* PypetTreeDup(PypetTree* tree) {
+  // TODO
+  return nullptr;
+}
+
 PypetTree* PypetTreeCopy(PypetTree* tree) {
   ++tree->ref;
   return tree;
+}
+
+PypetTree* PypetTreeCow(PypetTree* tree) {
+  if (tree->ref == 1) {
+    return tree;
+  } else {
+    --tree->ref;
+    return PypetTreeDup(tree);
+  }
+  return nullptr;
 }
 
 /* DFS traverse the given tree. Call "fn" on each node of "tree", including
@@ -215,8 +239,53 @@ int PypetTreeForeachAccessExpr(
 PypetTree* PypetTreeMapExpr(
     PypetTree* tree, const std::function<PypetExpr*(PypetExpr*, void*)>& fn,
     void* user) {
-  // TODO
-  return nullptr;
+  tree = PypetTreeCow(tree);
+
+  switch (tree->type) {
+    case PypetTreeType::PYPET_TREE_BLOCK:
+      for (int i = 0; i < tree->ast.Block.n; ++i) {
+        tree->ast.Block.children[i] =
+            PypetTreeMapExpr(tree->ast.Block.children[i], fn, user);
+      }
+      break;
+    case PypetTreeType::PYPET_TREE_DECL:
+      tree->ast.Decl.var = fn(tree->ast.Decl.var, user);
+      break;
+    case PypetTreeType::PYPET_TREE_DECL_INIT:
+      tree->ast.Decl.var = fn(tree->ast.Decl.var, user);
+      tree->ast.Decl.init = fn(tree->ast.Decl.init, user);
+      break;
+    case PypetTreeType::PYPET_TREE_EXPR:
+      tree->ast.Expr.expr = fn(tree->ast.Expr.expr, user);
+      break;
+    case PypetTreeType::PYPET_TREE_IF:
+      tree->ast.IfElse.cond = fn(tree->ast.IfElse.cond, user);
+      tree->ast.IfElse.if_body =
+          PypetTreeMapExpr(tree->ast.IfElse.if_body, fn, user);
+      break;
+    case PypetTreeType::PYPET_TREE_IF_ELSE:
+      tree->ast.IfElse.cond = fn(tree->ast.IfElse.cond, user);
+      tree->ast.IfElse.if_body =
+          PypetTreeMapExpr(tree->ast.IfElse.if_body, fn, user);
+      tree->ast.IfElse.else_body =
+          PypetTreeMapExpr(tree->ast.IfElse.else_body, fn, user);
+      break;
+    case PypetTreeType::PYPET_TREE_FOR:
+      tree->ast.Loop.iv = fn(tree->ast.Loop.iv, user);
+      tree->ast.Loop.init = fn(tree->ast.Loop.init, user);
+      tree->ast.Loop.cond = fn(tree->ast.Loop.cond, user);
+      tree->ast.Loop.inc = fn(tree->ast.Loop.inc, user);
+      tree->ast.Loop.body = PypetTreeMapExpr(tree->ast.Loop.body, fn, user);
+      break;
+    case PypetTreeType::PYPET_TREE_ERROR:
+    case PypetTreeType::PYPET_TREE_BREAK:
+    case PypetTreeType::PYPET_TREE_CONTINUE:
+    case PypetTreeType::PYPET_TREE_RETURN:
+    default:
+      UNIMPLEMENTED();
+      break;
+  }
+  return tree;
 }
 
 struct PypetTreeWritesData {
@@ -270,6 +339,13 @@ bool PypetTreeIsAssign(PypetTree* tree) {
     return false;
   }
   return tree->ast.Expr.expr->op == PypetOpType::PYPET_ASSIGN;
+}
+
+PypetTree* PypetTreeUpdateDomain(PypetTree* tree,
+                                 isl_multi_pw_aff* multi_pw_aff) {
+  tree = PypetTreeMapExpr(tree, UpdateDomainWrapperFunc, multi_pw_aff);
+  isl_multi_pw_aff_free(multi_pw_aff);
+  return tree;
 }
 
 void TreePrettyPrinter::Print(std::ostream& out,
