@@ -171,9 +171,45 @@ PypetTree* PypetTreeResolveAssume(PypetTree* tree, PypetContext* pc) {
   return tree;
 }
 
+bool IsAffineCondition(PypetExpr* expr, PypetContext* pc) {
+  isl_pw_aff* pa = PypetExprExtractAffineCondition(expr, pc);
+  int is_affine = !isl_pw_aff_involves_nan(pa);
+  isl_pw_aff_free(pa);
+  return is_affine;
+}
+
 bool IsConditionalAssignment(PypetTree* tree, PypetContext* pc) {
-  // TODO
-  return false;
+  if (tree->type != PypetTreeType::PYPET_TREE_IF_ELSE) {
+    return false;
+  }
+  if (tree->ast.IfElse.if_body->type != PypetTreeType::PYPET_TREE_EXPR) {
+    return false;
+  }
+  if (tree->ast.IfElse.else_body->type != PypetTreeType::PYPET_TREE_EXPR) {
+    return false;
+  }
+  PypetExpr* if_expr = tree->ast.IfElse.if_body->ast.Expr.expr;
+  PypetExpr* else_expr = tree->ast.IfElse.else_body->ast.Expr.expr;
+  if (if_expr->type != PypetExprType::PYPET_EXPR_OP ||
+      else_expr->type != PypetExprType::PYPET_EXPR_OP) {
+    return false;
+  }
+  if (if_expr->op != PypetOpType::PYPET_ASSIGN ||
+      else_expr->op != PypetOpType::PYPET_ASSIGN) {
+    return false;
+  }
+  PypetExpr* if_var = PypetExprGetArg(if_expr, 0);
+  PypetExpr* else_var = PypetExprGetArg(else_expr, 0);
+  bool is_equal = if_var->IsEqual(else_var);
+  PypetExprFree(if_var);
+  PypetExprFree(else_var);
+  if (!is_equal) {
+    return false;
+  }
+  if (IsAffineCondition(tree->ast.IfElse.cond, pc)) {
+    return false;
+  }
+  return true;
 }
 
 }  // namespace
@@ -250,12 +286,46 @@ __isl_keep PypetScop* TreeToScop::ScopFromReturn(__isl_keep PypetTree* tree,
   return nullptr;
 }
 
+PypetScop* TreeToScop::ScopFromEvaluatedExpr(
+    PypetExpr* expr, PypetContext* pc, int stmt_num,
+    torch::jit::SourceRange const* range) {
+  PypetTree* tree = PypetTreeNewExpr(expr);
+  tree->range = range;
+  return ScopFromEvaluatedTree(tree, stmt_num, pc);
+}
+
 PypetScop* TreeToScop::ScopFromConditionalAssignment(PypetTree* tree,
                                                      isl_pw_aff* cond_pw_aff,
                                                      PypetContext* pc,
                                                      PypetState* state) {
-  // TODO
-  return nullptr;
+  isl_set* cond = isl_pw_aff_non_zero_set(isl_pw_aff_copy(cond_pw_aff));
+  isl_set* comp = isl_pw_aff_zero_set(isl_pw_aff_copy(cond_pw_aff));
+  isl_multi_pw_aff* index = isl_multi_pw_aff_from_pw_aff(cond_pw_aff);
+
+  PypetExpr* if_expr = tree->ast.IfElse.if_body->ast.Expr.expr;
+  PypetExpr* else_expr = tree->ast.IfElse.else_body->ast.Expr.expr;
+
+  PypetExpr* expr_cond = PypetExprFromIndex(index);
+  PypetExpr* expr_then = PypetExprGetArg(if_expr, 1);
+  expr_then = PypetContextEvaluateExpr(pc, expr_then);
+  expr_then = PypetExprRestrict(expr_then, cond);
+
+  PypetExpr* expr_else = PypetExprGetArg(else_expr, 1);
+  expr_else = PypetContextEvaluateExpr(pc, expr_else);
+  expr_else = PypetExprRestrict(expr_else, comp);
+
+  PypetExpr* expr_write = PypetExprGetArg(if_expr, 0);
+  expr_write = PypetContextEvaluateExpr(pc, expr_write);
+
+  PypetExpr* gen_expr = PypetExprNewTernary(expr_cond, expr_then, expr_else);
+  int type_size = expr_write->type_size;
+  gen_expr = PypetExprNewBinary(type_size, PypetOpType::PYPET_ASSIGN,
+                                expr_write, gen_expr);
+
+  PypetScop* scop =
+      ScopFromEvaluatedExpr(gen_expr, pc, state->stmt_num++, tree->range);
+  FreePypetContext(pc);
+  return scop;
 }
 
 PypetScop* TreeToScop::ScopFromAffineIf(PypetTree* tree, isl_pw_aff* cond,

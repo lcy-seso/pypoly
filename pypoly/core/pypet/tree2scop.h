@@ -86,6 +86,10 @@ struct TreeToScop {
   PypetScop* ScopFromConditionalAssignment(PypetTree* tree,
                                            isl_pw_aff* cond_pw_aff,
                                            PypetContext* pc, PypetState* state);
+
+  PypetScop* ScopFromEvaluatedExpr(PypetExpr* expr, PypetContext* pc,
+                                   int stmt_num,
+                                   torch::jit::SourceRange const* range);
 };
 
 }  // namespace pypet

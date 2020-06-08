@@ -12,6 +12,10 @@ bool PypetNestedInSpace(isl_space* space, int pos);
 
 bool PypetNestedInSet(isl_set* set, int pos);
 
+bool PypetNestedInMap(isl_map* map, int pos);
+
+bool PypetNestedInUnionMap(isl_union_map* umap, int pos);
+
 isl_space* PypetNestedRemoveFromSpace(isl_space* space);
 
 isl_set* PypetNestedRemoveFromSet(isl_set* set);
@@ -19,6 +23,8 @@ isl_set* PypetNestedRemoveFromSet(isl_set* set);
 isl_id* PypetNestedPypetExpr(PypetExpr* expr);
 
 bool PypetNestedAnyInSpace(isl_space* space);
+
+int PypetNestedNInSet(isl_set* set);
 
 int PypetNestedNInSpace(isl_space* space);
 
@@ -38,6 +44,8 @@ PypetExpr* PypetExprExtractNested(PypetExpr* expr, int n, int* param2pos);
 PypetExpr* PypetExprResolveNested(PypetExpr* expr, isl_space* domain);
 
 PypetTree* PypetTreeResolveNested(PypetTree* tree, isl_space* space);
+
+PypetStmt* PypetStmtExtractNested(PypetStmt* stmt, int n, int* param2pos);
 
 PypetStmt* PypetStmtResolveNested(PypetStmt* stmt);
 

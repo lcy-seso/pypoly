@@ -10,6 +10,34 @@ PypetExpr* UpdateDomainWrapperFunc(PypetExpr* expr, void* user) {
   return PypetExprUpdateDomain(expr, isl_multi_pw_aff_copy(update));
 }
 
+struct PypetTreeWritesData {
+  isl_id* id;
+  int writes;
+};
+
+int CheckWrites(PypetExpr* expr, void* user) {
+  PypetTreeWritesData* data = static_cast<PypetTreeWritesData*>(user);
+  data->writes = PypetExprWrites(expr, data->id);
+  if (data->writes < 0 || data->writes) {
+    return -1;
+  }
+  return 0;
+}
+
+struct PypetTreeMapAccessExprData {
+  std::function<PypetExpr*(
+      PypetExpr*, const std::function<PypetExpr*(PypetExpr*, void*)>&, void*)>
+      map;
+  std::function<PypetExpr*(PypetExpr*, void*)> fn;
+  void* user;
+};
+
+PypetExpr* PypetTreeMapAccessExprFuncWrapper(PypetExpr* expr, void* user) {
+  PypetTreeMapAccessExprData* data =
+      static_cast<PypetTreeMapAccessExprData*>(user);
+  return data->map(expr, data->fn, data->user);
+}
+
 }  // namespace
 
 __isl_give PypetTree* CreatePypetTree(isl_ctx* ctx,
@@ -99,8 +127,55 @@ __isl_null PypetTree* PypetTreeFree(__isl_take PypetTree* tree) {
 }
 
 PypetTree* PypetTreeDup(PypetTree* tree) {
-  // TODO
-  return nullptr;
+  PypetTree* ret = CreatePypetTree(tree->ctx, tree->range, tree->type);
+  switch (tree->type) {
+    case PypetTreeType::PYPET_TREE_BLOCK:
+      ret->ast.Block.block = tree->ast.Block.block;
+      ret->ast.Block.n = tree->ast.Block.n;
+      ret->ast.Block.max = tree->ast.Block.max;
+      ret->ast.Block.children =
+          isl_calloc_array(tree->ctx, PypetTree*, ret->ast.Block.n);
+      for (int i = 0; i < ret->ast.Block.n; ++i) {
+        ret->ast.Block.children[i] = PypetTreeCopy(tree->ast.Block.children[i]);
+      }
+      break;
+    case PypetTreeType::PYPET_TREE_DECL:
+      ret->ast.Decl.var = PypetExprCopy(tree->ast.Decl.var);
+      break;
+    case PypetTreeType::PYPET_TREE_DECL_INIT:
+      ret->ast.Decl.var = PypetExprCopy(tree->ast.Decl.var);
+      ret->ast.Decl.init = PypetExprCopy(tree->ast.Decl.init);
+      break;
+    case PypetTreeType::PYPET_TREE_IF:
+      ret->ast.IfElse.cond = PypetExprCopy(tree->ast.IfElse.cond);
+      ret->ast.IfElse.if_body = PypetTreeCopy(tree->ast.IfElse.if_body);
+      break;
+    case PypetTreeType::PYPET_TREE_IF_ELSE:
+      ret->ast.IfElse.cond = PypetExprCopy(tree->ast.IfElse.cond);
+      ret->ast.IfElse.if_body = PypetTreeCopy(tree->ast.IfElse.if_body);
+      ret->ast.IfElse.else_body = PypetTreeCopy(tree->ast.IfElse.else_body);
+      break;
+    case PypetTreeType::PYPET_TREE_FOR:
+      ret->ast.Loop.independent = tree->ast.Loop.independent;
+      ret->ast.Loop.declared = tree->ast.Loop.declared;
+      ret->ast.Loop.iv = PypetExprCopy(tree->ast.Loop.iv);
+      ret->ast.Loop.init = PypetExprCopy(tree->ast.Loop.init);
+      ret->ast.Loop.cond = PypetExprCopy(tree->ast.Loop.cond);
+      ret->ast.Loop.inc = PypetExprCopy(tree->ast.Loop.inc);
+      ret->ast.Loop.body = PypetTreeCopy(tree->ast.Loop.body);
+      break;
+    case PypetTreeType::PYPET_TREE_EXPR:
+      ret->ast.Expr.expr = PypetExprCopy(tree->ast.Expr.expr);
+      break;
+    case PypetTreeType::PYPET_TREE_ERROR:
+    case PypetTreeType::PYPET_TREE_BREAK:
+    case PypetTreeType::PYPET_TREE_CONTINUE:
+    case PypetTreeType::PYPET_TREE_RETURN:
+    default:
+      UNIMPLEMENTED();
+      break;
+  }
+  return ret;
 }
 
 PypetTree* PypetTreeCopy(PypetTree* tree) {
@@ -115,7 +190,13 @@ PypetTree* PypetTreeCow(PypetTree* tree) {
     --tree->ref;
     return PypetTreeDup(tree);
   }
-  return nullptr;
+}
+
+PypetTree* PypetTreeNewExpr(PypetExpr* expr) {
+  PypetTree* tree =
+      CreatePypetTree(expr->ctx, nullptr, PypetTreeType::PYPET_TREE_EXPR);
+  tree->ast.Expr.expr = expr;
+  return tree;
 }
 
 /* DFS traverse the given tree. Call "fn" on each node of "tree", including
@@ -288,18 +369,11 @@ PypetTree* PypetTreeMapExpr(
   return tree;
 }
 
-struct PypetTreeWritesData {
-  isl_id* id;
-  int writes;
-};
-
-int CheckWrites(PypetExpr* expr, void* user) {
-  PypetTreeWritesData* data = static_cast<PypetTreeWritesData*>(user);
-  data->writes = PypetExprWrites(expr, data->id);
-  if (data->writes < 0 || data->writes) {
-    return -1;
-  }
-  return 0;
+PypetTree* PypetTreeMapAccessExpr(
+    PypetTree* tree, const std::function<PypetExpr*(PypetExpr*, void*)>& fn,
+    void* user) {
+  PypetTreeMapAccessExprData data = {PypetExprMapAccess, fn, user};
+  return PypetTreeMapExpr(tree, PypetTreeMapAccessExprFuncWrapper, &data);
 }
 
 int PypetTreeWrites(PypetTree* tree, isl_id* id) {

@@ -319,6 +319,15 @@ int Writes(PypetExpr* expr, void* user) {
   return -1;
 }
 
+isl_set* AddArguments(isl_set* domain, int n) {
+  if (n == 0) {
+    return domain;
+  }
+  isl_map* map = isl_map_from_domain(domain);
+  map = isl_map_add_dims(map, isl_dim_out, n);
+  return isl_map_wrap(map);
+}
+
 }  // namespace
 
 __isl_give PypetExpr* PypetExprAlloc(isl_ctx* ctx, PypetExprType expr_type) {
@@ -454,6 +463,27 @@ PypetExpr* PypetExprCow(PypetExpr* expr) {
     expr->ref--;
     return PypetExprDup(expr);
   }
+}
+
+PypetExpr* PypetExprNewBinary(int type_size, PypetOpType type, PypetExpr* lhs,
+                              PypetExpr* rhs) {
+  PypetExpr* expr = PypetExprAlloc(lhs->ctx, PypetExprType::PYPET_EXPR_OP);
+  expr = PypetExprSetNArgs(expr, 2);
+  expr->op = type;
+  expr->type_size = type_size;
+  expr->args[0] = lhs;
+  expr->args[1] = rhs;
+  return expr;
+}
+
+PypetExpr* PypetExprNewTernary(PypetExpr* p, PypetExpr* q, PypetExpr* r) {
+  PypetExpr* expr = PypetExprAlloc(p->ctx, PypetExprType::PYPET_EXPR_OP);
+  expr = PypetExprSetNArgs(expr, 3);
+  expr->op = PypetOpType::PYPET_COND;
+  expr->args[0] = p;
+  expr->args[1] = q;
+  expr->args[2] = r;
+  return expr;
 }
 
 PypetExpr* PypetExprSetTypeSize(PypetExpr* expr, int type_size) {
@@ -935,6 +965,13 @@ PypetExpr* PypetExprMapExprOfType(
     expr = fn(expr, user);
   }
   return expr;
+}
+
+PypetExpr* PypetExprMapAccess(
+    PypetExpr* expr, const std::function<PypetExpr*(PypetExpr*, void*)>& fn,
+    void* user) {
+  return PypetExprMapExprOfType(expr, PypetExprType::PYPET_EXPR_ACCESS, fn,
+                                user);
 }
 
 PypetExpr* PypetExprMapTopDown(
@@ -1460,6 +1497,35 @@ PypetExpr* PypetExpr::PlugIn(int pos, isl_pw_aff* value) {
 
   PypetExpr* expr = AccessPullbackMultiPwAff(multi_pw_aff);
   return expr->AccessProjectOutArg(in_dim, pos);
+}
+
+PypetExpr* PypetExprRestrict(PypetExpr* expr, isl_set* set) {
+  expr = PypetExprCow(expr);
+  for (int i = 0; i < expr->arg_num; ++i) {
+    expr->args[i] = PypetExprRestrict(expr->args[i], isl_set_copy(set));
+  }
+  if (expr->type != PypetExprType::PYPET_EXPR_ACCESS) {
+    isl_set_free(set);
+    return expr;
+  }
+
+  expr = IntroduceAccessRelations(expr);
+  set = AddArguments(set, expr->arg_num);
+  isl_union_set* uset = isl_union_set_from_set(isl_set_copy(set));
+
+  for (int type = PypetExprAccessType::PYPET_EXPR_ACCESS_BEGIN;
+       type < PypetExprAccessType::PYPET_EXPR_ACCESS_END; ++type) {
+    if (!expr->acc.access[type]) {
+      continue;
+    }
+    expr->acc.access[type] = isl_union_map_intersect_domain(
+        expr->acc.access[type], isl_union_set_copy(uset));
+    CHECK(expr->acc.access[type]);
+  }
+  isl_union_set_free(uset);
+  expr->acc.index = isl_multi_pw_aff_gist(expr->acc.index, set);
+  CHECK(expr->acc.index);
+  return expr;
 }
 
 __isl_give isl_printer* ExprPrettyPrinter::PrintExpr(

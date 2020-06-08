@@ -1,6 +1,7 @@
 #include "pypoly/core/pypet/nest.h"
 
 #include "pypoly/core/pypet/aff.h"
+#include "pypoly/core/pypet/expr.h"
 #include "pypoly/core/pypet/tree.h"
 
 namespace pypoly {
@@ -33,6 +34,78 @@ bool ExprIsNan(PypetExpr* expr) {
   return is_nan;
 }
 
+isl_union_map* PypetNestedRemoveFromUnionMap(isl_union_map* umap) {
+  int param_num = isl_union_map_dim(umap, isl_dim_param);
+  for (int i = param_num - 1; i >= 0; --i) {
+    if (PypetNestedInUnionMap(umap, i)) {
+      umap = isl_union_map_project_out(umap, isl_dim_param, i, 1);
+    }
+  }
+  return umap;
+}
+
+isl_multi_pw_aff* PypetNestedRemoveFromMultiPwAff(isl_multi_pw_aff* mpa) {
+  isl_space* space = isl_multi_pw_aff_get_space(mpa);
+  int param_num = isl_space_dim(space, isl_dim_param);
+  for (int i = param_num - 1; i >= 0; --i) {
+    if (!PypetNestedInSpace(space, i)) {
+      continue;
+    }
+    mpa = isl_multi_pw_aff_drop_dims(mpa, isl_dim_param, i, 1);
+  }
+  isl_space_free(space);
+  return mpa;
+}
+
+PypetExpr* ExprRemoveNestedParameters(PypetExpr* expr, void* user) {
+  expr = PypetExprCow(expr);
+  for (int type = PypetExprAccessType::PYPET_EXPR_ACCESS_BEGIN;
+       type < PypetExprAccessType::PYPET_EXPR_ACCESS_END; ++type) {
+    if (!expr->acc.access[type]) {
+      continue;
+    }
+    expr->acc.access[type] =
+        PypetNestedRemoveFromUnionMap(expr->acc.access[type]);
+  }
+  expr->acc.index = PypetNestedRemoveFromMultiPwAff(expr->acc.index);
+  return expr;
+}
+
+PypetStmt* PypetStmtRemoveNestedParameters(PypetStmt* stmt) {
+  stmt->body =
+      PypetTreeMapAccessExpr(stmt->body, ExprRemoveNestedParameters, nullptr);
+  for (int i = 0; i < stmt->arg_num; ++i) {
+    stmt->args[i] =
+        PypetExprMapExprOfType(stmt->args[i], PypetExprType::PYPET_EXPR_ACCESS,
+                               ExprRemoveNestedParameters, nullptr);
+  }
+  return stmt;
+}
+
+PypetStmt* RemoveDuplicateArguments(PypetStmt* stmt, int n) {
+  if (n == 0 || n == stmt->arg_num) {
+    return stmt;
+  }
+  isl_map* map = isl_set_unwrap(stmt->domain);
+  for (int i = stmt->arg_num - 1; i >= n; --i) {
+    for (int j = 0; j < n; ++j) {
+      if (stmt->args[i]->IsEqual(stmt->args[j])) {
+        map = isl_map_equate(map, isl_dim_out, i, isl_dim_out, j);
+        map = isl_map_project_out(map, isl_dim_out, i, 1);
+        break;
+      }
+    }
+    PypetExprFree(stmt->args[i]);
+    for (int j = i; j + 1 < stmt->arg_num; ++j) {
+      stmt->args[j] = stmt->args[j + 1];
+    }
+    --stmt->arg_num;
+  }
+  stmt->domain = isl_map_wrap(map);
+  CHECK(stmt->domain);
+  return stmt;
+}
+
 }  // namespace
 
 bool PypetNestedInId(isl_id* id) {
@@ -53,6 +126,20 @@ bool PypetNestedInSpace(isl_space* space, int pos) {
 
 bool PypetNestedInSet(isl_set* set, int pos) {
   isl_id* id = isl_set_get_dim_id(set, isl_dim_param, pos);
+  bool nested = PypetNestedInId(id);
+  isl_id_free(id);
+  return nested;
+}
+
+bool PypetNestedInMap(isl_map* map, int pos) {
+  isl_id* id = isl_map_get_dim_id(map, isl_dim_param, pos);
+  bool nested = PypetNestedInId(id);
+  isl_id_free(id);
+  return nested;
+}
+
+bool PypetNestedInUnionMap(isl_union_map* umap, int pos) {
+  isl_id* id = isl_union_map_get_dim_id(umap, isl_dim_param, pos);
   bool nested = PypetNestedInId(id);
   isl_id_free(id);
   return nested;
@@ -92,6 +179,13 @@ bool PypetNestedAnyInSpace(isl_space* space) {
     }
   }
   return false;
+}
+
+int PypetNestedNInSet(isl_set* set) {
+  isl_space* space = isl_set_get_space(set);
+  int n = PypetNestedNInSpace(space);
+  isl_space_free(space);
+  return n;
 }
 
 int PypetNestedNInSpace(isl_space* space) {
@@ -280,9 +374,58 @@ PypetTree* PypetTreeResolveNested(PypetTree* tree, isl_space* space) {
   return PypetTreeMapExpr(tree, PypetTreeResolveNestedFunc, space);
 }
 
+PypetStmt* PypetStmtExtractNested(PypetStmt* stmt, int n, int* param2pos) {
+  isl_ctx* ctx = isl_set_get_ctx(stmt->domain);
+  int arg_num = stmt->arg_num;
+  PypetExpr** args = isl_calloc_array(ctx, PypetExpr*, n + arg_num);
+  CHECK(args);
+  isl_space* space = isl_set_get_space(stmt->domain);
+  if (isl_space_is_wrapping(space)) {
+    space = isl_space_domain(isl_space_unwrap(space));
+  }
+  arg_num = PypetExtractNestedFromSpace(space, 0, args, param2pos);
+  isl_space_free(space);
+  for (int i = 0; i < stmt->arg_num; ++i) {
+    args[arg_num + i] = stmt->args[i];
+  }
+  free(stmt->args);
+  stmt->args = args;
+  stmt->arg_num += arg_num;
+  return stmt;
+}
+
 PypetStmt* PypetStmtResolveNested(PypetStmt* stmt) {
-  // TODO
-  return nullptr;
+  int n = PypetNestedNInSet(stmt->domain);
+  if (n == 0) {
+    return stmt;
+  }
+  isl_ctx* ctx = isl_set_get_ctx(stmt->domain);
+  int arg_num = stmt->arg_num;
+  int param_num = isl_set_dim(stmt->domain, isl_dim_param);
+  int* param2pos = isl_alloc_array(ctx, int, param_num);
+  stmt = PypetStmtExtractNested(stmt, n, param2pos);
+  n = stmt->arg_num - arg_num;
+  isl_map* map = nullptr;
+  if (isl_set_is_wrapping(stmt->domain)) {
+    map = isl_set_unwrap(stmt->domain);
+  } else {
+    map = isl_map_from_domain(stmt->domain);
+  }
+  map = isl_map_insert_dims(map, isl_dim_out, 0, n);
+  for (int i = param_num - 1; i >= 0; --i) {
+    if (!PypetNestedInMap(map, i)) {
+      continue;
+    }
+    isl_id* id = PypetExprAccessGetId(stmt->args[param2pos[i]]);
+    map = isl_map_set_dim_id(map, isl_dim_out, param2pos[i], id);
+    map = isl_map_equate(map, isl_dim_param, i, isl_dim_out, param2pos[i]);
+    map = isl_map_project_out(map, isl_dim_param, i, 1);
+  }
+  stmt->domain = isl_map_wrap(map);
+  stmt = PypetStmtRemoveNestedParameters(stmt);
+  stmt = RemoveDuplicateArguments(stmt, n);
+  free(param2pos);
+  return stmt;
 }
 
 PypetScop* PypetScopResolveNested(PypetScop* scop) {

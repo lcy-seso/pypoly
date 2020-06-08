@@ -182,6 +182,11 @@ __isl_keep PypetExpr* PypetExprDup(__isl_keep PypetExpr* expr);
 
 __isl_keep PypetExpr* PypetExprCow(__isl_keep PypetExpr* expr);
 
+PypetExpr* PypetExprNewBinary(int type_size, PypetOpType type, PypetExpr* lhs,
+                              PypetExpr* rhs);
+
+PypetExpr* PypetExprNewTernary(PypetExpr* p, PypetExpr* q, PypetExpr* r);
+
 PypetExpr* PypetExprSetTypeSize(PypetExpr* expr, int type_size);
 
 __isl_keep PypetExpr* PypetExprFromIslVal(__isl_keep isl_val* val);
@@ -270,6 +275,10 @@ PypetExpr* PypetExprMapExprOfType(
     PypetExpr* expr, PypetExprType type,
     const std::function<PypetExpr*(PypetExpr*, void*)>& fn, void* user);
 
+PypetExpr* PypetExprMapAccess(
+    PypetExpr* expr, const std::function<PypetExpr*(PypetExpr*, void*)>& fn,
+    void* user);
+
 PypetExpr* PypetExprMapTopDown(
     PypetExpr* expr, const std::function<PypetExpr*(PypetExpr*, void*)>& fn,
     void* user);
@@ -290,6 +299,8 @@ PypetExpr* PypetExprUpdateDomain(PypetExpr* expr, void* user);
 
 PypetExpr* PypetExprAccessUpdateDomain(PypetExpr* expr,
                                        isl_multi_pw_aff* update);
+
+PypetExpr* PypetExprRestrict(PypetExpr* expr, isl_set* set);
 
 struct ExprPrettyPrinter {
   static void Print(std::ostream& out, const PypetExpr* expr, int indent = 0);

@@ -106,6 +106,8 @@ PypetTree* PypetTreeCopy(PypetTree* tree);
 
 PypetTree* PypetTreeCow(PypetTree* tree);
 
+PypetTree* PypetTreeNewExpr(PypetExpr* expr);
+
 int ForeachExpr(PypetTree* tree, void* user);
 
 int PypetTreeForeachSubTree(
@@ -122,6 +124,10 @@ int PypetTreeForeachAccessExpr(
     void* user);
 
 PypetTree* PypetTreeMapExpr(
+    PypetTree* tree, const std::function<PypetExpr*(PypetExpr*, void*)>& fn,
+    void* user);
+
+PypetTree* PypetTreeMapAccessExpr(
     PypetTree* tree, const std::function<PypetExpr*(PypetExpr*, void*)>& fn,
     void* user);
 
