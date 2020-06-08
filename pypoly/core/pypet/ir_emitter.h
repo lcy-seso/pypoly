@@ -21,7 +21,6 @@ struct EmitStatements {
       const torch::jit::List<torch::jit::Stmt>& statements);
   PypetTree* EmitStatement(const torch::jit::Stmt& stmt);
   PypetTree* EmitFor(const torch::jit::For& stmt);
-
   PypetTree* EmitIf(const torch::jit::If& stmt);
   PypetTree* EmitWhile(const torch::jit::While& stmt);
   PypetTree* EmitAssignment(const torch::jit::Assign& stmt);
@@ -35,13 +34,23 @@ struct EmitStatements {
   PypetTree* EmitDelete(const torch::jit::Delete& smt);
   PypetTree* EmitExpr(const torch::jit::Expr& tree);
 
+  PypetExpr* ExtractAccessExpr(isl_ctx* ctx, const torch::jit::Expr& expr);
+  PypetExpr* ExtractAssignExpr(isl_ctx* ctx, const torch::jit::Assign& stmt);
+  PypetExpr* ExtractIndexExprFromSubscript(isl_ctx* ctx,
+                                           const torch::jit::Subscript& expr);
+  PypetExpr* ExtractIndexExpr(isl_ctx* ctx, const torch::jit::Expr& expr);
+  PypetExpr* ExtractBinaryExpr(isl_ctx* ctx, const torch::jit::Expr& expr);
+  PypetExpr* ExtractSelectExpr(isl_ctx* ctx, const torch::jit::Expr& expr);
+  PypetExpr* ExtractApplyExpr(isl_ctx* ctx, const torch::jit::Expr& expr);
+  PypetExpr* ExtractListLiteralExpr(isl_ctx* ctx, const torch::jit::Expr& expr);
+  PypetExpr* ExtractAttributeExpr(isl_ctx* ctx,
+                                  const torch::jit::Attribute& attribute_expr);
+  PypetExpr* ExtractAttributeExpr(isl_ctx* ctx, const torch::jit::Expr& expr);
+  PypetExpr* ExtractExpr(isl_ctx* ctx, const torch::jit::Expr& expr);
+
   isl_ctx* ctx;
-  isl_ctx* get_isl_ctx() { return ctx; };
-
-  std::set<std::string> used_names;
-
   PypetScop* scop;
-  PypetScop* get_scop() { return scop; };
+  std::set<std::string> used_names;
 };
 
 }  // namespace pypet

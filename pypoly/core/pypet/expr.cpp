@@ -1,12 +1,15 @@
 #include "pypoly/core/pypet/expr.h"
 
 #include "pypoly/core/pypet/aff.h"
+#include "pypoly/core/pypet/context.h"
 #include "pypoly/core/pypet/isl_printer.h"
+#include "pypoly/core/pypet/nest.h"
 
 namespace pypoly {
 namespace pypet {
 
 namespace {
+
 static void PypetFuncArgFree(struct PypetFuncSummaryArg* arg) {
   if (!arg) return;
 
@@ -46,6 +49,274 @@ int MultiPwAffIsEqual(isl_multi_pw_aff* lhs, isl_multi_pw_aff* rhs) {
   equal = isl_multi_pw_aff_plain_is_equal(lhs, rhs);
   isl_multi_pw_aff_free(rhs);
   return equal;
+}
+
+isl_pw_aff* NestedAccess(PypetExpr* expr, PypetContext* context) {
+  CHECK(expr);
+  CHECK(context);
+  CHECK(context->allow_nested);
+  CHECK(expr->type == PypetExprType::PYPET_EXPR_ACCESS);
+  if (expr->arg_num > 0) {
+    return NonAffine(PypetContextGetSpace(context));
+  }
+  isl_space* space = PypetExprAccessGetParameterSpace(expr);
+  bool nested = PypetNestedAnyInSpace(space);
+  isl_space_free(space);
+  if (nested) {
+    return NonAffine(PypetContextGetSpace(context));
+  }
+  isl_id* id = PypetNestedPypetExpr(PypetExprCopy(expr));
+  space = PypetContextGetSpace(context);
+  space = isl_space_insert_dims(space, isl_dim_param, 0, 1);
+
+  space = isl_space_set_dim_id(space, isl_dim_param, 0, id);
+  isl_local_space* ls = isl_local_space_from_space(space);
+  isl_aff* aff = isl_aff_var_on_domain(ls, isl_dim_param, 0);
+  return isl_pw_aff_from_aff(aff);
+}
+
+isl_pw_aff* ExtractAffineFromAccess(PypetExpr* expr, PypetContext* context) {
+  if (PypetExprIsAffine(expr)) {
+    return PypetExprGetAffine(expr);
+  }
+  CHECK_NE(expr->type_size, 0) << std::endl << expr;
+  if (!PypetExprIsScalarAccess(expr)) {
+    return NestedAccess(expr, context);
+  }
+  isl_id* id = PypetExprAccessGetId(expr);
+  if (PypetContextIsAssigned(context, id)) {
+    return PypetContextGetValue(context, id);
+  }
+  isl_id_free(id);
+  return NestedAccess(expr, context);
+}
+
+isl_pw_aff* ExtractAffineFromInt(PypetExpr* expr, PypetContext* context) {
+  CHECK(expr);
+  isl_local_space* local_space =
+      isl_local_space_from_space(PypetContextGetSpace(context));
+  isl_aff* aff = isl_aff_val_on_domain(local_space, isl_val_copy(expr->i));
+  return isl_pw_aff_from_aff(aff);
+}
+
+isl_pw_aff* ExtractAffineAddSub(PypetExpr* expr, PypetContext* context) {
+  CHECK(expr);
+  CHECK_EQ(expr->arg_num, 2);
+  isl_pw_aff* lhs = PypetExprExtractAffine(expr->args[0], context);
+  isl_pw_aff* rhs = PypetExprExtractAffine(expr->args[1], context);
+  switch (expr->op) {
+    case PypetOpType::PYPET_ADD:
+      return isl_pw_aff_add(lhs, rhs);
+    case PypetOpType::PYPET_SUB:
+      return isl_pw_aff_sub(lhs, rhs);
+    default:
+      UNIMPLEMENTED();
+      break;
+  }
+  return nullptr;
+}
+
+isl_pw_aff* ExtractAffineDivMod(PypetExpr* expr, PypetContext* context) {
+  UNIMPLEMENTED();
+  return nullptr;
+}
+
+isl_pw_aff* ExtractAffineMul(PypetExpr* expr, PypetContext* context) {
+  UNIMPLEMENTED();
+  return nullptr;
+}
+
+isl_pw_aff* ExtractAffineNeg(PypetExpr* expr, PypetContext* context) {
+  UNIMPLEMENTED();
+  return nullptr;
+}
+
+isl_pw_aff* ExtractAffineCond(PypetExpr* expr, PypetContext* context) {
+  UNIMPLEMENTED();
+  return nullptr;
+}
+
+isl_pw_aff* IndicatorFunction(isl_set* set, isl_set* dom) {
+  isl_pw_aff* pw_aff = isl_set_indicator_function(set);
+  pw_aff = isl_pw_aff_intersect_domain(pw_aff, isl_set_coalesce(dom));
+  return pw_aff;
+}
+
+isl_pw_aff* PypetAnd(isl_pw_aff* lhs, isl_pw_aff* rhs) {
+  isl_set* dom = isl_set_intersect(isl_pw_aff_domain(isl_pw_aff_copy(lhs)),
+                                   isl_pw_aff_domain(isl_pw_aff_copy(rhs)));
+  isl_set* cond = isl_set_intersect(isl_pw_aff_non_zero_set(lhs),
+                                    isl_pw_aff_non_zero_set(rhs));
+  return IndicatorFunction(cond, dom);
+}
+
+isl_pw_aff* PypetComparison(PypetOpType type, isl_pw_aff* lhs,
+                            isl_pw_aff* rhs) {
+  CHECK(lhs);
+  CHECK(rhs);
+  if (isl_pw_aff_involves_nan(lhs) || isl_pw_aff_involves_nan(rhs)) {
+    LOG(FATAL) << "unexpected input";
+    return nullptr;
+  }
+  isl_set* dom = isl_set_intersect(isl_pw_aff_domain(isl_pw_aff_copy(lhs)),
+                                   isl_pw_aff_domain(isl_pw_aff_copy(rhs)));
+  isl_set* cond = nullptr;
+  switch (type) {
+    case PypetOpType::PYPET_LT:
+      cond = isl_pw_aff_lt_set(lhs, rhs);
+      break;
+    case PypetOpType::PYPET_LE:
+      cond = isl_pw_aff_le_set(lhs, rhs);
+      break;
+    case PypetOpType::PYPET_GT:
+      cond = isl_pw_aff_gt_set(lhs, rhs);
+      break;
+    case PypetOpType::PYPET_GE:
+      cond = isl_pw_aff_ge_set(lhs, rhs);
+      break;
+    case PypetOpType::PYPET_EQ:
+      cond = isl_pw_aff_eq_set(lhs, rhs);
+      break;
+    case PypetOpType::PYPET_NE:
+      cond = isl_pw_aff_ne_set(lhs, rhs);
+      break;
+    default:
+      break;
+  }
+  cond = isl_set_coalesce(cond);
+  return IndicatorFunction(cond, dom);
+}
+
+isl_pw_aff* ExtractComparison(PypetExpr* expr, PypetContext* context) {
+  CHECK(expr);
+  CHECK_EQ(expr->arg_num, 2);
+  return PypetExprExtractComparison(expr->op, expr->args[0], expr->args[1],
+                                    context);
+}
+
+isl_pw_aff* ExtractBoolean(PypetExpr* expr, PypetContext* context) {
+  UNIMPLEMENTED();
+  return nullptr;
+}
+
+isl_pw_aff* PypetToBool(isl_pw_aff* pw_aff) {
+  CHECK(pw_aff);
+  if (isl_pw_aff_involves_nan(pw_aff)) {
+    isl_space* space = isl_pw_aff_get_domain_space(pw_aff);
+    isl_local_space* local_space = isl_local_space_from_space(space);
+    isl_pw_aff_free(pw_aff);
+    return isl_pw_aff_nan_on_domain(local_space);
+  }
+  isl_set* dom = isl_pw_aff_domain(isl_pw_aff_copy(pw_aff));
+  isl_set* cond = isl_pw_aff_non_zero_set(pw_aff);
+  pw_aff = IndicatorFunction(cond, dom);
+  return pw_aff;
+}
+
+isl_pw_aff* ExtractImplicitCondition(PypetExpr* expr, PypetContext* context) {
+  isl_pw_aff* ret = PypetExprExtractAffine(expr, context);
+  return PypetToBool(ret);
+}
+
+isl_val* WrapMod(isl_ctx* ctx, unsigned width) {
+  return isl_val_2exp(isl_val_int_from_ui(ctx, width));
+}
+
+isl_pw_aff* PypetWrapPwAff(isl_pw_aff* pw_aff, unsigned width) {
+  isl_val* mod = WrapMod(isl_pw_aff_get_ctx(pw_aff), width);
+  return isl_pw_aff_mod_val(pw_aff, mod);
+}
+
+isl_pw_aff* AvoidOverflow(isl_pw_aff* pw_aff, unsigned width) {
+  isl_space* space = isl_pw_aff_get_domain_space(pw_aff);
+  isl_local_space* local_space = isl_local_space_from_space(space);
+
+  isl_ctx* ctx = isl_pw_aff_get_ctx(pw_aff);
+  isl_val* val = isl_val_int_from_ui(ctx, width - 1);
+  val = isl_val_2exp(val);
+
+  isl_aff* bound = isl_aff_zero_on_domain(local_space);
+  bound = isl_aff_add_constant_val(bound, val);
+  isl_pw_aff* b = isl_pw_aff_from_aff(bound);
+
+  isl_set* dom = isl_pw_aff_lt_set(isl_pw_aff_copy(pw_aff), isl_pw_aff_copy(b));
+  pw_aff = isl_pw_aff_intersect_domain(pw_aff, dom);
+
+  b = isl_pw_aff_neg(b);
+  dom = isl_pw_aff_ge_set(isl_pw_aff_copy(pw_aff), b);
+  pw_aff = isl_pw_aff_intersect_domain(pw_aff, dom);
+  return pw_aff;
+}
+
+isl_pw_aff* SignedOverflow(isl_pw_aff* pw_aff, unsigned width) {
+  CHECK(pw_aff);
+  return AvoidOverflow(pw_aff, width);
+}
+
+isl_pw_aff* ExtractAffineFromOp(PypetExpr* expr, PypetContext* context) {
+  isl_pw_aff* ret = nullptr;
+  switch (expr->op) {
+    case PypetOpType::PYPET_ADD:
+    case PypetOpType::PYPET_SUB:
+      ret = ExtractAffineAddSub(expr, context);
+      break;
+    case PypetOpType::PYPET_DIV:
+    case PypetOpType::PYPET_MOD:
+      ret = ExtractAffineDivMod(expr, context);
+      break;
+    case PypetOpType::PYPET_MUL:
+      ret = ExtractAffineMul(expr, context);
+      break;
+    case PypetOpType::PYPET_MINUS:
+      return ExtractAffineNeg(expr, context);
+    case PypetOpType::PYPET_COND:
+      return ExtractAffineCond(expr, context);
+    case PypetOpType::PYPET_EQ:
+    case PypetOpType::PYPET_NE:
+    case PypetOpType::PYPET_LE:
+    case PypetOpType::PYPET_GE:
+    case PypetOpType::PYPET_LT:
+    case PypetOpType::PYPET_GT:
+      return PypetExprExtractAffineCondition(expr, context);
+    default:
+      UNIMPLEMENTED();
+      break;
+  }
+  CHECK(ret);
+  CHECK(isl_pw_aff_involves_nan(ret) == 0);
+  if (expr->type_size > 0) {
+    ret = PypetWrapPwAff(ret, expr->type_size);
+  } else {
+    ret = SignedOverflow(ret, -expr->type_size);
+  }
+  return ret;
+}
+
+struct PypetExprWritesData {
+  isl_id* id;
+  int found;
+};
+
+int Writes(PypetExpr* expr, void* user) {
+  PypetExprWritesData* data = static_cast<PypetExprWritesData*>(user);
+
+  if (!expr->acc.write) {
+    return 0;
+  }
+  if (PypetExprIsAffine(expr)) {
+    return 0;
+  }
+
+  isl_id* write_id = PypetExprAccessGetId(expr);
+  isl_id_free(write_id);
+  if (!write_id) {
+    return -1;
+  }
+  if (write_id != data->id) {
+    return 0;
+  }
+  data->found = 1;
+  return -1;
 }
 
 }  // namespace
@@ -590,7 +861,7 @@ PypetExpr* BuildPypetBinaryOpExpr(isl_ctx* ctx, PypetOpType op_type,
                                   PypetExpr* lhs, PypetExpr* rhs) {
   PypetExpr* expr = PypetExprAlloc(ctx, PypetExprType::PYPET_EXPR_OP);
   expr->arg_num = 2;
-  expr->args = new PypetExpr*[2];
+  expr->args = isl_alloc_array(ctx, PypetExpr*, 2);
   expr->args[0] = lhs;
   expr->args[1] = rhs;
   expr->op = op_type;
@@ -696,33 +967,6 @@ isl_id* PypetExprAccessGetId(PypetExpr* expr) {
   }
 }
 
-struct PypetExprWritesData {
-  isl_id* id;
-  int found;
-};
-
-int Writes(PypetExpr* expr, void* user) {
-  PypetExprWritesData* data = static_cast<PypetExprWritesData*>(user);
-
-  if (!expr->acc.write) {
-    return 0;
-  }
-  if (PypetExprIsAffine(expr)) {
-    return 0;
-  }
-
-  isl_id* write_id = PypetExprAccessGetId(expr);
-  isl_id_free(write_id);
-  if (!write_id) {
-    return -1;
-  }
-  if (write_id != data->id) {
-    return 0;
-  }
-  data->found = 1;
-  return -1;
-}
-
 int PypetExprWrites(PypetExpr* expr, isl_id* id) {
   PypetExprWritesData data = {id, 0};
   if (PypetExprForeachAccessExpr(expr, Writes, &data) < 0 && !data.found) {
@@ -763,6 +1007,72 @@ bool PypetExprIsAffine(PypetExpr* expr) {
   int has_id = isl_multi_pw_aff_has_tuple_id(expr->acc.index, isl_dim_out);
   CHECK_GE(has_id, 0);
   return !has_id;
+}
+
+isl_pw_aff* PypetExprExtractComparison(PypetOpType type, PypetExpr* lhs,
+                                       PypetExpr* rhs, PypetContext* context) {
+  if (type == PypetOpType::PYPET_GT) {
+    return PypetExprExtractComparison(PypetOpType::PYPET_LT, rhs, lhs, context);
+  }
+  if (type == PypetOpType::PYPET_GE) {
+    return PypetExprExtractComparison(PypetOpType::PYPET_LE, rhs, lhs, context);
+  }
+  if (type == PypetOpType::PYPET_LT || type == PypetOpType::PYPET_LT) {
+    if (rhs->IsMin()) {
+      return PypetAnd(
+          PypetExprExtractComparison(type, lhs, rhs->args[1], context),
+          PypetExprExtractComparison(type, lhs, rhs->args[2], context));
+    }
+    if (lhs->IsMax()) {
+      return PypetAnd(
+          PypetExprExtractComparison(type, lhs->args[1], rhs, context),
+          PypetExprExtractComparison(type, lhs->args[2], rhs, context));
+    }
+  }
+  isl_pw_aff* lhs_pw_aff = PypetExprExtractAffine(lhs, context);
+  isl_pw_aff* rhs_pw_aff = PypetExprExtractAffine(rhs, context);
+  return PypetComparison(type, lhs_pw_aff, rhs_pw_aff);
+}
+
+isl_pw_aff* PypetExprExtractAffineCondition(PypetExpr* expr,
+                                            PypetContext* context) {
+  CHECK(expr);
+  if (expr->IsComparison()) {
+    return ExtractComparison(expr, context);
+  } else if (expr->IsBoolean()) {
+    return ExtractBoolean(expr, context);
+  } else {
+    return ExtractImplicitCondition(expr, context);
+  }
+}
+
+isl_pw_aff* PypetExprExtractAffine(PypetExpr* expr, PypetContext* context) {
+  CHECK(expr);
+  auto iter = context->extracted_affine.find(expr);
+  if (iter != context->extracted_affine.end()) {
+    return iter->second;
+  }
+
+  isl_pw_aff* pw_aff = nullptr;
+  switch (expr->type) {
+    case PypetExprType::PYPET_EXPR_ACCESS:
+      pw_aff = ExtractAffineFromAccess(expr, context);
+      break;
+    case PypetExprType::PYPET_EXPR_INT:
+      pw_aff = ExtractAffineFromInt(expr, context);
+      break;
+    case PypetExprType::PYPET_EXPR_OP:
+      pw_aff = ExtractAffineFromOp(expr, context);
+      break;
+    case PypetExprType::PYPET_EXPR_CALL:
+    default:
+      UNIMPLEMENTED();
+      break;
+  }
+
+  context->extracted_affine.insert(
+      std::make_pair(PypetExprCopy(expr), isl_pw_aff_copy(pw_aff)));
+  return pw_aff;
 }
 
 isl_pw_aff* PypetExprGetAffine(PypetExpr* expr) {

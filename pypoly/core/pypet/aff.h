@@ -14,6 +14,8 @@ isl_union_map* PypetUnionMapMoveDims(isl_union_map* umap,
                                      enum isl_dim_type src_type,
                                      unsigned src_pos, unsigned n);
 
+isl_val* PypetExtractCst(isl_pw_aff* pw_aff);
+
 }  // namespace pypet
 }  // namespace pypoly
 

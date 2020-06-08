@@ -256,6 +256,14 @@ int PypetExprIsScalarAccess(PypetExpr* expr);
 
 bool PypetExprIsAffine(PypetExpr* expr);
 
+isl_pw_aff* PypetExprExtractComparison(PypetOpType type, PypetExpr* lhs,
+                                       PypetExpr* rhs, PypetContext* context);
+
+isl_pw_aff* PypetExprExtractAffineCondition(PypetExpr* expr,
+                                            PypetContext* context);
+
+isl_pw_aff* PypetExprExtractAffine(PypetExpr* expr, PypetContext* context);
+
 isl_pw_aff* PypetExprGetAffine(PypetExpr* expr);
 
 PypetExpr* PypetExprMapExprOfType(

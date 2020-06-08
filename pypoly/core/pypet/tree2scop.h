@@ -21,25 +21,6 @@ struct PypetState {
   int test_num;
 };
 
-struct PypetContext {
-  PypetContext();
-  ~PypetContext() = default;
-
-  int ref;
-  isl_set* domain;
-  // for each parameter in "tree". Parameters any integer variable that is read
-  // anywhere in "tree" or in any of the size expressions for any of the arrays
-  // accessed in "tree".
-  bool allow_nested;
-  std::map<isl_id*, isl_pw_aff*> assignments;
-  std::map<PypetExpr*, isl_pw_aff*> extracted_affine;
-};
-
-__isl_give PypetContext* CreatePypetContext(__isl_take isl_set* domain);
-__isl_null PypetContext* FreePypetContext(__isl_take PypetContext* pc);
-__isl_give PypetContext* PypetContextAddParameter(__isl_keep PypetTree* tree,
-                                                  __isl_keep PypetContext* pc);
-
 // construct SCoP from PypetTree
 struct TreeToScop {
   TreeToScop(isl_ctx* ctx) : ctx(ctx){};
@@ -95,6 +76,16 @@ struct TreeToScop {
 
   PypetScop* ScopFromAffineIf(PypetTree* tree, isl_pw_aff* cond,
                               PypetContext* pc, PypetState* state);
+
+  PypetScop* ScopFromEvaluatedTree(PypetTree* tree, int stmt_num,
+                                   PypetContext* pc);
+
+  PypetScop* ScopFromUnevaluatedTree(PypetTree* tree, int stmt_num,
+                                     PypetContext* pc);
+
+  PypetScop* ScopFromConditionalAssignment(PypetTree* tree,
+                                           isl_pw_aff* cond_pw_aff,
+                                           PypetContext* pc, PypetState* state);
 };
 
 }  // namespace pypet
