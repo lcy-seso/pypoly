@@ -20,6 +20,7 @@ namespace pypet {
 PRINTER_FUNC(multi_pw_aff)
 PRINTER_FUNC(pw_aff)
 PRINTER_FUNC(id)
+PRINTER_FUNC(schedule)
 
 #define PRINTER_FUNC2(isl_type)                                 \
   static inline std::ostream& operator<<(std::ostream& out,     \
@@ -35,6 +36,7 @@ PRINTER_FUNC(id)
     return out;                                                 \
   }
 PRINTER_FUNC2(set)
+PRINTER_FUNC2(space)
 
 }  // namespace pypet
 }  // namespace pypoly

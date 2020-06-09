@@ -3,6 +3,7 @@
 #include "pypoly/core/pypet/aff.h"
 #include "pypoly/core/pypet/expr.h"
 #include "pypoly/core/pypet/expr_arg.h"
+#include "pypoly/core/pypet/isl_printer.h"
 #include "pypoly/core/pypet/nest.h"
 #include "pypoly/core/pypet/tree.h"
 
@@ -237,8 +238,6 @@ PypetContext* PypetContextCow(PypetContext* context) {
   CHECK(context);
   if (context->ref == 1) {
     // TODO(yizhu1): check pointers
-    context->assignments.clear();
-    context->extracted_affine.clear();
     return context;
   }
   --context->ref;
@@ -362,7 +361,7 @@ PypetExpr* PypetContextEvaluateExpr(PypetContext* context, PypetExpr* expr) {
 }
 
 PypetTree* PypetContextEvaluateTree(PypetContext* pc, PypetTree* tree) {
-  return PypetTreeMapExpr(tree, &TreeEvaluateExprWrapper, pc);
+  return PypetTreeMapExpr(tree, TreeEvaluateExprWrapper, pc);
 }
 
 }  // namespace pypet

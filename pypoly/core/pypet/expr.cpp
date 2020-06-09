@@ -284,6 +284,7 @@ isl_pw_aff* ExtractAffineFromOp(PypetExpr* expr, PypetContext* context) {
   }
   CHECK(ret);
   CHECK(isl_pw_aff_involves_nan(ret) == 0);
+  CHECK_NE(expr->type_size, 0);
   if (expr->type_size > 0) {
     ret = PypetWrapPwAff(ret, expr->type_size);
   } else {
@@ -326,6 +327,11 @@ isl_set* AddArguments(isl_set* domain, int n) {
   isl_map* map = isl_map_from_domain(domain);
   map = isl_map_add_dims(map, isl_dim_out, n);
   return isl_map_wrap(map);
+}
+
+PypetExpr* PypetExprUpdateDomainWrapperFunc(PypetExpr* expr, void* user) {
+  isl_multi_pw_aff* update = static_cast<isl_multi_pw_aff*>(user);
+  return PypetExprAccessUpdateDomain(expr, update);
 }
 
 }  // namespace
@@ -980,7 +986,7 @@ PypetExpr* PypetExprMapTopDown(
   CHECK(expr);
   expr = fn(expr, user);
   for (int i = 0; i < expr->arg_num; ++i) {
-    PypetExpr* arg = expr->args[i];
+    PypetExpr* arg = PypetExprGetArg(expr, i);
     arg = PypetExprMapTopDown(arg, fn, user);
     expr = PypetExprSetArg(expr, i, arg);
   }
@@ -1183,13 +1189,13 @@ bool PypetExpr::IsMax() {
 PypetExpr* PypetExprInsertDomain(PypetExpr* expr, isl_space* space) {
   space = isl_space_from_domain(space);
   isl_multi_pw_aff* multi_pw_aff = isl_multi_pw_aff_zero(space);
-  return PypetExprMapExprOfType(expr, PypetExprType::PYPET_EXPR_ACCESS,
-                                PypetExprUpdateDomain, multi_pw_aff);
+  return PypetExprUpdateDomain(expr, multi_pw_aff);
 }
 
-PypetExpr* PypetExprUpdateDomain(PypetExpr* expr, void* user) {
-  isl_multi_pw_aff* update = static_cast<isl_multi_pw_aff*>(user);
-  return PypetExprAccessUpdateDomain(expr, update);
+PypetExpr* PypetExprUpdateDomain(PypetExpr* expr, isl_multi_pw_aff* update) {
+  expr = PypetExprMapAccess(expr, PypetExprUpdateDomainWrapperFunc, update);
+  isl_multi_pw_aff_free(update);
+  return expr;
 }
 
 PypetExpr* PypetExprAccessUpdateDomain(PypetExpr* expr,

@@ -43,43 +43,36 @@ PypetExpr* PypetTreeMapAccessExprFuncWrapper(PypetExpr* expr, void* user) {
 __isl_give PypetTree* CreatePypetTree(isl_ctx* ctx,
                                       torch::jit::SourceRange const* range,
                                       enum PypetTreeType tree_type) {
-  PypetTree* tree;
-
-  tree = isl_calloc_type(ctx, struct PypetTree);
-  if (!tree) return nullptr;
+  PypetTree* tree = isl_calloc_type(ctx, struct PypetTree);
+  CHECK(tree);
 
   tree->ctx = ctx;
   isl_ctx_ref(ctx);
   tree->ref = 1;
   tree->type = tree_type;
-  if (range != nullptr) {
-    tree->range = range;
-  } else {
-    tree->range = nullptr;
-  }
+  tree->range = range;
   tree->label = nullptr;
 
   return tree;
 }
 
 __isl_give PypetTree* CreatePypetTreeBlock(isl_ctx* ctx, int block, int n) {
-  PypetTree* tree;
-
-  tree = CreatePypetTree(ctx, nullptr, PypetTreeType::PYPET_TREE_BLOCK);
-  if (!tree) return nullptr;
+  PypetTree* tree =
+      CreatePypetTree(ctx, nullptr, PypetTreeType::PYPET_TREE_BLOCK);
 
   tree->ast.Block.block = block;
   tree->ast.Block.n = n;
   tree->ast.Block.max = n;
   tree->ast.Block.children = isl_calloc_array(ctx, PypetTree*, n);
   tree->range = nullptr;
-  if (n && !tree->ast.Block.children) return PypetTreeFree(tree);
-
+  if (n && !tree->ast.Block.children) {
+    UNIMPLEMENTED();
+  }
   return tree;
 }
 
 __isl_null PypetTree* PypetTreeFree(__isl_take PypetTree* tree) {
-  if (!tree) return nullptr;
+  CHECK(tree);
   if (--tree->ref > 0) return nullptr;
 
   if (tree->label != nullptr) {
@@ -87,37 +80,44 @@ __isl_null PypetTree* PypetTreeFree(__isl_take PypetTree* tree) {
   }
 
   switch (tree->type) {
-    case PYPET_TREE_ERROR:
-      break;
     case PYPET_TREE_BLOCK:
       for (int i = 0; i < tree->ast.Block.n; ++i) {
         PypetTreeFree(tree->ast.Block.children[i]);
       }
       free(tree->ast.Block.children);
       break;
-    case PYPET_TREE_BREAK:
-    case PYPET_TREE_CONTINUE:
-      break;
     case PYPET_TREE_DECL:
-    case PYPET_TREE_DECL_INIT:
       PypetExprFree(tree->ast.Decl.var);
       break;
+    case PYPET_TREE_DECL_INIT:
+      PypetExprFree(tree->ast.Decl.var);
+      PypetExprFree(tree->ast.Decl.init);
+      break;
     case PYPET_TREE_EXPR:
-    case PYPET_TREE_RETURN:
       PypetExprFree(tree->ast.Expr.expr);
       break;
     case PYPET_TREE_FOR:
       PypetExprFree(tree->ast.Loop.iv);
       PypetExprFree(tree->ast.Loop.init);
+      PypetExprFree(tree->ast.Loop.cond);
       PypetExprFree(tree->ast.Loop.inc);
       PypetTreeFree(tree->ast.Loop.body);
-      break;
-    case PYPET_TREE_IF_ELSE:
-      PypetTreeFree(tree->ast.IfElse.else_body);
       break;
     case PYPET_TREE_IF:
       PypetExprFree(tree->ast.IfElse.cond);
       PypetTreeFree(tree->ast.IfElse.if_body);
+      break;
+    case PYPET_TREE_IF_ELSE:
+      PypetExprFree(tree->ast.IfElse.cond);
+      PypetTreeFree(tree->ast.IfElse.if_body);
+      PypetTreeFree(tree->ast.IfElse.else_body);
+      break;
+    case PYPET_TREE_ERROR:
+    case PYPET_TREE_BREAK:
+    case PYPET_TREE_CONTINUE:
+    case PYPET_TREE_RETURN:
+    default:
+      UNIMPLEMENTED();
       break;
   }
 
@@ -195,7 +195,7 @@ PypetTree* PypetTreeCow(PypetTree* tree) {
 PypetTree* PypetTreeNewExpr(PypetExpr* expr) {
   PypetTree* tree =
       CreatePypetTree(expr->ctx, nullptr, PypetTreeType::PYPET_TREE_EXPR);
-  tree->ast.Expr.expr = expr;
+  tree->ast.Expr.expr = PypetExprCopy(expr);
   return tree;
 }
 
@@ -443,8 +443,8 @@ void TreePrettyPrinter::Print(std::ostream& out,
       break;
     case PYPET_TREE_BLOCK:
       for (int i = 0; i < tree->ast.Block.n; ++i) {
-        std::cout << std::string(indent, ' ') << "block child " << i << ":"
-                  << std::endl;
+        out << std::string(indent, ' ') << "block child " << i << ":"
+            << std::endl;
         TreePrettyPrinter::Print(out, tree->ast.Block.children[i], indent + 2);
       }
       break;
@@ -478,7 +478,7 @@ void TreePrettyPrinter::Print(std::ostream& out,
       out << std::string(indent, ' ') << "inc:" << std::endl;
       ExprPrettyPrinter::Print(out, tree->ast.Loop.inc, indent + 2);
       out << std::endl;
-      std::cout << std::string(indent, ' ') << "for body:" << std::endl;
+      out << std::string(indent, ' ') << "for body:" << std::endl;
       TreePrettyPrinter::Print(out, tree->ast.Loop.body, indent + 2);
       break;
     }

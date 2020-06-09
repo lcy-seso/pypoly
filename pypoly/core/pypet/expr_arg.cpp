@@ -1,6 +1,7 @@
 #include "pypoly/core/pypet/expr_arg.h"
 
 #include "pypoly/core/pypet/context.h"
+#include "pypoly/core/pypet/isl_printer.h"
 
 namespace pypoly {
 namespace pypet {
@@ -9,7 +10,7 @@ namespace {
 
 PypetExpr* SpliceSum(PypetExpr* expr, int dim, int pos) {
   CHECK(expr);
-  PypetExpr* arg = expr->args[pos];
+  PypetExpr* arg = PypetExprCopy(expr->args[pos]);
   expr = PypetExprInsertArg(expr, pos + 1, arg->args[1]);
   expr = PypetExprSetArg(expr, pos, arg->args[0]);
   isl_space* space = isl_multi_pw_aff_get_space(expr->acc.index);

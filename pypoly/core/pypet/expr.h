@@ -295,7 +295,7 @@ isl_ctx* PypetExprGetCtx(PypetExpr* expr);
 
 PypetExpr* PypetExprInsertDomain(PypetExpr* expr, isl_space* space);
 
-PypetExpr* PypetExprUpdateDomain(PypetExpr* expr, void* user);
+PypetExpr* PypetExprUpdateDomain(PypetExpr* expr, isl_multi_pw_aff* update);
 
 PypetExpr* PypetExprAccessUpdateDomain(PypetExpr* expr,
                                        isl_multi_pw_aff* update);
