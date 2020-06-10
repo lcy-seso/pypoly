@@ -89,7 +89,7 @@ std::vector<PypetTree*> EmitStatements::operator()(
   std::vector<PypetTree*> ret(statements.size(), nullptr);
   for (size_t i = 0; i < statements.size(); ++i) {
     ret[i] = EmitStatement(statements[i]);
-    std::cout << ret[i];
+    // std::cout << ret[i];
   }
   return ret;
 }

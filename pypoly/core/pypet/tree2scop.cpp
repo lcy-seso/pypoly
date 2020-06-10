@@ -212,6 +212,12 @@ bool IsConditionalAssignment(PypetTree* tree, PypetContext* pc) {
   return true;
 }
 
+PypetScop* SetIndependence(PypetScop* scop, PypetTree* tree, isl_set* domain,
+                           int sign, PypetContext* pc, PypetState* state) {
+  // TODO
+  return scop;
+}
+
 }  // namespace
 
 __isl_keep PypetScop* TreeToScop::ScopFromBlock(__isl_keep PypetTree* tree,
@@ -465,9 +471,9 @@ __isl_keep PypetScop* TreeToScop::ScopFromAffineFor(
   pc = PypetContextIntersectDomain(pc, isl_set_copy(domain));
 
   PypetScop* scop = ToScop(tree->ast.Loop.body, pc, state);
-  scop->ResetSkips();
   scop = PypetScopResolveNested(scop);
-  scop->SetIndependence(tree, domain, isl_val_sgn(inc), pc, state);
+  scop = SetIndependence(scop, tree, domain, isl_val_sgn(inc), pc, state);
+  scop = PypetScopEmbed(scop, domain, sched);
 
   valid_inc = isl_set_intersect(valid_inc, valid_cond_next);
   valid_inc = isl_set_intersect(valid_inc, valid_cond_init);
@@ -477,7 +483,7 @@ __isl_keep PypetScop* TreeToScop::ScopFromAffineFor(
   isl_val_free(inc);
   valid_init = isl_set_project_out(valid_init, isl_dim_set, pos, 1);
   scop = PypetScopRestrictContext(scop, valid_init);
-  FreePypetContext(pc);
+  // FreePypetContext(pc);
   return scop;
 }
 
@@ -572,6 +578,8 @@ __isl_give PypetScop* TreeToScop::ScopFromTree(__isl_keep PypetTree* tree) {
     // Compute the parameter domain of the given set.
     scop->context = isl_set_params(scop->context);
   }
+
+  LOG(INFO) << scop->schedule;
 
   FreePypetContext(pc);
   return scop;

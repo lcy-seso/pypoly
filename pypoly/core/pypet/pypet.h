@@ -70,9 +70,6 @@ struct PypetScop {
   static PypetScop* Create(isl_space* space, PypetStmt* stmt);
   static PypetScop* Create(isl_space* space, int n, isl_schedule* schedule);
 
-  void ResetSkips() {}
-  void SetIndependence(PypetTree*, isl_set*, int, PypetContext*, PypetState*) {}
-
   torch::jit::SourceRange range;
 
   // program parameters. A unit set.
@@ -100,6 +97,9 @@ PypetScop* PypetScopAdd(isl_ctx* ctx, isl_schedule* schedule, PypetScop* lhs,
 PypetScop* PypetScopAddPar(isl_ctx* ctx, PypetScop* lhs, PypetScop* rhs);
 
 PypetScop* PypetScopAddSeq(isl_ctx* ctx, PypetScop* lhs, PypetScop* rhs);
+
+PypetScop* PypetScopEmbed(PypetScop* scop, isl_set* dom,
+                          isl_multi_aff* schedule);
 
 inline PypetScop* ScopCollectImplications(isl_ctx* ctx, PypetScop* scop,
                                           PypetScop* lhs, PypetScop* rhs) {

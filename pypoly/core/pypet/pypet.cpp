@@ -58,6 +58,60 @@ isl_set* ExprExtractContext(PypetExpr* expr, isl_set* context) {
   return context;
 }
 
+isl_set* ContextEmbed(isl_set* context, isl_set* dom) {
+  int pos = isl_set_dim(context, isl_dim_set) - 1;
+  context = isl_set_subtract(isl_set_copy(dom), context);
+  context = isl_set_project_out(context, isl_dim_set, pos, 1);
+  context = isl_set_complement(context);
+  context = PypetNestedRemoveFromSet(context);
+  return context;
+}
+
+struct PypetOuterProjectionData {
+  int n;
+  isl_union_pw_multi_aff* ret;
+};
+
+isl_stat AddOuterProjection(isl_set* set, void* user) {
+  PypetOuterProjectionData* data = static_cast<PypetOuterProjectionData*>(user);
+  int dim = isl_set_dim(set, isl_dim_set);
+  isl_space* space = isl_set_get_space(set);
+  isl_pw_multi_aff* pma = isl_pw_multi_aff_project_out_map(
+      space, isl_dim_set, data->n, dim - data->n);
+  data->ret = isl_union_pw_multi_aff_add_pw_multi_aff(data->ret, pma);
+
+  isl_set_free(set);
+  return isl_stat_ok;
+}
+
+isl_multi_union_pw_aff* OuterProjectionMupa(isl_union_set* domain, int n) {
+  PypetOuterProjectionData data;
+  isl_space* space = isl_union_set_get_space(domain);
+  data.n = n;
+  data.ret = isl_union_pw_multi_aff_empty(space);
+  CHECK_GE(isl_union_set_foreach_set(domain, &AddOuterProjection, &data), 0);
+  isl_union_set_free(domain);
+  return isl_multi_union_pw_aff_from_union_pw_multi_aff(data.ret);
+}
+
+isl_schedule* ScheduleEmbed(isl_schedule* schedule, isl_multi_aff* prefix) {
+  isl_union_set* domain = isl_schedule_get_domain(schedule);
+
+  int empty = isl_union_set_is_empty(domain);
+  CHECK_GE(empty, 0);
+  if (empty) {
+    isl_union_set_free(domain);
+    return schedule;
+  }
+
+  int n = isl_multi_aff_dim(prefix, isl_dim_in);
+  isl_multi_union_pw_aff* mupa = OuterProjectionMupa(domain, n);
+  isl_multi_aff* ma = isl_multi_aff_copy(prefix);
+  mupa = isl_multi_union_pw_aff_apply_multi_aff(mupa, ma);
+  schedule = isl_schedule_insert_partial_schedule(schedule, mupa);
+  return schedule;
+}
+
 }  // namespace
 
 PypetStmt* PypetStmt::Create(isl_set* domain, int id, PypetTree* tree) {
@@ -215,6 +269,15 @@ PypetScop* PypetScopAddPar(isl_ctx* ctx, PypetScop* lhs, PypetScop* rhs) {
   isl_schedule* schedule = isl_schedule_set(isl_schedule_copy(lhs->schedule),
                                             isl_schedule_copy(rhs->schedule));
   return PypetScopAdd(ctx, schedule, lhs, rhs);
+}
+
+PypetScop* PypetScopEmbed(PypetScop* scop, isl_set* dom,
+                          isl_multi_aff* schedule) {
+  scop->context = ContextEmbed(scop->context, dom);
+  scop->schedule = ScheduleEmbed(scop->schedule, schedule);
+  isl_set_free(dom);
+  isl_multi_aff_free(schedule);
+  return scop;
 }
 
 }  // namespace pypet

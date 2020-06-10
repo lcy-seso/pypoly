@@ -284,10 +284,9 @@ isl_pw_aff* ExtractAffineFromOp(PypetExpr* expr, PypetContext* context) {
   }
   CHECK(ret);
   CHECK(isl_pw_aff_involves_nan(ret) == 0);
-  CHECK_NE(expr->type_size, 0);
   if (expr->type_size > 0) {
     ret = PypetWrapPwAff(ret, expr->type_size);
-  } else {
+  } else if (expr->type_size < 0) {
     ret = SignedOverflow(ret, -expr->type_size);
   }
   return ret;
