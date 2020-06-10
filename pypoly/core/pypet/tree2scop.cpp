@@ -579,7 +579,7 @@ __isl_give PypetScop* TreeToScop::ScopFromTree(__isl_keep PypetTree* tree) {
     scop->context = isl_set_params(scop->context);
   }
 
-  LOG(INFO) << scop->schedule;
+  std::cout << scop->schedule << std::endl;
 
   FreePypetContext(pc);
   return scop;

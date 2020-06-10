@@ -278,6 +278,8 @@ isl_pw_aff* ExtractAffineFromOp(PypetExpr* expr, PypetContext* context) {
     case PypetOpType::PYPET_LT:
     case PypetOpType::PYPET_GT:
       return PypetExprExtractAffineCondition(expr, context);
+    case PypetOpType::PYPET_APPLY:
+      return NonAffine(PypetContextGetSpace(context));
     default:
       UNIMPLEMENTED();
       break;
