@@ -36,6 +36,7 @@ PRINTER_FUNC(schedule)
     return out;                                                 \
   }
 PRINTER_FUNC2(set)
+PRINTER_FUNC2(union_set)
 PRINTER_FUNC2(space)
 
 }  // namespace pypet

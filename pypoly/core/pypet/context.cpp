@@ -109,13 +109,17 @@ PypetExpr* ExprPlugInAffine(PypetExpr* expr, void* user) {
       type != PypetExprType::PYPET_EXPR_OP) {
     return expr;
   }
+  if (type == PypetExprType::PYPET_EXPR_OP &&
+      expr->op == PypetOpType::PYPET_LIST_LITERAL) {
+    return expr;
+  }
   bool contains_access = HasOnlyAffineAccessSubExpr(expr);
   if (!contains_access) {
     return expr;
   }
 
   isl_pw_aff* pw_aff = PypetExprExtractAffine(expr, context);
-  CHECK_EQ(isl_pw_aff_involves_nan(pw_aff), 0);
+  CHECK_EQ(isl_pw_aff_involves_nan(pw_aff), 0) << std::endl << expr;
 
   PypetExprFree(expr);
   expr = PypetExprFromIndex(isl_multi_pw_aff_from_pw_aff(pw_aff));
@@ -172,18 +176,18 @@ __isl_null PypetContext* FreePypetContext(__isl_take PypetContext* pc) {
   if (--pc->ref > 0) return nullptr;
 
   isl_set_free(pc->domain);
-  for (auto iter = pc->assignments.begin(); iter != pc->assignments.end();
-       ++iter) {
-    isl_id_free(iter->first);
-    isl_pw_aff_free(iter->second);
-  }
-  pc->assignments.clear();
-  for (auto iter = pc->extracted_affine.begin();
-       iter != pc->extracted_affine.end(); ++iter) {
-    PypetExprFree(iter->first);
-    isl_pw_aff_free(iter->second);
-  }
-  pc->extracted_affine.clear();
+  // for (auto iter = pc->assignments.begin(); iter != pc->assignments.end();
+  //      ++iter) {
+  //   isl_id_free(iter->first);
+  //   isl_pw_aff_free(iter->second);
+  // }
+  // pc->assignments.clear();
+  // for (auto iter = pc->extracted_affine.begin();
+  //      iter != pc->extracted_affine.end(); ++iter) {
+  //   PypetExprFree(iter->first);
+  //   isl_pw_aff_free(iter->second);
+  // }
+  // pc->extracted_affine.clear();
   free(pc);
   return nullptr;
 }
