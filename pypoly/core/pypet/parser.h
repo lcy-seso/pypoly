@@ -1,6 +1,7 @@
 #ifndef PYPOLY_CORE_PYPET_PARSER_H_
 #define PYPOLY_CORE_PYPET_PARSER_H_
 
+#include "pypoly/core/pypet/array.pb.h"
 #include "pypoly/core/pypet/ir_emitter.h"
 #include "pypoly/core/pypet/pypet.h"
 
@@ -12,6 +13,7 @@
 #include <torch/csrc/jit/frontend/parser.h>
 #include <torch/csrc/jit/frontend/tree_views.h>
 
+#include <map>
 #include <stdexcept>
 #include <vector>
 
@@ -47,30 +49,39 @@ struct TorchParser {
 
 class ParserImpl {
  public:
-  explicit ParserImpl(const TorchDef& def)
-      : ast_(std::move(def)), parsed_data_(nullptr){};
+  explicit ParserImpl(const TorchDef& def, const ContextDesc& ctx_desc)
+      : ast_(std::move(def)), ctx_desc_(std::move(ctx_desc)) {
+    for (size_t i = 0; i < ctx_desc.vars_size(); ++i) {
+      ctx_vars_.insert(std::make_pair(ctx_desc_.vars()[i].name(), i));
+    }
+  };
 
-  void DumpAST() const { LOG(INFO) << ast_; }
   PypetScop* ParseFunction();
 
  private:
-  TorchDef ast_;
-  PypetScop* parsed_data_;
+  const TorchDef ast_;
+  const ContextDesc ctx_desc_;
 
-  /* Traverse the AST to check whether there are SCoP(s) that could be
-   * optimized. */
+  // key is variable name in the codes; value is the position in `ctx_desc_`.
+  std::map<std::string, size_t> ctx_vars_;
+
+  // Traverse the AST to check whether there are SCoP(s) that could be
+  // optimized.
   bool CheckScop();
 
-  void ParseDecl(isl_ctx* ctx);
+  bool ParseDecl(isl_ctx* ctx);
   std::vector<PypetTree*> ParseBody(isl_ctx* ctx);
 };
 
 struct ScopParser {
-  explicit ScopParser(const TorchDef& def) : pImpl(new ParserImpl(def)) {}
+  explicit ScopParser(const TorchDef& def)
+      : pImpl(std::make_unique<ParserImpl>(def, ContextDesc())){};
+  explicit ScopParser(const TorchDef& def, const ContextDesc& ctx_desc)
+      : pImpl(std::make_unique<ParserImpl>(def, ctx_desc)){};
+
   ~ScopParser() = default;
 
-  void DumpAST() const { pImpl->DumpAST(); }
-  void Parse();
+  std::shared_ptr<PypetScop> Parse();
 
  private:
   std::unique_ptr<ParserImpl> pImpl;

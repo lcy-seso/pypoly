@@ -560,7 +560,7 @@ __isl_keep PypetScop* TreeToScop::ToScop(__isl_take PypetTree* tree,
   return scop;
 }
 
-__isl_give PypetScop* TreeToScop::ScopFromTree(__isl_keep PypetTree* tree) {
+__isl_give PypetScop* TreeToScop::ScopFromTree(__isl_take PypetTree* tree) {
   // create a universe set as the initial domain.
   isl_set* domain = isl_set_universe(isl_space_set_alloc(ctx, 0, 0));
   // create context with the given domain.
@@ -578,7 +578,6 @@ __isl_give PypetScop* TreeToScop::ScopFromTree(__isl_keep PypetTree* tree) {
     // Compute the parameter domain of the given set.
     scop->context = isl_set_params(scop->context);
   }
-
   std::cout << scop->schedule << std::endl;
 
   FreePypetContext(pc);

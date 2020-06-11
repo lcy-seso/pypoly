@@ -148,7 +148,7 @@ PypetTree* PypetTreeUpdateDomain(PypetTree* tree,
 
 struct TreePrettyPrinter {
   static void Print(std::ostream& out, const __isl_keep PypetTree* tree,
-                    int indent = 2);
+                    int indent = 0);
 };
 
 static inline std::ostream& operator<<(std::ostream& out, const PypetTree* t) {

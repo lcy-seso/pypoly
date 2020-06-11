@@ -15,20 +15,35 @@ struct PypetContext;
 struct PypetState;
 
 struct PypetArray {
-  PypetArray(){};
+  // In our analysis, we may have two kinds of array: array whose elements have
+  // primary types, like int, float; and tensor arrayi whose elements are
+  // tensors with the same shape.
+  PypetArray() = delete;
   ~PypetArray() = default;
 
-  isl_set* context;
-  isl_set* extent;
+  isl_set* context;  // set parameters.
+  isl_set* extent;   // data element set.
   isl_set* value_bounds;
-  char* element_type;
 
-  /* TODO(Ying): copy from pet, to check.
-  int element_is_record;
+  // int, float, or a tensor.
+  char* element_type;
+  // For tensor arry, element_size` is the size of tensor element.
   int element_size;
+  // `element_shape` is a list of integer that records shape of the element
+  // stored in the array. If array elements are scalars with primary types,
+  // element_shape is always equal to : [1],
+  int* element_shape;
+
+  // TODO(Ying): In current implementations, we are not able to distinguish
+  // a varaible declaration or a name reuse.
+  int declared;
+
+  // TODO(Ying): below information is recorded by pet, but not considered by
+  // us in current implementations.
+  /*
+  int element_is_record;
   int live_out;
   int uniquely_defined;
-  int declared;
   int exposed;
   int outer;
   */
@@ -36,10 +51,7 @@ struct PypetArray {
 
 // A polyhedral statement.
 struct PypetStmt {
-  friend PypetTree;
-
-  PypetStmt(const torch::jit::SourceRange& range)
-      : range(range), domain(nullptr), args(nullptr), body(nullptr){};
+  PypetStmt() = delete;
   ~PypetStmt() = default;
 
   static PypetStmt* Create(isl_set* domain, int id, PypetTree* tree);
@@ -51,7 +63,7 @@ struct PypetStmt {
   // statement that contain control part.
   // the subset of the instance set containing instances of this polyhedral
   // statement;
-  int arg_num;
+  size_t arg_num;
   PypetExpr** args;
   // Information to print the body of the statement in source program.
   PypetTree* body;
@@ -60,9 +72,6 @@ struct PypetStmt {
 isl_set* StmtExtractContext(PypetStmt* stmt, isl_set* context);
 
 struct PypetScop {
-  friend PypetArray;
-  friend PypetStmt;
-
   PypetScop() = delete;
   ~PypetScop() = default;
 

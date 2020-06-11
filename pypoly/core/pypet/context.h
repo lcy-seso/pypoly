@@ -12,9 +12,9 @@ struct PypetContext {
 
   int ref;
   isl_set* domain;
-  // for each parameter in "tree". Parameters any integer variable that is read
-  // anywhere in "tree" or in any of the size expressions for any of the arrays
-  // accessed in "tree".
+  // for each parameter in "tree". Parameter is any integer variable that is
+  // read anywhere in "tree" or in any of size expressions for any of the
+  // arrays accessed in "tree".
   bool allow_nested;
   std::map<isl_id*, isl_pw_aff*> assignments;
   std::map<PypetExpr*, isl_pw_aff*> extracted_affine;
@@ -66,6 +66,54 @@ PypetContext* PypetContextSetAllowNested(PypetContext* context, bool val);
 PypetExpr* PypetContextEvaluateExpr(PypetContext* context, PypetExpr* expr);
 
 PypetTree* PypetContextEvaluateTree(PypetContext* pc, PypetTree* tree);
+
+static inline std::ostream& operator<<(std::ostream& out,
+                                       const PypetContext* context) {
+  CHECK(context);
+  isl_printer* p = isl_printer_to_str(isl_set_get_ctx(context->domain));
+  CHECK(p);
+
+  int indent = 0;
+  p = isl_printer_set_indent(p, indent);
+  p = isl_printer_set_yaml_style(p, ISL_YAML_STYLE_BLOCK);
+  p = isl_printer_start_line(p);
+  p = isl_printer_yaml_start_mapping(p);
+
+  p = isl_printer_print_str(p, "domain");
+  p = isl_printer_yaml_next(p);
+  p = isl_printer_print_set(p, context->domain);
+  p = isl_printer_yaml_next(p);
+
+  p = isl_printer_print_str(p, "assignments");
+  p = isl_printer_set_indent(p, indent + 2);
+  p = isl_printer_yaml_next(p);
+
+  for (auto it = context->assignments.begin(); it != context->assignments.end();
+       ++it) {
+    p = isl_printer_print_pw_aff(p, it->second);
+    p = isl_printer_yaml_next(p);
+  }
+  p = isl_printer_set_indent(p, indent);
+
+  p = isl_printer_print_str(p, "extracted_affine");
+  p = isl_printer_yaml_next(p);
+  p = isl_printer_set_indent(p, indent + 2);
+  for (auto it = context->extracted_affine.begin();
+       it != context->extracted_affine.end(); it++) {
+    p = isl_printer_print_pw_aff(p, it->second);
+    p = isl_printer_yaml_next(p);
+  }
+  p = isl_printer_set_indent(p, indent);
+
+  p = isl_printer_print_str(p, "\nnesting allowed ");
+  p = isl_printer_yaml_next(p);
+  p = isl_printer_print_int(p, int(context->allow_nested));
+  p = isl_printer_yaml_end_mapping(p);
+
+  out << std::string(isl_printer_get_str(p));
+  isl_printer_free(p);
+  return out;
+}
 
 }  // namespace pypet
 }  // namespace pypoly

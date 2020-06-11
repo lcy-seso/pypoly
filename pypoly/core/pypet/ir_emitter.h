@@ -1,7 +1,6 @@
 #ifndef PYPOLY_CORE_PYPET_IR_EMITTER_H_
 #define PYPOLY_CORE_PYPET_IR_EMITTER_H_
 
-#include "pypoly/core/pypet/error.h"
 #include "pypoly/core/pypet/pypet.h"
 #include "pypoly/core/pypet/tree.h"
 
@@ -12,7 +11,7 @@ namespace pypoly {
 namespace pypet {
 
 struct EmitStatements {
-  EmitStatements(isl_ctx* ctx, PypetScop* scop) : ctx(ctx), scop(scop){};
+  EmitStatements(isl_ctx* ctx) : ctx(ctx){};
   std::vector<PypetTree*> operator()(
       const torch::jit::List<torch::jit::Stmt>& statements);
 
@@ -49,7 +48,6 @@ struct EmitStatements {
   PypetExpr* ExtractExpr(isl_ctx* ctx, const torch::jit::Expr& expr);
 
   isl_ctx* ctx;
-  PypetScop* scop;
   std::set<std::string> used_names;
 };
 

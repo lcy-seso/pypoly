@@ -1,7 +1,7 @@
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--no-undefined -std=c++14")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -Wl,--no-undefined -std=c++14")
 set(CMAKE_CXX_FLAGS_DEBUG
-    "$ENV{CXXFLAGS} -O0 -Wall -Wno-sign-compare -g -ggdb ")
-set(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 -Wall -Wno-sign-compare")
+    "$ENV{CXXFLAGS} -fPIC -O0 -Wall -Wno-sign-compare -g -ggdb ")
+set(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -fPIC -O3 -Wall -Wno-sign-compare")
 
 set(CMAKE_CXX_LINK_EXECUTABLE
     "${CMAKE_CXX_LINK_EXECUTABLE} -lpthread -ldl -lrt")
@@ -12,6 +12,7 @@ function(cc_library TARGET_NAME)
   set(multiValueArgs SRCS DEPS)
   cmake_parse_arguments(cc_library "${options}" "${oneValueArgs}"
                         "${multiValueArgs}" ${ARGN})
+
   if(cc_library_SRCS)
     if(cc_library_SHARED) # build *.so
       add_library(${TARGET_NAME} SHARED ${cc_library_SRCS})
@@ -36,6 +37,7 @@ function(cc_library TARGET_NAME)
       set(target_SRCS ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}_dummy.c)
       file(WRITE ${target_SRCS}
            "const char *dummy_${TARGET_NAME} = \"${target_SRCS}\";")
+
       add_library(${TARGET_NAME} STATIC ${target_SRCS})
       target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
     else()
@@ -54,4 +56,14 @@ function(cc_test_build TARGET_NAME)
   add_dependencies(${TARGET_NAME} pypet_core)
   target_include_directories(${TARGET_NAME} PRIVATE ${PROJECT_SOURCE_DIR})
   target_link_libraries(${TARGET_NAME} ${cc_test_DEPS} gtest)
+endfunction()
+
+function(py_proto_generate TARGET_NAME)
+  set(oneValueArgs "")
+  set(multiValueArgs SRCS)
+  cmake_parse_arguments(py_proto_compile "${options}" "${oneValueArgs}"
+                        "${multiValueArgs}" ${ARGN})
+  set(py_srcs)
+  protobuf_generate_python(py_srcs ${py_proto_compile_SRCS})
+  add_custom_target(${TARGET_NAME} ALL DEPENDS ${py_srcs} protobuf)
 endfunction()

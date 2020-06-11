@@ -10,7 +10,9 @@ from torch._utils_internal import get_source_lines_and_file
 import context
 
 import pypoly
+from pypoly import ScopParser
 from pypoly import VanillaRNNCell
+from pypoly import CellArray
 from pypoly import ReadWriteTensorArray
 from pypoly import ReadTensorArray
 
@@ -56,10 +58,9 @@ def get_data(batch_size, input_size):
     seq_batch = []
     seq_lens = [random.randint(min_len, max_len) for _ in range(batch_size)]
     for l in seq_lens:
-        a_seq = ReadTensorArray(
-            [torch.randn(1, input_size, device=device) for _ in range(l)])
+        a_seq = [torch.randn(1, input_size, device=device) for _ in range(l)]
         seq_batch.append(a_seq)
-    return ReadTensorArray(seq_batch), seq_lens
+    return seq_batch, seq_lens
 
 
 if __name__ == '__main__':
@@ -73,7 +74,7 @@ if __name__ == '__main__':
     hidden_size = 16
     depth = 4
 
-    cells = ReadTensorArray([
+    cells = CellArray([
         VanillaRNNCell(input_size, hidden_size).to(device)
         for _ in range(depth)
     ])
@@ -81,21 +82,27 @@ if __name__ == '__main__':
     m = DilatedRNN(hidden_size, cells).to(device)
     seq_batch, seq_lens = get_data(batch_size, input_size)
 
-    # Initialize output buffer. BUT do not use this way to declare array in
-    # future, since it is hard to check whether the declaration is consistent
-    # with loop computations.
-    # TODO(Ying): provide a better interface to declare arrays.
-    outputs = []
-    for i in range(batch_size):
-        output_j = []
-        for j in range(depth):
-            seq_len = seq_lens[i]
-            for k in range(seq_len):
-                output_k = ReadWriteTensorArray(
-                    length=seq_len, tensor_shape=(1, hidden_size))
-            output_j.append(output_k)
-        outputs.append(ReadWriteTensorArray(input=output_j))
-    outputs = ReadWriteTensorArray(outputs)
+    # declare the input array.
+    seq_batch = ReadTensorArray(
+        input=seq_batch,
+        array_shape=[batch_size, max(seq_lens)],
+        tensor_shape=[1, input_size])
 
-    m(seq_batch, batch_size, seq_lens, depth, outputs)
-    parsed = pypoly.scop(m)
+    # declare the output buffer.
+    outputs = ReadWriteTensorArray(
+        array_shape=(batch_size, depth, max(seq_lens)),
+        tensor_shape=(1, hidden_size))
+
+    with ScopParser(m) as p:
+        p.add_int(batch_size, lower=1, upper=16)
+        p.add_array(seq_lens)
+        p.add_array(seq_batch)
+        p.add_array(outputs)
+
+        # uncomment to print the torch AST.
+        # p.print_ast()
+        # p.print_context()
+
+        m = p.parse()
+
+        m(seq_batch, batch_size, seq_lens, depth, outputs)

@@ -17,11 +17,11 @@ class VanillaRNNCell(Module):
     This implementation can be automatically differentiated.
     """
 
-    def __init__(self, input_size, hidden_size):
+    def __init__(self, input_size, hidden_size, grid_dim=1):
         super(VanillaRNNCell, self).__init__()
         # learnable paramters
         self.W = Parameter(Tensor(input_size, hidden_size))
-        self.U = Parameter(Tensor(hidden_size, hidden_size))
+        self.U = Parameter(Tensor(hidden_size * grid_dim, hidden_size))
         self.b = Parameter(Tensor(1, hidden_size))
 
         self.init_weights()
@@ -47,5 +47,6 @@ class VanillaRNNCell(Module):
         """
 
         h_prev = self.init_state if h_prev is None else h_prev
-        return torch.tanh(
-            torch.mm(input, self.W) + torch.mm(h_prev, self.U) + self.b)
+        i2h = torch.mm(input, self.W)  # input-to-hidden projection
+        h2h = torch.mm(h_prev, self.U)  # hidden-to-hidden_projection
+        return torch.tanh(i2h + h2h + self.b)
