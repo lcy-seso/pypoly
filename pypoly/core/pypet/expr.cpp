@@ -122,8 +122,20 @@ isl_pw_aff* ExtractAffineDivMod(PypetExpr* expr, PypetContext* context) {
 }
 
 isl_pw_aff* ExtractAffineMul(PypetExpr* expr, PypetContext* context) {
-  UNIMPLEMENTED();
-  return nullptr;
+  CHECK(expr);
+  CHECK_EQ(expr->arg_num, 2);
+  isl_pw_aff* lhs = PypetExprExtractAffine(expr->args[0], context);
+  isl_pw_aff* rhs = PypetExprExtractAffine(expr->args[1], context);
+  int lhs_cst = isl_pw_aff_is_cst(lhs);
+  int rhs_cst = isl_pw_aff_is_cst(rhs);
+  CHECK_GE(lhs_cst, 0);
+  CHECK_GE(rhs_cst, 0);
+  if (lhs_cst || rhs_cst) {
+    return isl_pw_aff_mul(lhs, rhs);
+  }
+  isl_pw_aff_free(lhs);
+  isl_pw_aff_free(rhs);
+  return NonAffine(PypetContextGetSpace(context));
 }
 
 isl_pw_aff* ExtractAffineNeg(PypetExpr* expr, PypetContext* context) {
@@ -279,9 +291,10 @@ isl_pw_aff* ExtractAffineFromOp(PypetExpr* expr, PypetContext* context) {
     case PypetOpType::PYPET_GT:
       return PypetExprExtractAffineCondition(expr, context);
     case PypetOpType::PYPET_APPLY:
+    case PypetOpType::PYPET_LIST_LITERAL:
       return NonAffine(PypetContextGetSpace(context));
     default:
-      UNIMPLEMENTED();
+      LOG(FATAL) << expr;
       break;
   }
   CHECK(ret);
@@ -963,7 +976,12 @@ int PypetExprIsScalarAccess(PypetExpr* expr) {
 PypetExpr* PypetExprMapExprOfType(
     PypetExpr* expr, PypetExprType type,
     const std::function<PypetExpr*(PypetExpr*, void*)>& fn, void* user) {
-  for (int i = 0; i < expr->arg_num; ++i) {
+  int start = 0;
+  if (expr->type == PypetExprType::PYPET_EXPR_OP &&
+      expr->op == PypetOpType::PYPET_ATTRIBUTE) {
+    start = 1;
+  }
+  for (int i = start; i < expr->arg_num; ++i) {
     PypetExpr* arg = PypetExprGetArg(expr, i);
     arg = PypetExprMapExprOfType(arg, type, fn, user);
     expr = PypetExprSetArg(expr, i, arg);

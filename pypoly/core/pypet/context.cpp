@@ -109,13 +109,17 @@ PypetExpr* ExprPlugInAffine(PypetExpr* expr, void* user) {
       type != PypetExprType::PYPET_EXPR_OP) {
     return expr;
   }
+  if (type == PypetExprType::PYPET_EXPR_OP &&
+      expr->op == PypetOpType::PYPET_LIST_LITERAL) {
+    return expr;
+  }
   bool contains_access = HasOnlyAffineAccessSubExpr(expr);
   if (!contains_access) {
     return expr;
   }
 
   isl_pw_aff* pw_aff = PypetExprExtractAffine(expr, context);
-  CHECK_EQ(isl_pw_aff_involves_nan(pw_aff), 0);
+  CHECK_EQ(isl_pw_aff_involves_nan(pw_aff), 0) << std::endl << expr;
 
   PypetExprFree(expr);
   expr = PypetExprFromIndex(isl_multi_pw_aff_from_pw_aff(pw_aff));

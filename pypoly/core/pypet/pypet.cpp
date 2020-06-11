@@ -2,6 +2,7 @@
 
 #include "pypoly/core/pypet/aff.h"
 #include "pypoly/core/pypet/expr.h"
+#include "pypoly/core/pypet/isl_printer.h"
 #include "pypoly/core/pypet/nest.h"
 #include "pypoly/core/pypet/tree.h"
 
@@ -48,7 +49,13 @@ isl_set* ExprExtractContext(PypetExpr* expr, isl_set* context) {
     return context;
   }
 
-  for (int i = 0; i < expr->arg_num; ++i) {
+  int start = 0;
+  if (expr->type == PypetExprType::PYPET_EXPR_OP &&
+      expr->op == PypetOpType::PYPET_ATTRIBUTE) {
+    start = 1;
+  }
+
+  for (int i = start; i < expr->arg_num; ++i) {
     context = ExprExtractContext(expr->args[i], context);
   }
 
