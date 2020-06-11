@@ -483,7 +483,7 @@ __isl_keep PypetScop* TreeToScop::ScopFromAffineFor(
   isl_val_free(inc);
   valid_init = isl_set_project_out(valid_init, isl_dim_set, pos, 1);
   scop = PypetScopRestrictContext(scop, valid_init);
-  // FreePypetContext(pc);
+  FreePypetContext(pc);
   return scop;
 }
 

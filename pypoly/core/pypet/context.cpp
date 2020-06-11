@@ -176,18 +176,18 @@ __isl_null PypetContext* FreePypetContext(__isl_take PypetContext* pc) {
   if (--pc->ref > 0) return nullptr;
 
   isl_set_free(pc->domain);
-  for (auto iter = pc->assignments.begin(); iter != pc->assignments.end();
-       ++iter) {
-    isl_id_free(iter->first);
-    isl_pw_aff_free(iter->second);
-  }
-  pc->assignments.clear();
-  for (auto iter = pc->extracted_affine.begin();
-       iter != pc->extracted_affine.end(); ++iter) {
-    PypetExprFree(iter->first);
-    isl_pw_aff_free(iter->second);
-  }
-  pc->extracted_affine.clear();
+  // for (auto iter = pc->assignments.begin(); iter != pc->assignments.end();
+  //      ++iter) {
+  //   isl_id_free(iter->first);
+  //   isl_pw_aff_free(iter->second);
+  // }
+  // pc->assignments.clear();
+  // for (auto iter = pc->extracted_affine.begin();
+  //      iter != pc->extracted_affine.end(); ++iter) {
+  //   PypetExprFree(iter->first);
+  //   isl_pw_aff_free(iter->second);
+  // }
+  // pc->extracted_affine.clear();
   free(pc);
   return nullptr;
 }
