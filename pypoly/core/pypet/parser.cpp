@@ -1,5 +1,8 @@
 #include "pypoly/core/pypet/parser.h"
 
+#include "pypoly/core/pypet/tree.h"
+#include "pypoly/core/pypet/tree2scop.h"
+
 namespace pypoly {
 namespace pypet {
 
@@ -28,9 +31,9 @@ void ScopParser::Parse() { pImpl->ParseFunction(); }
 
 void ParserImpl::ParseDecl(isl_ctx* ctx) { LOG(INFO) << ast_.name(); }
 
-void ParserImpl::ParseBody(isl_ctx* ctx) {
-  EmitStatements emitter(ctx, std::make_shared<PypetScop>(parsed_data_));
-  emitter(ast_.statements());
+std::vector<PypetTree*> ParserImpl::ParseBody(isl_ctx* ctx) {
+  EmitStatements emitter(ctx, parsed_data_);
+  return emitter(ast_.statements());
 }
 
 bool ParserImpl::CheckScop() {
@@ -38,7 +41,7 @@ bool ParserImpl::CheckScop() {
   return ast_.statements()[0].kind() == torch::jit::TK_FOR;
 }
 
-PypetScopPtr ParserImpl::ParseFunction() {
+PypetScop* ParserImpl::ParseFunction() {
   LOG(INFO) << ast_.statements();
   if (!CheckScop()) {
     LOG(INFO) << "No SCoP is detected.";
@@ -49,10 +52,14 @@ PypetScopPtr ParserImpl::ParseFunction() {
   isl_ctx* ctx = isl_ctx_alloc_with_options(&isl_options_args, options);
 
   ParseDecl(ctx);
-  ParseBody(ctx);
+  std::vector<PypetTree*> trees = ParseBody(ctx);
+  CHECK(trees.size() == 1U);
+
+  TreeToScop converter(ctx);
+  parsed_data_ = converter.ScopFromTree(trees[0]);
 
   isl_ctx_free(ctx);
-  return std::make_shared<PypetScop>(parsed_data_);
+  return parsed_data_;
 }
 
 }  // namespace pypet

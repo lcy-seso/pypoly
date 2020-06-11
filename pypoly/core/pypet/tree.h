@@ -14,6 +14,7 @@ enum PypetTreeType {
   PYPET_TREE_BLOCK,
   PYPET_TREE_BREAK,
   PYPET_TREE_CONTINUE,
+  PYPET_TREE_DECL,
   PYPET_TREE_DECL_INIT,
   PYPET_TREE_IF,      /* An if without an else branch */
   PYPET_TREE_IF_ELSE, /* An if with an else branch */
@@ -27,6 +28,7 @@ static constexpr const char* tree_type_str[] = {
     [PYPET_TREE_BLOCK] = "block",
     [PYPET_TREE_BREAK] = "break",
     [PYPET_TREE_CONTINUE] = "continue",
+    [PYPET_TREE_DECL] = "declaration",
     [PYPET_TREE_DECL_INIT] = "declaration-init",
     [PYPET_TREE_IF] = "if",
     [PYPET_TREE_IF_ELSE] = "if-else",
@@ -93,8 +95,56 @@ struct PypetTree {
 __isl_give PypetTree* CreatePypetTree(isl_ctx* ctx,
                                       torch::jit::SourceRange const* range,
                                       enum PypetTreeType tree_type);
+
 __isl_give PypetTree* CreatePypetTreeBlock(isl_ctx* ctx, int block, int n);
+
 __isl_null PypetTree* PypetTreeFree(__isl_take PypetTree* tree);
+
+PypetTree* PypetTreeDup(PypetTree* tree);
+
+PypetTree* PypetTreeCopy(PypetTree* tree);
+
+PypetTree* PypetTreeCow(PypetTree* tree);
+
+PypetTree* PypetTreeNewExpr(PypetExpr* expr);
+
+int ForeachExpr(PypetTree* tree, void* user);
+
+int PypetTreeForeachSubTree(
+    __isl_keep PypetTree* tree,
+    const std::function<int(PypetTree* tree, void* user)>& fn,
+    void* user /* points to user data that can be any type.*/);
+
+int PypetTreeForeachExpr(
+    __isl_keep PypetTree* tree,
+    const std::function<int(PypetExpr* expr, void* user)>& fn, void* user);
+
+int PypetTreeForeachAccessExpr(
+    PypetTree* tree, const std::function<int(PypetExpr* expr, void* user)>& fn,
+    void* user);
+
+PypetTree* PypetTreeMapExpr(
+    PypetTree* tree, const std::function<PypetExpr*(PypetExpr*, void*)>& fn,
+    void* user);
+
+PypetTree* PypetTreeMapAccessExpr(
+    PypetTree* tree, const std::function<PypetExpr*(PypetExpr*, void*)>& fn,
+    void* user);
+
+int PypetTreeWrites(PypetTree* tree, isl_id* id);
+
+bool PypetTreeHasContinueOrBreak(PypetTree* tree);
+
+PypetExpr* PypetTreeDeclGetVar(PypetTree* tree);
+
+PypetExpr* PypetTreeDeclGetInit(PypetTree* tree);
+
+PypetExpr* PypetTreeExprGetExpr(PypetTree* tree);
+
+bool PypetTreeIsAssign(PypetTree* tree);
+
+PypetTree* PypetTreeUpdateDomain(PypetTree* tree,
+                                 isl_multi_pw_aff* multi_pw_aff);
 
 struct TreePrettyPrinter {
   static void Print(std::ostream& out, const __isl_keep PypetTree* tree,

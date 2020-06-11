@@ -5,82 +5,6 @@ namespace pypet {
 
 namespace {
 
-PypetExpr* ExtractExpr(isl_ctx* ctx, const torch::jit::Expr& expr);
-
-PypetExpr* ExtractIndexExprFromIdent(isl_ctx* ctx,
-                                     const torch::jit::Ident& ident_expr) {
-  const std::string& name = ident_expr.name();
-  isl_id* id = isl_id_alloc(ctx, name.c_str(), nullptr);
-  isl_space* space = isl_space_alloc(ctx, 0, 0, 0);
-  space = isl_space_set_tuple_id(space, isl_dim_out, id);
-  return PypetExprFromIndex(isl_multi_pw_aff_zero(space));
-}
-
-PypetExpr* ExtractIndexExprFromVar(isl_ctx* ctx, const torch::jit::Var& expr) {
-  CHECK(expr.kind() == torch::jit::TK_VAR);
-  torch::jit::Ident ident_expr(expr.name());
-  return ExtractIndexExprFromIdent(ctx, ident_expr);
-}
-
-PypetExpr* ExtractIndexExprFromConst(isl_ctx* ctx,
-                                     const torch::jit::Const& expr) {
-  CHECK(expr.isIntegral());
-  return PypetExprFromIntVal(ctx, static_cast<int>(expr.asIntegral()));
-}
-
-PypetExpr* ExtractIndexExpr(isl_ctx* ctx, const torch::jit::Expr& expr);
-
-PypetExpr* ExtractIndexExprFromSubscript(isl_ctx* ctx,
-                                         const torch::jit::Subscript& expr) {
-  const torch::jit::Expr& base = expr.value();
-  const torch::jit::List<torch::jit::Expr>& indexes = expr.subscript_exprs();
-  CHECK_EQ(indexes.size(), 1);
-  PypetExpr* base_expr = ExtractIndexExpr(ctx, base);
-  PypetExpr* index_expr = ExtractExpr(ctx, indexes[0]);
-  return PypetExprAccessSubscript(base_expr, index_expr);
-}
-
-PypetExpr* ExtractSelectExpr(isl_ctx* ctx, const torch::jit::Expr& expr);
-
-PypetExpr* ExtractIndexExpr(isl_ctx* ctx, const torch::jit::Expr& expr) {
-  switch (expr.kind()) {
-    case torch::jit::TK_VAR: {
-      torch::jit::Var var_expr(expr);
-      return ExtractIndexExprFromVar(ctx, var_expr);
-    }
-    case torch::jit::TK_CONST: {
-      torch::jit::Const const_expr(expr);
-      return ExtractIndexExprFromConst(ctx, const_expr);
-    }
-    case torch::jit::TK_SUBSCRIPT: {
-      torch::jit::Subscript subscript_expr(expr);
-      return ExtractIndexExprFromSubscript(ctx, subscript_expr);
-    }
-    case '.':
-      return ExtractSelectExpr(ctx, expr);
-    default:
-      LOG(FATAL) << "Unexpected expr kind "
-                 << torch::jit::kindToString(expr.kind());
-      break;
-  }
-  return nullptr;
-}
-
-PypetExpr* PypetExprAccessFromIndex(const torch::jit::Expr& expr,
-                                    PypetExpr* index) {
-  // TODO(yizhu1): fill in depth field
-  // TODO(yizhu1): fill in type_size field
-  return index;
-}
-
-PypetExpr* ExtractAccessExpr(isl_ctx* ctx, const torch::jit::Expr& expr) {
-  PypetExpr* index = ExtractIndexExpr(ctx, expr);
-  if (index->type == PypetExprType::PYPET_EXPR_INT) {
-    return index;
-  }
-  return PypetExprAccessFromIndex(expr, index);
-}
-
 void MarkWrite(PypetExpr* access) {
   access->acc.read = 0;
   access->acc.write = 1;
@@ -91,22 +15,37 @@ void MarkRead(PypetExpr* access) {
   access->acc.write = 0;
 }
 
-PypetExpr* ExtractAssignExpr(isl_ctx* ctx, const torch::jit::Assign& stmt) {
-  const torch::jit::Expr& lhs = stmt.lhs();
-  const torch::jit::Maybe<torch::jit::Expr>& rhs = stmt.rhs();
-  const torch::jit::Maybe<torch::jit::Expr>& type = stmt.type();
-  CHECK(rhs.present());
-  CHECK(!type.present());
-  PypetExpr* ret = PypetExprAlloc(ctx, PypetExprType::PYPET_EXPR_OP);
+PypetExpr* PypetExprAccessFromIndex(const torch::jit::Expr& expr,
+                                    PypetExpr* index) {
+  // TODO(yizhu1): fill in depth field
   // TODO(yizhu1): fill in type_size field
-  ret->arg_num = 2;
-  ret->args = isl_alloc_array(ctx, PypetExpr*, ret->arg_num);
-  ret->args[0] = ExtractExpr(ctx, lhs);
-  ret->args[1] = ExtractExpr(ctx, rhs.get());
-  ret->op = PypetOpType::PYPET_ASSIGN;
-  if (ret->args[0]->type == PypetExprType::PYPET_EXPR_ACCESS) {
-    MarkWrite(ret->args[0]);
-  }
+  return index;
+}
+
+PypetExpr* ExtractIndexExprFromIdent(isl_ctx* ctx,
+                                     const torch::jit::Ident& ident_expr) {
+  const std::string& name = ident_expr.name();
+  isl_id* id = isl_id_alloc(ctx, name.c_str(), nullptr);
+  isl_space* space = isl_space_alloc(ctx, 0, 0, 0);
+  space = isl_space_set_tuple_id(space, isl_dim_out, id);
+  return PypetExprFromIndex(isl_multi_pw_aff_zero(space));
+}
+
+// TODO(yizhu1): check the type_size field
+PypetExpr* ExtractIndexExprFromVar(isl_ctx* ctx, const torch::jit::Var& expr) {
+  CHECK(expr.kind() == torch::jit::TK_VAR);
+  torch::jit::Ident ident_expr(expr.name());
+  PypetExpr* ret = ExtractIndexExprFromIdent(ctx, ident_expr);
+  ret->type_size = -32;
+  return ret;
+}
+
+PypetExpr* ExtractIndexExprFromConst(isl_ctx* ctx,
+                                     const torch::jit::Const& expr) {
+  CHECK(expr.isIntegral());
+  PypetExpr* ret =
+      PypetExprFromIntVal(ctx, static_cast<int>(expr.asIntegral()));
+  ret->type_size = -32;
   return ret;
 }
 
@@ -143,114 +82,6 @@ PypetOpType TorchKind2PypetOpType(int kind) {
   return PypetOpType::PYPET_UNKNOWN;
 }
 
-PypetExpr* ExtractBinaryExpr(isl_ctx* ctx, const torch::jit::Expr& expr) {
-  torch::jit::BinOp bin_expr(expr);
-  PypetExpr* ret = PypetExprAlloc(ctx, PypetExprType::PYPET_EXPR_OP);
-  ret->op = TorchKind2PypetOpType(expr.kind());
-  ret->arg_num = 2;
-  ret->args = isl_alloc_array(ctx, PypetExpr*, 2);
-  ret->args[0] = ExtractExpr(ctx, bin_expr.lhs());
-  ret->args[1] = ExtractExpr(ctx, bin_expr.rhs());
-  return ret;
-}
-
-PypetExpr* ExtractSelectExpr(isl_ctx* ctx, const torch::jit::Expr& expr) {
-  torch::jit::Select select_expr(expr);
-  const torch::jit::Expr& base = select_expr.value();
-  PypetExpr* base_index = ExtractIndexExpr(ctx, base);
-  const torch::jit::Ident& selector = select_expr.selector();
-
-  isl_id* id = isl_id_alloc(ctx, selector.name().c_str(),
-                            const_cast<void*>(static_cast<const void*>(&expr)));
-  return PypetExprAccessMember(base_index, id);
-}
-
-PypetExpr* ExtractAttributeExpr(isl_ctx* ctx,
-                                const torch::jit::Attribute& attribute_expr) {
-  PypetExpr* ret = PypetExprAlloc(ctx, PypetExprType::PYPET_EXPR_OP);
-  ret->arg_num = 2;
-  ret->args = isl_alloc_array(ctx, PypetExpr*, ret->arg_num);
-  ret->args[0] = ExtractIndexExprFromIdent(ctx, attribute_expr.name());
-  ret->args[1] = ExtractExpr(ctx, attribute_expr.value());
-  ret->op = PypetOpType::PYPET_ATTRIBUTE;
-  return ret;
-}
-
-PypetExpr* ExtractAttributeExpr(isl_ctx* ctx, const torch::jit::Expr& expr) {
-  torch::jit::Attribute attribute_expr(expr);
-  return ExtractAttributeExpr(ctx, attribute_expr);
-}
-
-PypetExpr* ExtractApplyExpr(isl_ctx* ctx, const torch::jit::Expr& expr) {
-  torch::jit::Apply apply_expr(expr);
-  PypetExpr* ret = PypetExprAlloc(ctx, PypetExprType::PYPET_EXPR_OP);
-  const torch::jit::Expr& callee = apply_expr.callee();
-  const torch::jit::List<torch::jit::Expr>& inputs = apply_expr.inputs();
-  const torch::jit::List<torch::jit::Attribute>& attributes =
-      apply_expr.attributes();
-  // TODO(yizhu1): replace PYPET_APPLY with a specific structure for function
-  // call
-  ret->arg_num = 1 + inputs.size() + attributes.size();
-  ret->args = isl_alloc_array(ctx, PypetExpr*, ret->arg_num);
-  ret->args[0] = ExtractExpr(ctx, callee);
-  ret->op = PypetOpType::PYPET_APPLY;
-  for (int i = 0; i < inputs.size(); ++i) {
-    ret->args[i + 1] = ExtractExpr(ctx, inputs[i]);
-  }
-  for (int i = 0; i < attributes.size(); ++i) {
-    ret->args[i + 1 + inputs.size()] = ExtractAttributeExpr(ctx, attributes[i]);
-  }
-  return ret;
-}
-
-PypetExpr* ExtractListLiteralExpr(isl_ctx* ctx, const torch::jit::Expr& expr) {
-  torch::jit::ListLiteral list_literal_expr(expr);
-  PypetExpr* ret = PypetExprAlloc(ctx, PypetExprType::PYPET_EXPR_OP);
-  const torch::jit::List<torch::jit::Expr>& inputs = list_literal_expr.inputs();
-  ret->arg_num = inputs.size();
-  ret->args = isl_alloc_array(ctx, PypetExpr*, inputs.size());
-  for (int i = 0; i < inputs.size(); ++i) {
-    ret->args[i] = ExtractExpr(ctx, inputs[i]);
-  }
-  ret->op = PypetOpType::PYPET_LIST_LITERAL;
-  return ret;
-}
-
-PypetExpr* ExtractExpr(isl_ctx* ctx, const torch::jit::Expr& expr) {
-  switch (expr.kind()) {
-    case torch::jit::TK_VAR:
-    case torch::jit::TK_CONST:
-    case torch::jit::TK_SUBSCRIPT:
-      return ExtractIndexExpr(ctx, expr);
-    case torch::jit::TK_AND:
-    case torch::jit::TK_OR:
-    case '<':
-    case '>':
-    case torch::jit::TK_EQ:
-    case torch::jit::TK_LE:
-    case torch::jit::TK_GE:
-    case torch::jit::TK_NE:
-    case '+':
-    case '-':
-    case '*':
-    case '/':
-      return ExtractBinaryExpr(ctx, expr);
-    case '.':
-      return ExtractSelectExpr(ctx, expr);
-    case torch::jit::TK_APPLY:
-      return ExtractApplyExpr(ctx, expr);
-    case torch::jit::TK_LIST_LITERAL:
-      return ExtractListLiteralExpr(ctx, expr);
-    case torch::jit::TK_ATTRIBUTE:
-      return ExtractAttributeExpr(ctx, expr);
-    default:
-      LOG(FATAL) << torch::jit::kindToString(expr.kind()) << std::endl
-                 << expr.range();
-      break;
-  }
-  return nullptr;
-}
-
 }  // namespace
 
 std::vector<PypetTree*> EmitStatements::operator()(
@@ -258,7 +89,7 @@ std::vector<PypetTree*> EmitStatements::operator()(
   std::vector<PypetTree*> ret(statements.size(), nullptr);
   for (size_t i = 0; i < statements.size(); ++i) {
     ret[i] = EmitStatement(statements[i]);
-    std::cout << ret[i];
+    std::cout << ret[i] << std::endl;
   }
   return ret;
 }
@@ -320,6 +151,7 @@ PypetTree* EmitStatements::EmitFor(const torch::jit::For& stmt) {
 
   PypetTree* tree =
       CreatePypetTree(ctx, &stmt.range(), PypetTreeType::PYPET_TREE_FOR);
+  tree->ast.Loop.declared = 1;
   PypetExpr* iv = ExtractAccessExpr(ctx, targets[0]);
   MarkWrite(iv);
 
@@ -337,27 +169,27 @@ PypetTree* EmitStatements::EmitFor(const torch::jit::For& stmt) {
   switch (args.size()) {
     case 1: {
       init = PypetExprFromIntVal(ctx, 0);
-      bound = ExtractAccessExpr(ctx, args[0]);
+      bound = ExtractExpr(ctx, args[0]);
       inc = PypetExprFromIntVal(ctx, 1);
       break;
     }
     case 2: {
-      init = ExtractAccessExpr(ctx, args[0]);
-      bound = ExtractAccessExpr(ctx, args[1]);
+      init = ExtractExpr(ctx, args[0]);
+      bound = ExtractExpr(ctx, args[1]);
       inc = PypetExprFromIntVal(ctx, 1);
       break;
     }
     case 3: {
-      init = ExtractAccessExpr(ctx, args[0]);
-      bound = ExtractAccessExpr(ctx, args[1]);
-      inc = ExtractAccessExpr(ctx, args[2]);
+      init = ExtractExpr(ctx, args[0]);
+      bound = ExtractExpr(ctx, args[1]);
+      inc = ExtractExpr(ctx, args[2]);
       break;
     }
     default:
       LOG(FATAL) << "Range parameter num: " << args.size();
       break;
   }
-  // TODO: or PYPET_GT
+  // TODO(yizhu1): or PYPET_GT
   PypetExpr* iv2 = PypetExprDup(iv);
   MarkRead(iv2);
   cond = BuildPypetBinaryOpExpr(ctx, PypetOpType::PYPET_LT, iv2, bound);
@@ -440,6 +272,185 @@ PypetTree* EmitStatements::EmitDelete(const torch::jit::Delete& stmt) {
 
 PypetTree* EmitStatements::EmitExpr(const torch::jit::Expr& tree) {
   UNIMPLEMENTED();
+  return nullptr;
+}
+
+PypetExpr* EmitStatements::ExtractAccessExpr(isl_ctx* ctx,
+                                             const torch::jit::Expr& expr) {
+  PypetExpr* index = ExtractIndexExpr(ctx, expr);
+  if (index->type == PypetExprType::PYPET_EXPR_INT) {
+    return index;
+  }
+  return PypetExprAccessFromIndex(expr, index);
+}
+
+PypetExpr* EmitStatements::ExtractAssignExpr(isl_ctx* ctx,
+                                             const torch::jit::Assign& stmt) {
+  const torch::jit::Expr& lhs = stmt.lhs();
+  const torch::jit::Maybe<torch::jit::Expr>& rhs = stmt.rhs();
+  const torch::jit::Maybe<torch::jit::Expr>& type = stmt.type();
+  CHECK(rhs.present());
+  CHECK(!type.present());
+  PypetExpr* ret = PypetExprAlloc(ctx, PypetExprType::PYPET_EXPR_OP);
+  // TODO(yizhu1): fill in type_size field
+  ret->arg_num = 2;
+  ret->args = isl_alloc_array(ctx, PypetExpr*, ret->arg_num);
+  ret->args[0] = ExtractExpr(ctx, lhs);
+  ret->args[1] = ExtractExpr(ctx, rhs.get());
+  ret->op = PypetOpType::PYPET_ASSIGN;
+  if (ret->args[0]->type == PypetExprType::PYPET_EXPR_ACCESS) {
+    MarkWrite(ret->args[0]);
+  }
+  return ret;
+}
+
+PypetExpr* EmitStatements::ExtractIndexExprFromSubscript(
+    isl_ctx* ctx, const torch::jit::Subscript& expr) {
+  const torch::jit::Expr& base = expr.value();
+  const torch::jit::List<torch::jit::Expr>& indexes = expr.subscript_exprs();
+  CHECK_EQ(indexes.size(), 1);
+  PypetExpr* base_expr = ExtractIndexExpr(ctx, base);
+  PypetExpr* index_expr = ExtractExpr(ctx, indexes[0]);
+  index_expr->type_size = -32;
+  return PypetExprAccessSubscript(base_expr, index_expr);
+}
+
+PypetExpr* EmitStatements::ExtractIndexExpr(isl_ctx* ctx,
+                                            const torch::jit::Expr& expr) {
+  switch (expr.kind()) {
+    case torch::jit::TK_VAR: {
+      torch::jit::Var var_expr(expr);
+      return ExtractIndexExprFromVar(ctx, var_expr);
+    }
+    case torch::jit::TK_CONST: {
+      torch::jit::Const const_expr(expr);
+      return ExtractIndexExprFromConst(ctx, const_expr);
+    }
+    case torch::jit::TK_SUBSCRIPT: {
+      torch::jit::Subscript subscript_expr(expr);
+      return ExtractIndexExprFromSubscript(ctx, subscript_expr);
+    }
+    case '.':
+      return ExtractSelectExpr(ctx, expr);
+    default:
+      LOG(FATAL) << "Unexpected expr kind "
+                 << torch::jit::kindToString(expr.kind());
+      break;
+  }
+  return nullptr;
+}
+
+PypetExpr* EmitStatements::ExtractBinaryExpr(isl_ctx* ctx,
+                                             const torch::jit::Expr& expr) {
+  torch::jit::BinOp bin_expr(expr);
+  PypetExpr* ret = PypetExprAlloc(ctx, PypetExprType::PYPET_EXPR_OP);
+  ret->op = TorchKind2PypetOpType(expr.kind());
+  ret->arg_num = 2;
+  ret->args = isl_alloc_array(ctx, PypetExpr*, 2);
+  ret->args[0] = ExtractExpr(ctx, bin_expr.lhs());
+  ret->args[1] = ExtractExpr(ctx, bin_expr.rhs());
+  return ret;
+}
+
+PypetExpr* EmitStatements::ExtractSelectExpr(isl_ctx* ctx,
+                                             const torch::jit::Expr& expr) {
+  torch::jit::Select select_expr(expr);
+  const torch::jit::Expr& base = select_expr.value();
+  PypetExpr* base_index = ExtractIndexExpr(ctx, base);
+  const torch::jit::Ident& selector = select_expr.selector();
+
+  isl_id* id = isl_id_alloc(ctx, selector.name().c_str(),
+                            const_cast<void*>(static_cast<const void*>(&expr)));
+  return PypetExprAccessMember(base_index, id);
+}
+
+PypetExpr* EmitStatements::ExtractApplyExpr(isl_ctx* ctx,
+                                            const torch::jit::Expr& expr) {
+  torch::jit::Apply apply_expr(expr);
+  PypetExpr* ret = PypetExprAlloc(ctx, PypetExprType::PYPET_EXPR_OP);
+  const torch::jit::Expr& callee = apply_expr.callee();
+  const torch::jit::List<torch::jit::Expr>& inputs = apply_expr.inputs();
+  const torch::jit::List<torch::jit::Attribute>& attributes =
+      apply_expr.attributes();
+  // TODO(yizhu1): replace PYPET_APPLY with a specific structure for function
+  // call
+  ret->arg_num = 1 + inputs.size() + attributes.size();
+  ret->args = isl_alloc_array(ctx, PypetExpr*, ret->arg_num);
+  ret->args[0] = ExtractExpr(ctx, callee);
+  ret->op = PypetOpType::PYPET_APPLY;
+  for (int i = 0; i < inputs.size(); ++i) {
+    ret->args[i + 1] = ExtractExpr(ctx, inputs[i]);
+  }
+  for (int i = 0; i < attributes.size(); ++i) {
+    ret->args[i + 1 + inputs.size()] = ExtractAttributeExpr(ctx, attributes[i]);
+  }
+  return ret;
+}
+
+PypetExpr* EmitStatements::ExtractListLiteralExpr(
+    isl_ctx* ctx, const torch::jit::Expr& expr) {
+  torch::jit::ListLiteral list_literal_expr(expr);
+  PypetExpr* ret = PypetExprAlloc(ctx, PypetExprType::PYPET_EXPR_OP);
+  const torch::jit::List<torch::jit::Expr>& inputs = list_literal_expr.inputs();
+  ret->arg_num = inputs.size();
+  ret->args = isl_alloc_array(ctx, PypetExpr*, inputs.size());
+  for (int i = 0; i < inputs.size(); ++i) {
+    ret->args[i] = ExtractExpr(ctx, inputs[i]);
+  }
+  ret->op = PypetOpType::PYPET_LIST_LITERAL;
+  return ret;
+}
+
+PypetExpr* EmitStatements::ExtractAttributeExpr(
+    isl_ctx* ctx, const torch::jit::Attribute& attribute_expr) {
+  PypetExpr* ret = PypetExprAlloc(ctx, PypetExprType::PYPET_EXPR_OP);
+  ret->arg_num = 2;
+  ret->args = isl_alloc_array(ctx, PypetExpr*, ret->arg_num);
+  ret->args[0] = ExtractIndexExprFromIdent(ctx, attribute_expr.name());
+  ret->args[1] = ExtractExpr(ctx, attribute_expr.value());
+  ret->op = PypetOpType::PYPET_ATTRIBUTE;
+  return ret;
+}
+
+PypetExpr* EmitStatements::ExtractAttributeExpr(isl_ctx* ctx,
+                                                const torch::jit::Expr& expr) {
+  torch::jit::Attribute attribute_expr(expr);
+  return ExtractAttributeExpr(ctx, attribute_expr);
+}
+
+PypetExpr* EmitStatements::ExtractExpr(isl_ctx* ctx,
+                                       const torch::jit::Expr& expr) {
+  switch (expr.kind()) {
+    case torch::jit::TK_VAR:
+    case torch::jit::TK_CONST:
+    case torch::jit::TK_SUBSCRIPT:
+      return ExtractIndexExpr(ctx, expr);
+    case torch::jit::TK_AND:
+    case torch::jit::TK_OR:
+    case '<':
+    case '>':
+    case torch::jit::TK_EQ:
+    case torch::jit::TK_LE:
+    case torch::jit::TK_GE:
+    case torch::jit::TK_NE:
+    case '+':
+    case '-':
+    case '*':
+    case '/':
+      return ExtractBinaryExpr(ctx, expr);
+    case '.':
+      return ExtractSelectExpr(ctx, expr);
+    case torch::jit::TK_APPLY:
+      return ExtractApplyExpr(ctx, expr);
+    case torch::jit::TK_LIST_LITERAL:
+      return ExtractListLiteralExpr(ctx, expr);
+    case torch::jit::TK_ATTRIBUTE:
+      return ExtractAttributeExpr(ctx, expr);
+    default:
+      LOG(FATAL) << torch::jit::kindToString(expr.kind()) << std::endl
+                 << expr.range();
+      break;
+  }
   return nullptr;
 }
 

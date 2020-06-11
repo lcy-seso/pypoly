@@ -6,24 +6,37 @@
 namespace pypoly {
 namespace pypet {
 
-inline void isl_printer_to_stdout(struct isl_printer* p) {
-  char* str = isl_printer_get_str(p);
-  isl_printer_free(p);
-  std::cout << std::string(str) << std::endl;
-  free(str);
-}
+#define PRINTER_FUNC(isl_type)                                          \
+  static inline std::ostream& operator<<(std::ostream& out,             \
+                                         isl_##isl_type* val) {         \
+    isl_printer* p = isl_printer_to_str(isl_##isl_type##_get_ctx(val)); \
+    p = isl_printer_print_##isl_type(p, val);                           \
+    char* str = isl_printer_get_str(p);                                 \
+    isl_printer_free(p);                                                \
+    out << std::string(str);                                            \
+    free(str);                                                          \
+    return out;                                                         \
+  }
+PRINTER_FUNC(multi_pw_aff)
+PRINTER_FUNC(pw_aff)
+PRINTER_FUNC(id)
+PRINTER_FUNC(schedule)
 
-inline void print_isl_multi_pw_aff(isl_multi_pw_aff* pw_multi_aff) {
-  isl_printer* p = isl_printer_to_str(isl_multi_pw_aff_get_ctx(pw_multi_aff));
-  p = isl_printer_print_multi_pw_aff(p, pw_multi_aff);
-  isl_printer_to_stdout(p);
-}
-
-inline void print_isl_pw_aff(isl_pw_aff* pw_aff) {
-  isl_printer* p = isl_printer_to_str(isl_pw_aff_get_ctx(pw_aff));
-  p = isl_printer_print_pw_aff(p, pw_aff);
-  isl_printer_to_stdout(p);
-}
+#define PRINTER_FUNC2(isl_type)                                 \
+  static inline std::ostream& operator<<(std::ostream& out,     \
+                                         isl_##isl_type* val) { \
+    isl_ctx* ctx = isl_ctx_alloc();                             \
+    isl_printer* p = isl_printer_to_str(ctx);                   \
+    p = isl_printer_print_##isl_type(p, val);                   \
+    char* str = isl_printer_get_str(p);                         \
+    isl_printer_free(p);                                        \
+    out << std::string(str);                                    \
+    free(str);                                                  \
+    isl_ctx_free(ctx);                                          \
+    return out;                                                 \
+  }
+PRINTER_FUNC2(set)
+PRINTER_FUNC2(space)
 
 }  // namespace pypet
 }  // namespace pypoly

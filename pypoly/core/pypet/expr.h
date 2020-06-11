@@ -21,12 +21,14 @@ enum PypetOpType {
   PYPET_MUL,
   PYPET_DIV,
   PYPET_MOD,
+  PYPET_MINUS,
   PYPET_EQ,
   PYPET_NE,
   PYPET_LE,
   PYPET_GE,
   PYPET_LT,
   PYPET_GT,
+  PYPET_COND,
   PYPET_AND,
   PYPET_XOR,
   PYPET_OR,
@@ -44,12 +46,14 @@ static constexpr const char* op_type_to_string[] = {
     [PYPET_MUL] = "*",
     [PYPET_DIV] = "/",
     [PYPET_MOD] = "%",
+    [PYPET_MINUS] = "-",
     [PYPET_EQ] = "==",
     [PYPET_NE] = "!=",
     [PYPET_LE] = "<=",
     [PYPET_GE] = ">=",
     [PYPET_LT] = "<",
     [PYPET_GT] = ">",
+    [PYPET_COND] = "?:",
     [PYPET_AND] = "&",
     [PYPET_XOR] = "^",
     [PYPET_OR] = "or",
@@ -128,6 +132,25 @@ struct PypetExpr {
   PypetExpr() = default;
   ~PypetExpr() = default;
 
+  bool IsComparison();
+  bool IsBoolean();
+  bool IsMin();
+  bool IsMax();
+  bool HasRelevantAccessRelation();
+
+  PypetExpr* Dup();
+  PypetExpr* Cow();
+
+  PypetExpr* RemoveDuplicateArgs();
+  bool IsEqual(PypetExpr* rhs);
+  PypetExpr* EquateArg(int i, int j);
+
+  PypetExpr* AccessPullbackMultiAff(isl_multi_aff* multi_aff);
+  PypetExpr* AccessPullbackMultiPwAff(isl_multi_pw_aff* multi_pw_aff);
+  PypetExpr* AccessProjectOutArg(int dim, int pos);
+
+  PypetExpr* PlugIn(int pos, isl_pw_aff* value);
+
   int ref;
   isl_ctx* ctx;
 
@@ -159,6 +182,13 @@ __isl_keep PypetExpr* PypetExprDup(__isl_keep PypetExpr* expr);
 
 __isl_keep PypetExpr* PypetExprCow(__isl_keep PypetExpr* expr);
 
+PypetExpr* PypetExprNewBinary(int type_size, PypetOpType type, PypetExpr* lhs,
+                              PypetExpr* rhs);
+
+PypetExpr* PypetExprNewTernary(PypetExpr* p, PypetExpr* q, PypetExpr* r);
+
+PypetExpr* PypetExprSetTypeSize(PypetExpr* expr, int type_size);
+
 __isl_keep PypetExpr* PypetExprFromIslVal(__isl_keep isl_val* val);
 
 __isl_keep PypetExpr* PypetExprFromIntVal(__isl_keep isl_ctx* ctx, long val);
@@ -185,6 +215,22 @@ isl_space* PypetExprAccessGetDomainSpace(PypetExpr* expr);
 PypetExpr* PypetExprAccessPullbackMultiAff(PypetExpr* expr,
                                            isl_multi_aff* multi_aff);
 
+PypetExpr* PypetExprAccessMoveDims(PypetExpr* expr, enum isl_dim_type dst_type,
+                                   unsigned dst_pos, enum isl_dim_type src_type,
+                                   unsigned src_pos, unsigned n);
+
+PypetExpr* PypetExprAccessAlignParams(PypetExpr* expr);
+
+bool PypetExprAccessHasAnyAccessRelation(PypetExpr* expr);
+
+bool PypetExprIsSubAccess(PypetExpr* lhs, PypetExpr* rhs, int arg_num);
+
+isl_union_map* ConstructAccessRelation(PypetExpr* expr);
+
+isl_map* ExtendRange(isl_map* access, int n);
+
+PypetExpr* IntroduceAccessRelations(PypetExpr* expr);
+
 PypetExpr* PypetExprInsertArg(PypetExpr* expr, int pos, PypetExpr* arg);
 
 isl_multi_pw_aff* PypetArraySubscript(isl_multi_pw_aff* base,
@@ -202,6 +248,59 @@ isl_multi_pw_aff* PypetArrayMember(isl_multi_pw_aff* base,
                                    isl_multi_pw_aff* field);
 
 PypetExpr* PypetExprAccessMember(PypetExpr* expr, isl_id* id);
+
+int PypetExprForeachExprOfType(PypetExpr* expr, PypetExprType type,
+                               const std::function<int(PypetExpr*, void*)>& fn,
+                               void* user);
+
+int PypetExprForeachAccessExpr(PypetExpr* expr,
+                               const std::function<int(PypetExpr*, void*)>& fn,
+                               void* user);
+
+int PypetExprIsScalarAccess(PypetExpr* expr);
+
+bool PypetExprIsAffine(PypetExpr* expr);
+
+isl_pw_aff* PypetExprExtractComparison(PypetOpType type, PypetExpr* lhs,
+                                       PypetExpr* rhs, PypetContext* context);
+
+isl_pw_aff* PypetExprExtractAffineCondition(PypetExpr* expr,
+                                            PypetContext* context);
+
+isl_pw_aff* PypetExprExtractAffine(PypetExpr* expr, PypetContext* context);
+
+isl_pw_aff* PypetExprGetAffine(PypetExpr* expr);
+
+PypetExpr* PypetExprMapExprOfType(
+    PypetExpr* expr, PypetExprType type,
+    const std::function<PypetExpr*(PypetExpr*, void*)>& fn, void* user);
+
+PypetExpr* PypetExprMapAccess(
+    PypetExpr* expr, const std::function<PypetExpr*(PypetExpr*, void*)>& fn,
+    void* user);
+
+PypetExpr* PypetExprMapTopDown(
+    PypetExpr* expr, const std::function<PypetExpr*(PypetExpr*, void*)>& fn,
+    void* user);
+
+int PypetExprWrites(PypetExpr* expr, isl_id* id);
+
+isl_id* PypetExprAccessGetId(PypetExpr* expr);
+
+isl_pw_aff* NonAffine(isl_space* space);
+
+isl_space* PypetExprAccessGetParameterSpace(PypetExpr* expr);
+
+isl_ctx* PypetExprGetCtx(PypetExpr* expr);
+
+PypetExpr* PypetExprInsertDomain(PypetExpr* expr, isl_space* space);
+
+PypetExpr* PypetExprUpdateDomain(PypetExpr* expr, isl_multi_pw_aff* update);
+
+PypetExpr* PypetExprAccessUpdateDomain(PypetExpr* expr,
+                                       isl_multi_pw_aff* update);
+
+PypetExpr* PypetExprRestrict(PypetExpr* expr, isl_set* set);
 
 struct ExprPrettyPrinter {
   static void Print(std::ostream& out, const PypetExpr* expr, int indent = 0);
