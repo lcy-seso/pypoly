@@ -4,18 +4,11 @@
 #include "pypoly/core/pypet/array.pb.h"
 #include "pypoly/core/pypet/ir_emitter.h"
 #include "pypoly/core/pypet/pypet.h"
+#include "pypoly/core/pypet/util.h"
 
-#include <isl/arg.h>
-#include <isl/ctx.h>
-#include <isl/options.h>
 #include <pybind11/pybind11.h>
-#include <string.h>  // for strdup
 #include <torch/csrc/jit/frontend/parser.h>
 #include <torch/csrc/jit/frontend/tree_views.h>
-
-#include <map>
-#include <stdexcept>
-#include <vector>
 
 namespace py = pybind11;
 

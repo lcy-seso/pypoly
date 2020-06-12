@@ -8,6 +8,7 @@
 #include <isl/ctx.h>
 #include <isl/id.h>
 #include <isl/map.h>
+#include <isl/options.h>
 #include <isl/schedule.h>
 #include <isl/set.h>
 #include <isl/space.h>
@@ -17,6 +18,7 @@
 #include <isl/val.h>
 #include <string.h>
 
+#include <map>
 #include <memory>
 #include <vector>
 

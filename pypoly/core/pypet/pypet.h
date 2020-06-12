@@ -68,8 +68,16 @@ struct PypetStmt {
   // Information to print the body of the statement in source program.
   PypetTree* body;
 };
-
 isl_set* StmtExtractContext(PypetStmt* stmt, isl_set* context);
+
+struct StmtPrettyPrinter {
+  static void Print(std::ostream& out, const PypetStmt* stmt);
+};
+static inline std::ostream& operator<<(std::ostream& out,
+                                       const PypetStmt* stmt) {
+  StmtPrettyPrinter::Print(out, stmt);
+  return out;
+};
 
 struct PypetScop {
   PypetScop() = delete;
@@ -98,6 +106,15 @@ struct PypetScop {
   // statement may be broken up into several polyhedral statements.
   int stmt_num;
   PypetStmt** stmts;
+};
+
+struct ScopPrettyPrinter {
+  static void Print(std::ostream& out, const PypetScop* scop);
+};
+static inline std::ostream& operator<<(std::ostream& out,
+                                       const PypetScop* scop) {
+  ScopPrettyPrinter::Print(out, scop);
+  return out;
 };
 
 PypetScop* PypetScopAdd(isl_ctx* ctx, isl_schedule* schedule, PypetScop* lhs,
@@ -137,9 +154,6 @@ inline PypetScop* PypetScopCollectIndependence(isl_ctx* ctx, PypetScop* scop,
   // TODO
   return scop;
 }
-
-std::ostream& operator<<(std::ostream& out, const PypetStmt* stmt);
-std::ostream& operator<<(std::ostream& out, const PypetScop* scop);
 
 }  // namespace pypet
 }  // namespace pypoly

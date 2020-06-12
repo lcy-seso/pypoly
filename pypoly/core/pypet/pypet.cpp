@@ -287,7 +287,7 @@ PypetScop* PypetScopEmbed(PypetScop* scop, isl_set* dom,
   return scop;
 }
 
-std::ostream& operator<<(std::ostream& out, const PypetStmt* stmt) {
+void StmtPrettyPrinter::Print(std::ostream& out, const PypetStmt* stmt) {
   CHECK(stmt);
   isl_printer* p = isl_printer_to_str(isl_set_get_ctx(stmt->domain));
   CHECK(p);
@@ -312,10 +312,9 @@ std::ostream& operator<<(std::ostream& out, const PypetStmt* stmt) {
   out << stmt->body << std::endl;
 
   isl_printer_free(p);
-  return out;
 }
 
-std::ostream& operator<<(std::ostream& out, const PypetScop* scop) {
+void ScopPrettyPrinter::Print(std::ostream& out, const PypetScop* scop) {
   CHECK(scop);
   isl_printer* p = isl_printer_to_str(isl_schedule_get_ctx(scop->schedule));
   CHECK(p);
@@ -328,9 +327,12 @@ std::ostream& operator<<(std::ostream& out, const PypetScop* scop) {
   p = isl_printer_yaml_start_mapping(p);
 
   out << "schedule :" << std::endl << scop->schedule << std::endl;
+
+  out << "arrays :" << std::endl;
   for (size_t i = 0; i < scop->array_num; ++i)
     out << scop->arrays[i] << std::endl;
 
+  out << std::endl << "statements :" << std::endl;
   for (size_t i = 0; i < scop->stmt_num; ++i)
     out << scop->stmts[i] << std::endl;
 
@@ -338,7 +340,6 @@ std::ostream& operator<<(std::ostream& out, const PypetScop* scop) {
 
   out << std::string(isl_printer_get_str(p));
   isl_printer_free(p);
-  return out;
 }
 
 }  // namespace pypet
