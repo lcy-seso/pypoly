@@ -83,6 +83,8 @@ PypetScop* ParserImpl::ParseFunction() {
   TreeToScop converter(ctx);
   PypetScop* parsed_data = converter.ScopFromTree(trees[0]);
 
+  std::cout << parsed_data << std::endl;
+
   isl_ctx_free(ctx);
   return parsed_data;
 }

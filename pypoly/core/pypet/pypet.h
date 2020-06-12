@@ -138,6 +138,9 @@ inline PypetScop* PypetScopCollectIndependence(isl_ctx* ctx, PypetScop* scop,
   return scop;
 }
 
+std::ostream& operator<<(std::ostream& out, const PypetStmt* stmt);
+std::ostream& operator<<(std::ostream& out, const PypetScop* scop);
+
 }  // namespace pypet
 }  // namespace pypoly
 #endif  // PYPOLY_CORE_PYPET_PYPET_H_

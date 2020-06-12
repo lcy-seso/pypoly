@@ -578,7 +578,6 @@ __isl_give PypetScop* TreeToScop::ScopFromTree(__isl_take PypetTree* tree) {
     // Compute the parameter domain of the given set.
     scop->context = isl_set_params(scop->context);
   }
-  std::cout << scop->schedule << std::endl;
 
   FreePypetContext(pc);
   return scop;

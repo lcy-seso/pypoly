@@ -132,7 +132,7 @@ class ScopParser(object):
 
         context_var = array_pb2.ContextVar()
         context_var.name = var_name
-        context_var.type = array_pb2.ContextVar.VarType.INT32
+        context_var.type = array_pb2.ContextVarType.INT32
         context_var.lower_bound.extend([lower])
         context_var.upper_bound.extend([upper])
 
@@ -175,7 +175,7 @@ class ScopParser(object):
 
             context_var = array_pb2.ContextVar()
             context_var.name = var_name
-            context_var.type = array_pb2.ContextVar.VarType.INT32_ARRAY
+            context_var.type = array_pb2.ContextVarType.INT32_ARRAY
             context_var.lower_bound.extend(min_shape)
             context_var.upper_bound.extend(max_shape)
 
@@ -192,7 +192,7 @@ class ScopParser(object):
 
             context_var = array_pb2.ContextVar()
             context_var.name = var_name
-            context_var.type = array_pb2.ContextVar.VarType.TENSOR_ARRAY
+            context_var.type = array_pb2.ContextVarType.TENSOR_ARRAY
             context_var.lower_bound.extend(min_shape)
             context_var.upper_bound.extend(max_shape)
 
