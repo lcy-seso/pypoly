@@ -1,3 +1,4 @@
+import sys
 import random
 from pprint import pprint
 from typing import List
@@ -9,8 +10,9 @@ from torch import Tensor
 from torch._utils_internal import get_source_lines_and_file
 
 import context
-import pypoly
+from pypoly import ScopParser
 from pypoly import VanillaRNNCell
+from pypoly import CellArray
 from pypoly import ReadWriteTensorArray
 from pypoly import ReadTensorArray
 
@@ -53,10 +55,9 @@ def get_data(batch_size, input_size):
     seq_batch = []
     seq_lens = [random.randint(min_len, max_len) for _ in range(batch_size)]
     for l in seq_lens:
-        a_seq = ReadTensorArray(
-            [torch.randn(1, input_size, device=device) for _ in range(l)])
+        a_seq = [torch.randn(1, input_size, device=device) for _ in range(l)]
         seq_batch.append(a_seq)
-    return ReadTensorArray(seq_batch), seq_lens
+    return seq_batch, seq_lens
 
 
 if __name__ == '__main__':
@@ -70,30 +71,34 @@ if __name__ == '__main__':
     hidden_size = 16
     depth = 3
 
-    cells = ReadTensorArray([
+    cells = CellArray([
         VanillaRNNCell(input_size, hidden_size).to(device)
         for _ in range(depth)
     ])
 
+    seq_batch, seq_lens = get_data(batch_size, input_size)
+    seq_batch = ReadTensorArray(
+        seq_batch,
+        array_shape=[batch_size, max(seq_lens)],
+        tensor_shape=[1, input_size])
+
+    # declare the output buffer.
+    outputs = ReadWriteTensorArray(
+        array_shape=(batch_size, max(seq_lens), depth),
+        tensor_shape=(1, hidden_size))
+
     m = StackedLSTM(hidden_size, cells).to(device)
 
-    seq_batch, seq_lens = get_data(batch_size, input_size)
+    with ScopParser(m) as p:
+        p.add_int(batch_size, lower=0, upper=16)
+        p.add_array(seq_lens)
+        p.add_array(seq_batch)
+        p.add_array(outputs)
 
-    # Initialize output buffer. BUT do not use this way to declare array in
-    # future, since it is hard to check whether the declaration is consistent
-    # with loop computations.
-    # TODO(Ying): provide a better interface to declare arrays.
-    outputs = []
-    for i in range(batch_size):
-        seq_len = seq_lens[i]
-        output_j = []
-        for j in range(seq_len):
-            # output buffer for innermost loop.
-            output_k = ReadWriteTensorArray(
-                length=depth, tensor_shape=(1, hidden_size))
-            output_j.append(output_k)
-        outputs.append(ReadWriteTensorArray(input=output_j))
-    outputs = ReadWriteTensorArray(outputs)
+        # uncomment to print the torch AST.
+        # p.print_context()
+        # p.print_ast()
 
-    m(seq_batch, batch_size, seq_lens, depth, outputs)
-    parsed = pypoly.scop(m)
+        m = p.parse()
+
+        m(seq_batch, batch_size, seq_lens, depth, outputs)

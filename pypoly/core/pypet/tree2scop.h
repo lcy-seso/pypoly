@@ -26,7 +26,7 @@ struct TreeToScop {
   TreeToScop(isl_ctx* ctx) : ctx(ctx){};
   ~TreeToScop() = default;
 
-  __isl_give PypetScop* ScopFromTree(__isl_keep PypetTree* tree);
+  __isl_give PypetScop* ScopFromTree(__isl_take PypetTree* tree);
 
  private:
   isl_ctx* ctx;

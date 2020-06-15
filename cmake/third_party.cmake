@@ -66,6 +66,9 @@ include(external/gflags)
 include(external/glog)
 include(external/gtest)
 
+include(external/zlib)
+include(external/protobuf)
+
 list(APPEND third_party_deps extern_gtest extern_glog)
 
 include(external/torchlib)

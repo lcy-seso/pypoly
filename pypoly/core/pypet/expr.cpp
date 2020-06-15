@@ -1049,20 +1049,6 @@ isl_space* PypetExprAccessGetParameterSpace(PypetExpr* expr) {
 }
 
 isl_ctx* PypetExprGetCtx(PypetExpr* expr) { return expr->ctx; }
-
-void ExprPrettyPrinter::Print(std::ostream& out, const PypetExpr* expr,
-                              int indent) {
-  CHECK(expr) << "null pointer.";
-  isl_printer* p = isl_printer_to_str(expr->ctx);
-  CHECK(p);
-  p = isl_printer_set_indent(p, indent);
-  p = isl_printer_set_yaml_style(p, ISL_YAML_STYLE_BLOCK);
-  p = isl_printer_start_line(p);
-  p = PrintExpr(expr, p);
-  out << std::string(isl_printer_get_str(p));
-  isl_printer_free(p);
-}
-
 bool PypetExprIsAffine(PypetExpr* expr) {
   CHECK(expr);
   CHECK(expr->type == PypetExprType::PYPET_EXPR_ACCESS);
@@ -1559,8 +1545,21 @@ PypetExpr* PypetExprRestrict(PypetExpr* expr, isl_set* set) {
   return expr;
 }
 
-__isl_give isl_printer* ExprPrettyPrinter::PrintExpr(
-    const PypetExpr* expr, __isl_take isl_printer* p) {
+void ExprPrettyPrinter::Print(std::ostream& out, const PypetExpr* expr,
+                              int indent) {
+  CHECK(expr);
+  isl_printer* p = isl_printer_to_str(expr->ctx);
+  CHECK(p);
+  p = isl_printer_set_indent(p, indent);
+  p = isl_printer_set_yaml_style(p, ISL_YAML_STYLE_BLOCK);
+  p = isl_printer_start_line(p);
+  p = ExprPrettyPrinter::Print(p, expr);
+  out << std::string(isl_printer_get_str(p));
+  isl_printer_free(p);
+}
+
+__isl_give isl_printer* ExprPrettyPrinter::Print(__isl_take isl_printer* p,
+                                                 const PypetExpr* expr) {
   CHECK(p);
   if (!expr) return isl_printer_free(p);
 
@@ -1719,7 +1718,7 @@ __isl_give isl_printer* ExprPrettyPrinter::PrintArguments(
   p = isl_printer_yaml_next(p);
   p = isl_printer_yaml_start_sequence(p);
   for (size_t i = 0; i < expr->arg_num; ++i) {
-    p = PrintExpr(expr->args[i], p);
+    p = Print(p, expr->args[i]);
     p = isl_printer_yaml_next(p);
   }
   p = isl_printer_yaml_end_sequence(p);

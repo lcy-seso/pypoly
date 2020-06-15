@@ -18,21 +18,44 @@ void InitGLOG(const std::string& prog_name) {
 PYBIND11_MODULE(_parser, m) {
   m.def("init_glog", InitGLOG);
 
-  m.def("parse_scop", [](const std::string& src, const std::string& filename,
-                         size_t file_lineno) {
-    TorchParser p(src, filename, file_lineno);
+  py::class_<torch::jit::Def>(m, "Def").def("__repr__",
+                                            [](const torch::jit::Def& self) {
+                                              std::ostringstream s;
+                                              s << self;
+                                              return s.str();
+                                            });
 
-    ScopParser scop_parser(p.Parse());
-    scop_parser.Parse();
+  m.def("parse_scop",
+        [](const torch::jit::Def& ast, const std::string& contexts) {
+          ContextDesc ctx_desc;
+          bool success = ctx_desc.ParseFromString(contexts);
+          CHECK(success) << "Fail to parse context variables." << std::endl;
+
+          ScopParser scop_parser(ast, ctx_desc);
+          *scop_parser.Parse();
+        });
+
+  m.def("get_torch_ast", [](const std::string& src, const std::string& filename,
+                            size_t file_lineno) {
+    TorchParser p(src, filename, file_lineno);
+    return p.Parse();
   });
 }
 
-void ScopParser::Parse() { pImpl->ParseFunction(); }
+std::shared_ptr<PypetScop> ScopParser::Parse() {
+  // TODO(Ying): bad practice that does not use make_shared to create a smart
+  // pointer.
+  std::shared_ptr<PypetScop> parsed_data(pImpl->ParseFunction());
+  return parsed_data;
+}
 
-void ParserImpl::ParseDecl(isl_ctx* ctx) { LOG(INFO) << ast_.name(); }
+bool ParserImpl::ParseDecl(isl_ctx* ctx) {
+  LOG(INFO) << ast_.name();
+  return true;
+}
 
 std::vector<PypetTree*> ParserImpl::ParseBody(isl_ctx* ctx) {
-  EmitStatements emitter(ctx, parsed_data_);
+  EmitStatements emitter(ctx);
   return emitter(ast_.statements());
 }
 
@@ -52,14 +75,18 @@ PypetScop* ParserImpl::ParseFunction() {
   isl_ctx* ctx = isl_ctx_alloc_with_options(&isl_options_args, options);
 
   ParseDecl(ctx);
+  // Torch JIT AST to PypetTree representation.
+  // trees owns pointers pointing to PypetTree object.
   std::vector<PypetTree*> trees = ParseBody(ctx);
   CHECK(trees.size() == 1U);
 
   TreeToScop converter(ctx);
-  parsed_data_ = converter.ScopFromTree(trees[0]);
+  PypetScop* parsed_data = converter.ScopFromTree(trees[0]);
+
+  std::cout << parsed_data << std::endl;
 
   isl_ctx_free(ctx);
-  return parsed_data_;
+  return parsed_data;
 }
 
 }  // namespace pypet

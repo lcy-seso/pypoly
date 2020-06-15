@@ -12,9 +12,9 @@ struct PypetContext {
 
   int ref;
   isl_set* domain;
-  // for each parameter in "tree". Parameters any integer variable that is read
-  // anywhere in "tree" or in any of the size expressions for any of the arrays
-  // accessed in "tree".
+  // for each parameter in "tree". Parameter is any integer variable that is
+  // read anywhere in "tree" or in any of size expressions for any of the
+  // arrays accessed in "tree".
   bool allow_nested;
   std::map<isl_id*, isl_pw_aff*> assignments;
   std::map<PypetExpr*, isl_pw_aff*> extracted_affine;
@@ -66,6 +66,15 @@ PypetContext* PypetContextSetAllowNested(PypetContext* context, bool val);
 PypetExpr* PypetContextEvaluateExpr(PypetContext* context, PypetExpr* expr);
 
 PypetTree* PypetContextEvaluateTree(PypetContext* pc, PypetTree* tree);
+
+struct ContextPrettyPrinter {
+  static void Print(std::ostream& out, const PypetContext* context);
+};
+static inline std::ostream& operator<<(std::ostream& out,
+                                       const PypetContext* context) {
+  ContextPrettyPrinter::Print(out, context);
+  return out;
+}
 
 }  // namespace pypet
 }  // namespace pypoly

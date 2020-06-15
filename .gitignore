@@ -11,3 +11,6 @@ __pycache__/
 venv/
 .idea/
 .checkpoints/
+*.pb.h
+*.pb.cc
+*_pb2.py

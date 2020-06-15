@@ -9,7 +9,10 @@ from torch import Tensor
 from torch._utils_internal import get_source_lines_and_file
 
 import context
+
 import pypoly
+from pypoly import ScopParser
+from pypoly import CellArray
 from pypoly import VanillaRNNCell
 from pypoly import ReadWriteTensorArray
 from pypoly import ReadTensorArray
@@ -44,25 +47,25 @@ class GridRNN(nn.Module):
                             x_t = src_seq_batch[n][i]
                             y_t = trg_seq_batch[n][j]
                         else:
-                            x_t = output[n][d - 1][i][j * 2]
-                            y_t = output[n][d - 1][i][j * 2 + 1]
+                            x_t = output[n][d - 1][i][j][0]
+                            y_t = output[n][d - 1][i][j][1]
 
                         if i == 0:
                             state_x = self.init_state
                         else:
-                            state_x = output[n][d][i - 1][(j - 1) * 2]
+                            state_x = output[n][d][i - 1][j][0]
 
                         if j == 0:
                             state_y = self.init_state
                         else:
-                            state_y = output[n][d][i][(j - 1) * 2 + 1]
+                            state_y = output[n][d][i][j - 1][1]
 
                         state = torch.cat([state_x, state_y], dim=1)
-                        h_x = self.cells_x[d](x_t, state_x)
-                        h_y = self.cells_y[d](y_t, state_y)
+                        h_x = self.cells_x[d](x_t, state)
+                        h_y = self.cells_y[d](y_t, state)
 
-                        output[n][d][i][j * 2] = h_x
-                        output[n][d][i][j * 2 + 1] = h_y
+                        output[n][d][i][j][0] = h_x
+                        output[n][d][i][j][1] = h_y
 
 
 def get_data(batch_size, input_size):
@@ -72,10 +75,9 @@ def get_data(batch_size, input_size):
     seq_batch = []
     seq_lens = [random.randint(min_len, max_len) for _ in range(batch_size)]
     for l in seq_lens:
-        a_seq = ReadTensorArray(
-            [torch.randn(1, input_size, device=device) for _ in range(l)])
+        a_seq = [torch.randn(1, input_size, device=device) for _ in range(l)]
         seq_batch.append(a_seq)
-    return ReadTensorArray(seq_batch), seq_lens
+    return seq_batch, seq_lens
 
 
 if __name__ == '__main__':
@@ -85,16 +87,17 @@ if __name__ == '__main__':
     device = 'cpu'
 
     batch_size = 4
-    input_size = 16
     hidden_size = 16
+    input_size = hidden_size
     depth = 3
+    grid_dim = 2
 
-    cells_x = ReadTensorArray([
-        VanillaRNNCell(input_size, hidden_size).to(device)
+    cells_x = CellArray([
+        VanillaRNNCell(input_size, hidden_size, grid_dim).to(device)
         for _ in range(depth)
     ])
-    cells_y = ReadTensorArray([
-        VanillaRNNCell(input_size, hidden_size).to(device)
+    cells_y = CellArray([
+        VanillaRNNCell(input_size, hidden_size, grid_dim).to(device)
         for _ in range(depth)
     ])
 
@@ -103,25 +106,33 @@ if __name__ == '__main__':
     src_seq_batch, src_lens = get_data(batch_size, input_size)
     trg_seq_batch, trg_lens = get_data(batch_size, input_size)
 
-    # Initialize output buffer. BUT do not use this way to declare array in
-    # future, since it is hard to check whether the declaration is consistent
-    # with loop computations.
-    # TODO(Ying): provide a better interface to declare arrays.
-    outputs = []
-    grid_dim = 2
-    for n in range(batch_size):
-        output_d = []
-        for d in range(depth):
-            src_len = src_lens[n]
-            trg_len = trg_lens[n]
-            output_i = []
-            for i in range(src_len):
-                output_j = ReadWriteTensorArray(
-                    length=trg_len * grid_dim, tensor_shape=(1, hidden_size))
-                output_i.append(output_j)
-            output_d.append(ReadWriteTensorArray(input=output_i))
-        outputs.append(ReadWriteTensorArray(input=output_d))
+    src_seq_batch = ReadTensorArray(
+        src_seq_batch,
+        array_shape=[batch_size, max(src_lens)],
+        tensor_shape=[1, input_size])
+    trg_seq_batch = ReadTensorArray(
+        trg_seq_batch,
+        array_shape=[batch_size, max(trg_lens)],
+        tensor_shape=[1, input_size])
 
-    m(src_seq_batch, src_lens, trg_seq_batch, trg_lens, batch_size, depth,
-      outputs)
-    parsed = pypoly.scop(m)
+    outputs = ReadWriteTensorArray(
+        array_shape=(batch_size, depth, max(src_lens), max(trg_lens),
+                     grid_dim),
+        tensor_shape=(1, hidden_size))
+
+    with ScopParser(m) as p:
+        p.add_int(batch_size, lower=1, upper=16)
+        p.add_array(src_lens)
+        p.add_array(src_seq_batch)
+        p.add_array(trg_lens)
+        p.add_array(trg_seq_batch)
+        p.add_array(outputs)
+
+        # uncomment to print the torch AST.
+        # p.print_ast()
+        # p.print_context()
+
+        m = p.parse()
+
+        m(src_seq_batch, src_lens, trg_seq_batch, trg_lens, batch_size, depth,
+          outputs)

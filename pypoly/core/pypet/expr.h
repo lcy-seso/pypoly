@@ -64,8 +64,6 @@ static constexpr const char* op_type_to_string[] = {
 };
 
 enum PypetExprAccessType {
-  // TODO(Ying) check whether we needs so many access types or not, but only
-  // MUST_READ/WRITE relations?
   PYPET_EXPR_ACCESS_MAY_READ = 0,
   PYPET_EXPR_ACCESS_BEGIN = PYPET_EXPR_ACCESS_MAY_READ,
   PYPET_EXPR_ACCESS_FAKE_KILL = PYPET_EXPR_ACCESS_MAY_READ,
@@ -304,9 +302,9 @@ PypetExpr* PypetExprRestrict(PypetExpr* expr, isl_set* set);
 
 struct ExprPrettyPrinter {
   static void Print(std::ostream& out, const PypetExpr* expr, int indent = 0);
+  static __isl_give isl_printer* Print(__isl_take isl_printer* p,
+                                       const PypetExpr* expr);
 
-  static __isl_give isl_printer* PrintExpr(const PypetExpr* expr,
-                                           __isl_take isl_printer* p);
   static __isl_give isl_printer* PrintArguments(
       const __isl_keep PypetExpr* expr, __isl_take isl_printer* p);
 
