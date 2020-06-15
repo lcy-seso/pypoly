@@ -43,20 +43,12 @@ struct TorchParser {
 class ParserImpl {
  public:
   explicit ParserImpl(const TorchDef& def, const ContextDesc& ctx_desc)
-      : ast_(std::move(def)), ctx_desc_(std::move(ctx_desc)) {
-    for (size_t i = 0; i < ctx_desc.vars_size(); ++i) {
-      ctx_vars_.insert(std::make_pair(ctx_desc_.vars()[i].name(), i));
-    }
-  };
-
+      : ast_(std::move(def)), ctx_desc_(std::move(ctx_desc)){};
   PypetScop* ParseFunction();
 
  private:
   const TorchDef ast_;
   const ContextDesc ctx_desc_;
-
-  // key is variable name in the codes; value is the position in `ctx_desc_`.
-  std::map<std::string, size_t> ctx_vars_;
 
   // Traverse the AST to check whether there are SCoP(s) that could be
   // optimized.

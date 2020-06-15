@@ -106,16 +106,26 @@ if __name__ == '__main__':
     src_seq_batch, src_lens = get_data(batch_size, input_size)
     trg_seq_batch, trg_lens = get_data(batch_size, input_size)
 
+    # FIXME(Ying): a significant issue in current implementations.
+    # The variable declared here outside the `forward` body MUST have exactly
+    # the same name as the name of its usage in the body of `forward`.
     src_seq_batch = ReadTensorArray(
         src_seq_batch,
         array_shape=[batch_size, max(src_lens)],
         tensor_shape=[1, input_size])
+
+    # FIXME(Ying): a significant issue in current implementations.
+    # The variable declared here outside the `forward` body MUST have exactly
+    # the same name as the name of its usage in the body of `forward`.
     trg_seq_batch = ReadTensorArray(
         trg_seq_batch,
         array_shape=[batch_size, max(trg_lens)],
         tensor_shape=[1, input_size])
 
-    outputs = ReadWriteTensorArray(
+    # FIXME(Ying): a significant issue in current implementations.
+    # The variable declared here outside the `forward` body MUST have exactly
+    # the same name as the name of its usage in the body of `forward`.
+    output = ReadWriteTensorArray(
         array_shape=(batch_size, depth, max(src_lens), max(trg_lens),
                      grid_dim),
         tensor_shape=(1, hidden_size))
@@ -126,7 +136,7 @@ if __name__ == '__main__':
         p.add_array(src_seq_batch)
         p.add_array(trg_lens)
         p.add_array(trg_seq_batch)
-        p.add_array(outputs)
+        p.add_array(output)
 
         # uncomment to print the torch AST.
         # p.print_ast()
@@ -135,4 +145,4 @@ if __name__ == '__main__':
         m = p.parse()
 
         m(src_seq_batch, src_lens, trg_seq_batch, trg_lens, batch_size, depth,
-          outputs)
+          output)
