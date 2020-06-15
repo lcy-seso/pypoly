@@ -122,15 +122,8 @@ isl_schedule* ScheduleEmbed(isl_schedule* schedule, isl_multi_aff* prefix) {
 
 }  // namespace
 
-void ArrayPrettyPrinter::Print(std::ostream& out, const PypetArray* array) {
-  CHECK(array);
-  isl_printer* p = isl_printer_to_str(isl_set_get_ctx(array->context));
-  CHECK(p);
-
-  int indent = 0;
-  p = isl_printer_set_indent(p, indent);
-  p = isl_printer_set_yaml_style(p, ISL_YAML_STYLE_BLOCK);
-  p = isl_printer_start_line(p);
+__isl_give isl_printer* ArrayPrettyPrinter::Print(__isl_take isl_printer* p,
+                                                  const PypetArray* array) {
   p = isl_printer_yaml_start_mapping(p);
 
   p = isl_printer_print_str(p, "context");
@@ -161,11 +154,6 @@ void ArrayPrettyPrinter::Print(std::ostream& out, const PypetArray* array) {
   p = isl_printer_print_str(p, array->element_type);
   p = isl_printer_yaml_next(p);
 
-  p = isl_printer_print_str(p, "element size");
-  p = isl_printer_yaml_next(p);
-  p = isl_printer_print_int(p, array->element_size);
-  p = isl_printer_yaml_next(p);
-
   p = isl_printer_print_str(p, "element shape");
   p = isl_printer_yaml_next(p);
 
@@ -176,7 +164,25 @@ void ArrayPrettyPrinter::Print(std::ostream& out, const PypetArray* array) {
   p = isl_printer_print_str(p, s.c_str());
   p = isl_printer_yaml_next(p);
 
+  p = isl_printer_print_str(p, "element size");
+  p = isl_printer_yaml_next(p);
+  p = isl_printer_print_int(p, array->element_size);
+  p = isl_printer_yaml_next(p);
+
   p = isl_printer_yaml_end_mapping(p);
+  return p;
+}
+
+void ArrayPrettyPrinter::Print(std::ostream& out, const PypetArray* array,
+                               int indent) {
+  CHECK(array);
+  isl_printer* p = isl_printer_to_str(isl_set_get_ctx(array->context));
+  CHECK(p);
+
+  p = isl_printer_set_indent(p, indent);
+  p = isl_printer_set_yaml_style(p, ISL_YAML_STYLE_BLOCK);
+  p = isl_printer_start_line(p);
+  p = Print(p, array);
 
   out << std::string(isl_printer_get_str(p));
   isl_printer_free(p);
@@ -386,54 +392,104 @@ PypetScop* PypetScopEmbed(PypetScop* scop, isl_set* dom,
   return scop;
 }
 
-void StmtPrettyPrinter::Print(std::ostream& out, const PypetStmt* stmt) {
+__isl_give isl_printer* StmtPrettyPrinter::Print(__isl_take isl_printer* p,
+                                                 const PypetStmt* stmt) {
   CHECK(stmt);
-  isl_printer* p = isl_printer_to_str(isl_set_get_ctx(stmt->domain));
   CHECK(p);
 
-  int indent = 0;
-  p = isl_printer_set_indent(p, indent);
-  p = isl_printer_set_yaml_style(p, ISL_YAML_STYLE_BLOCK);
-  p = isl_printer_start_line(p);
-  out << std::string(isl_printer_get_str(p));
-
   p = isl_printer_yaml_start_mapping(p);
+
+  p = isl_printer_print_str(p, "line");
+  p = isl_printer_yaml_next(p);
+  p = isl_printer_print_int(p, stmt->body->get_lineno());
+  p = isl_printer_yaml_next(p);
+
   p = isl_printer_print_str(p, "domain");
   p = isl_printer_yaml_next(p);
   p = isl_printer_print_set(p, stmt->domain);
   p = isl_printer_yaml_next(p);
+
+  p = isl_printer_print_str(p, "body");
+  CHECK_EQ(stmt->body->type, PYPET_TREE_EXPR);
+  p = isl_printer_yaml_next(p);
+  p = ExprPrettyPrinter::Print(p, stmt->body->ast.Expr.expr);
   p = isl_printer_yaml_end_mapping(p);
-  out << std::string(isl_printer_get_str(p));
+  return p;
+}
 
-  for (size_t i = 0; i < stmt->arg_num; ++i) {
-    CHECK(stmt->args);
-    out << stmt->args[i];
-  }
+void StmtPrettyPrinter::Print(std::ostream& out, const PypetStmt* stmt,
+                              int indent) {
+  CHECK(stmt);
+  isl_printer* p = isl_printer_to_str(isl_set_get_ctx(stmt->domain));
+  CHECK(p);
+
+  p = isl_printer_set_indent(p, indent);
+  p = isl_printer_set_yaml_style(p, ISL_YAML_STYLE_BLOCK);
+  p = isl_printer_start_line(p);
+  p = Print(p, stmt);
+
   out << stmt->body << std::endl;
-
   isl_printer_free(p);
 }
 
-void ScopPrettyPrinter::Print(std::ostream& out, const PypetScop* scop) {
+__isl_give isl_printer* ScopPrettyPrinter::Print(__isl_take isl_printer* p,
+                                                 const PypetScop* scop) {
+  p = isl_printer_yaml_start_mapping(p);
+  p = isl_printer_set_indent(p, 0);
+
+  p = isl_printer_print_str(p, "context");
+  p = isl_printer_yaml_next(p);
+  p = isl_printer_print_set(p, scop->context);
+  p = isl_printer_yaml_next(p);
+
+  p = isl_printer_print_str(p, "context value");
+  p = isl_printer_yaml_next(p);
+  p = isl_printer_print_set(p, scop->context_value);
+  p = isl_printer_yaml_next(p);
+
+  p = isl_printer_print_str(p, "schedule");
+  p = isl_printer_yaml_next(p);
+  p = isl_printer_print_schedule(p, scop->schedule);
+  p = isl_printer_yaml_next(p);
+
+  p = isl_printer_print_str(p, "arrays");
+  p = isl_printer_yaml_next(p);
+
+  if (scop->array_num > 0 && scop->arrays) {
+    for (size_t i = 0; i < scop->array_num; ++i) {
+      p = isl_printer_yaml_start_sequence(p);
+      p = ArrayPrettyPrinter::Print(p, scop->arrays[i]);
+      p = isl_printer_yaml_end_sequence(p);
+    }
+  }
+
+  p = isl_printer_yaml_start_mapping(p);
+  p = isl_printer_print_str(p, "statements");
+  p = isl_printer_yaml_next(p);
+  p = isl_printer_yaml_end_mapping(p);
+
+  if (scop->stmt_num > 0 && scop->stmts) {
+    for (size_t i = 0; i < scop->stmt_num; ++i) {
+      p = isl_printer_yaml_start_sequence(p);
+      p = StmtPrettyPrinter::Print(p, scop->stmts[i]);
+      p = isl_printer_yaml_end_sequence(p);
+    }
+  }
+
+  p = isl_printer_yaml_end_mapping(p);
+  return p;
+}
+
+void ScopPrettyPrinter::Print(std::ostream& out, const PypetScop* scop,
+                              int indent) {
   CHECK(scop);
+  CHECK(scop->schedule);
   isl_printer* p = isl_printer_to_str(isl_schedule_get_ctx(scop->schedule));
   CHECK(p);
-
-  out << "context : " << std::endl << scop->context << std::endl;
-  out << "context value : " << std::endl << scop->context_value << std::endl;
-
-  out << std::endl << "schedule :" << std::endl << scop->schedule << std::endl;
-
-  out << std::endl << "arrays :" << std::endl;
-  for (size_t i = 0; i < scop->array_num; ++i) {
-    out << scop->arrays[i] << std::endl;
-  }
-
-  out << std::endl << "statements :" << std::endl;
-  for (size_t i = 0; i < scop->stmt_num; ++i) {
-    out << scop->stmts[i];
-  }
-
+  p = isl_printer_set_indent(p, indent);
+  p = isl_printer_set_yaml_style(p, ISL_YAML_STYLE_BLOCK);
+  p = isl_printer_start_line(p);
+  p = Print(p, scop);
   out << std::string(isl_printer_get_str(p));
   isl_printer_free(p);
 }

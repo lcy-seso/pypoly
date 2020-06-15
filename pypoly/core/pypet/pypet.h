@@ -50,7 +50,9 @@ struct PypetArray {
   */
 };
 struct ArrayPrettyPrinter {
-  static void Print(std::ostream& out, const PypetArray* array);
+  static __isl_give isl_printer* Print(__isl_take isl_printer* p,
+                                       const PypetArray* array);
+  static void Print(std::ostream& out, const PypetArray* array, int indent = 0);
 };
 static inline std::ostream& operator<<(std::ostream& out,
                                        const PypetArray* array) {
@@ -81,7 +83,9 @@ struct PypetStmt {
 isl_set* StmtExtractContext(PypetStmt* stmt, isl_set* context);
 
 struct StmtPrettyPrinter {
-  static void Print(std::ostream& out, const PypetStmt* stmt);
+  static __isl_give isl_printer* Print(__isl_take isl_printer* p,
+                                       const PypetStmt* stmt);
+  static void Print(std::ostream& out, const PypetStmt* stmt, int indent = 0);
 };
 static inline std::ostream& operator<<(std::ostream& out,
                                        const PypetStmt* stmt) {
@@ -120,7 +124,9 @@ struct PypetScop {
 };
 
 struct ScopPrettyPrinter {
-  static void Print(std::ostream& out, const PypetScop* scop);
+  static __isl_give isl_printer* Print(__isl_take isl_printer* p,
+                                       const PypetScop* scop);
+  static void Print(std::ostream& out, const PypetScop* scop, int indent = 0);
 };
 static inline std::ostream& operator<<(std::ostream& out,
                                        const PypetScop* scop) {
