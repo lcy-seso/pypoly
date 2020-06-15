@@ -1,0 +1,313 @@
+context: [batch_size, depth, src_len, trg_len, h_y, h_x, state, y_t, x_t, state_y, state_x] -> {  : batch_size <= 0 or (batch_size > 0 and depth <= 0) or (batch_size > 0 and depth >= 2147483650 and src_len <= 0) or (batch_size > 0 and depth > 0 and src_len >= 2147483650 and trg_len <= 0) or (batch_size > 0 and 0 < depth <= 2147483649 and src_len <= 0) or (batch_size > 0 and depth >= 2147483650 and 0 < src_len <= 2147483649 and trg_len <= 0) or (batch_size > 0 and 0 < depth <= 2147483649 and 0 < src_len <= 2147483649 and trg_len <= 2147483649) }
+context value: [batch_size, depth] -> {  :  }
+schedule:
+  domain: "[batch_size, depth, src_len, trg_len] -> { S_13[n, d, i, j] : 0 <= n < batch_size and 0 <= d < depth and 0 <= i < src_len and 0 <= j < trg_len; S_9[n, d, i, j] : 0 <= n < batch_size and 0 <= d < depth and 0 <= i < src_len and 0 < j < trg_len; S_0[n, d] : 0 <= n < batch_size and 0 <= d < depth; S_7[n, d, i, j] : 0 <= n < batch_size and 0 <= d < depth and 0 < i < src_len and 0 <= j < trg_len; S_5[n, d, i, j] : 0 <= n < batch_size and 0 < d < depth and 0 <= i < src_len and 0 <= j < trg_len; S_11[n, d, i, j] : 0 <= n < batch_size and 0 <= d < depth and 0 <= i < src_len and 0 <= j < trg_len; S_10[n, d, i, j] : 0 <= n < batch_size and 0 <= d < depth and 0 <= i < src_len and 0 <= j < trg_len; S_3[n, d = 0, i, j] : depth > 0 and 0 <= n < batch_size and 0 <= i < src_len and 0 <= j < trg_len; S_6[n, d, i = 0, j] : src_len > 0 and 0 <= n < batch_size and 0 <= d < depth and 0 <= j < trg_len; S_12[n, d, i, j] : 0 <= n < batch_size and 0 <= d < depth and 0 <= i < src_len and 0 <= j < trg_len; S_8[n, d, i, j = 0] : trg_len > 0 and 0 <= n < batch_size and 0 <= d < depth and 0 <= i < src_len; S_14[n, d, i, j] : 0 <= n < batch_size and 0 <= d < depth and 0 <= i < src_len and 0 <= j < trg_len; S_1[n, d] : 0 <= n < batch_size and 0 <= d < depth; S_2[n, d = 0, i, j] : depth > 0 and 0 <= n < batch_size and 0 <= i < src_len and 0 <= j < trg_len; S_4[n, d, i, j] : 0 <= n < batch_size and 0 < d < depth and 0 <= i < src_len and 0 <= j < trg_len }"
+  child:
+    schedule: "[batch_size, depth, src_len, trg_len] -> L_0[{ S_13[n, d, i, j] -> [(n)]; S_9[n, d, i, j] -> [(n)]; S_0[n, d] -> [(n)]; S_7[n, d, i, j] -> [(n)]; S_5[n, d, i, j] -> [(n)]; S_11[n, d, i, j] -> [(n)]; S_10[n, d, i, j] -> [(n)]; S_3[n, d, i, j] -> [(n)]; S_6[n, d, i, j] -> [(n)]; S_12[n, d, i, j] -> [(n)]; S_8[n, d, i, j] -> [(n)]; S_14[n, d, i, j] -> [(n)]; S_1[n, d] -> [(n)]; S_2[n, d, i, j] -> [(n)]; S_4[n, d, i, j] -> [(n)] }]"
+    child:
+      schedule: "[batch_size, depth, src_len, trg_len] -> L_1[{ S_13[n, d, i, j] -> [(d)]; S_9[n, d, i, j] -> [(d)]; S_0[n, d] -> [(d)]; S_7[n, d, i, j] -> [(d)]; S_5[n, d, i, j] -> [(d)]; S_11[n, d, i, j] -> [(d)]; S_10[n, d, i, j] -> [(d)]; S_3[n, d, i, j] -> [(d)]; S_6[n, d, i, j] -> [(d)]; S_12[n, d, i, j] -> [(d)]; S_8[n, d, i, j] -> [(d)]; S_14[n, d, i, j] -> [(d)]; S_1[n, d] -> [(d)]; S_2[n, d, i, j] -> [(d)]; S_4[n, d, i, j] -> [(d)] }]"
+      child:
+        sequence:
+        - filter: "[batch_size, depth, src_len, trg_len] -> { S_0[n, d] }"
+        - filter: "[batch_size, depth, src_len, trg_len] -> { S_1[n, d] }"
+        - filter: "[batch_size, depth, src_len, trg_len] -> { S_7[n, d, i, j]; S_9[n, d, i, j]; S_13[n, d, i, j]; S_5[n, d, i, j]; S_11[n, d, i, j]; S_10[n, d, i, j]; S_3[n, d, i, j]; S_6[n, d, i, j]; S_12[n, d, i, j]; S_8[n, d, i, j]; S_14[n, d, i, j]; S_2[n, d, i, j]; S_4[n, d, i, j] }"
+          child:
+            schedule: "[batch_size, depth, src_len, trg_len] -> L_2[{ S_7[n, d, i, j] -> [(i)]; S_9[n, d, i, j] -> [(i)]; S_13[n, d, i, j] -> [(i)]; S_5[n, d, i, j] -> [(i)]; S_11[n, d, i, j] -> [(i)]; S_10[n, d, i, j] -> [(i)]; S_3[n, d, i, j] -> [(i)]; S_6[n, d, i, j] -> [(i)]; S_12[n, d, i, j] -> [(i)]; S_8[n, d, i, j] -> [(i)]; S_14[n, d, i, j] -> [(i)]; S_2[n, d, i, j] -> [(i)]; S_4[n, d, i, j] -> [(i)] }]"
+            child:
+              schedule: "[batch_size, depth, src_len, trg_len] -> L_3[{ S_7[n, d, i, j] -> [(j)]; S_9[n, d, i, j] -> [(j)]; S_13[n, d, i, j] -> [(j)]; S_5[n, d, i, j] -> [(j)]; S_11[n, d, i, j] -> [(j)]; S_10[n, d, i, j] -> [(j)]; S_3[n, d, i, j] -> [(j)]; S_6[n, d, i, j] -> [(j)]; S_12[n, d, i, j] -> [(j)]; S_8[n, d, i, j] -> [(j)]; S_14[n, d, i, j] -> [(j)]; S_2[n, d, i, j] -> [(j)]; S_4[n, d, i, j] -> [(j)] }]"
+              child:
+                sequence:
+                - filter: "[batch_size, depth, src_len, trg_len] -> { S_5[n, d, i, j]; S_2[n, d, i, j]; S_3[n, d, i, j]; S_4[n, d, i, j] }"
+                  child:
+                    set:
+                    - filter: "[batch_size, depth, src_len, trg_len] -> { S_2[n, d, i, j]; S_3[n, d, i, j] }"
+                      child:
+                        sequence:
+                        - filter: "[batch_size, depth, src_len, trg_len] -> { S_2[n, d, i, j] }"
+                        - filter: "[batch_size, depth, src_len, trg_len] -> { S_3[n, d, i, j] }"
+                    - filter: "[batch_size, depth, src_len, trg_len] -> { S_5[n, d, i, j]; S_4[n, d, i, j] }"
+                      child:
+                        sequence:
+                        - filter: "[batch_size, depth, src_len, trg_len] -> { S_4[n, d, i, j] }"
+                        - filter: "[batch_size, depth, src_len, trg_len] -> { S_5[n, d, i, j] }"
+                - filter: "[batch_size, depth, src_len, trg_len] -> { S_6[n, d, i, j]; S_7[n, d, i, j] }"
+                  child:
+                    set:
+                    - filter: "[batch_size, depth, src_len, trg_len] -> { S_6[n, d, i, j] }"
+                    - filter: "[batch_size, depth, src_len, trg_len] -> { S_7[n, d, i, j] }"
+                - filter: "[batch_size, depth, src_len, trg_len] -> { S_8[n, d, i, j]; S_9[n, d, i, j] }"
+                  child:
+                    set:
+                    - filter: "[batch_size, depth, src_len, trg_len] -> { S_8[n, d, i, j] }"
+                    - filter: "[batch_size, depth, src_len, trg_len] -> { S_9[n, d, i, j] }"
+                - filter: "[batch_size, depth, src_len, trg_len] -> { S_10[n, d, i, j] }"
+                - filter: "[batch_size, depth, src_len, trg_len] -> { S_11[n, d, i, j] }"
+                - filter: "[batch_size, depth, src_len, trg_len] -> { S_12[n, d, i, j] }"
+                - filter: "[batch_size, depth, src_len, trg_len] -> { S_13[n, d, i, j] }"
+                - filter: "[batch_size, depth, src_len, trg_len] -> { S_14[n, d, i, j] }"
+arrays:
+- context: {  :  }
+  extent: { output[i0, i1, i2, i3, i4] : 0 <= i0 <= 3 and 0 <= i1 <= 2 and 0 <= i2 <= 18 and 0 <= i3 <= 11 and 0 <= i4 <= 1 }
+  declared: 1
+  element type: tensor
+  element shape: [1,16]
+  element size: 8
+- context: {  :  }
+  extent: { src_lens[i0] : 0 <= i0 <= 3 }
+  declared: 1
+  element type: int
+  element shape: [1]
+  element size: 8
+- context: {  :  }
+  extent: { src_seq_batch[i0, i1] : 0 <= i0 <= 3 and 0 <= i1 <= 18 }
+  declared: 1
+  element type: tensor
+  element shape: [1,16]
+  element size: 8
+- context: {  :  }
+  extent: { trg_lens[i0] : 0 <= i0 <= 3 }
+  declared: 1
+  element type: int
+  element shape: [1]
+  element size: 8
+- context: {  :  }
+  extent: { trg_seq_batch[i0, i1] : 0 <= i0 <= 3 and 0 <= i1 <= 11 }
+  declared: 1
+  element type: tensor
+  element shape: [1,16]
+  element size: 8
+  statements
+- line: 42
+  domain: [batch_size, depth] -> { S_0[n, d] : 0 <= n < batch_size and 0 <= d < depth }
+  body:
+    op: =
+    args:
+    - index: [batch_size, depth] -> { S_0[n, d] -> src_len[] }
+      depth: 0
+      read: 0
+      write: 1
+    - index: [batch_size, depth] -> { S_0[n, d] -> src_lens[((n) : n >= 0)] }
+      depth: 1
+      read: 1
+      write: 0
+- line: 43
+  domain: [batch_size, depth] -> { S_1[n, d] : 0 <= n < batch_size and 0 <= d < depth }
+  body:
+    op: =
+    args:
+    - index: [batch_size, depth] -> { S_1[n, d] -> trg_len[] }
+      depth: 0
+      read: 0
+      write: 1
+    - index: [batch_size, depth] -> { S_1[n, d] -> trg_lens[((n) : n >= 0)] }
+      depth: 1
+      read: 1
+      write: 0
+- line: 47
+  domain: [batch_size, depth, src_len, trg_len] -> { S_2[n, d = 0, i, j] : depth > 0 and 0 <= n < batch_size and 0 <= i < src_len and 0 <= j < trg_len }
+  body:
+    op: =
+    args:
+    - index: [batch_size, depth, src_len, trg_len] -> { S_2[n, d, i, j] -> x_t[] }
+      depth: 0
+      read: 0
+      write: 1
+    - index: [batch_size, depth, src_len, trg_len] -> { S_2[n, d, i, j] -> src_seq_batch[((n) : n >= 0), ((i) : i >= 0)] }
+      depth: 2
+      read: 1
+      write: 0
+- line: 48
+  domain: [batch_size, depth, src_len, trg_len] -> { S_3[n, d = 0, i, j] : depth > 0 and 0 <= n < batch_size and 0 <= i < src_len and 0 <= j < trg_len }
+  body:
+    op: =
+    args:
+    - index: [batch_size, depth, src_len, trg_len] -> { S_3[n, d, i, j] -> y_t[] }
+      depth: 0
+      read: 0
+      write: 1
+    - index: [batch_size, depth, src_len, trg_len] -> { S_3[n, d, i, j] -> trg_seq_batch[((n) : n >= 0), ((j) : j >= 0)] }
+      depth: 2
+      read: 1
+      write: 0
+- line: 50
+  domain: [batch_size, depth, src_len, trg_len] -> { S_4[n, d, i, j] : 0 <= n < batch_size and 0 < d < depth and 0 <= i < src_len and 0 <= j < trg_len }
+  body:
+    op: =
+    args:
+    - index: [batch_size, depth, src_len, trg_len] -> { S_4[n, d, i, j] -> x_t[] }
+      depth: 0
+      read: 0
+      write: 1
+    - index: [batch_size, depth, src_len, trg_len] -> { S_4[n, d, i, j] -> output[((n) : n >= 0 and -2147483647 <= d <= 2147483648), ((-1 + d) : 0 < d <= 2147483648), ((i) : -2147483647 <= d <= 2147483648 and i >= 0), ((j) : -2147483647 <= d <= 2147483648 and j >= 0), (0)] }
+      depth: 5
+      read: 1
+      write: 0
+- line: 51
+  domain: [batch_size, depth, src_len, trg_len] -> { S_5[n, d, i, j] : 0 <= n < batch_size and 0 < d < depth and 0 <= i < src_len and 0 <= j < trg_len }
+  body:
+    op: =
+    args:
+    - index: [batch_size, depth, src_len, trg_len] -> { S_5[n, d, i, j] -> y_t[] }
+      depth: 0
+      read: 0
+      write: 1
+    - index: [batch_size, depth, src_len, trg_len] -> { S_5[n, d, i, j] -> output[((n) : n >= 0 and -2147483647 <= d <= 2147483648), ((-1 + d) : 0 < d <= 2147483648), ((i) : -2147483647 <= d <= 2147483648 and i >= 0), ((j) : -2147483647 <= d <= 2147483648 and j >= 0), (1)] }
+      depth: 5
+      read: 1
+      write: 0
+- line: 54
+  domain: [batch_size, depth, src_len, trg_len] -> { S_6[n, d, i = 0, j] : src_len > 0 and 0 <= n < batch_size and 0 <= d < depth and 0 <= j < trg_len }
+  body:
+    op: =
+    args:
+    - index: [batch_size, depth, src_len, trg_len] -> { S_6[n, d, i, j] -> state_x[] }
+      depth: 0
+      read: 0
+      write: 1
+    - index: [batch_size, depth, src_len, trg_len] -> { S_6[n, d, i, j] -> self_init_state[self[] -> init_state[]] }
+      depth: 0
+      read: 1
+      write: 0
+- line: 56
+  domain: [batch_size, depth, src_len, trg_len] -> { S_7[n, d, i, j] : 0 <= n < batch_size and 0 <= d < depth and 0 < i < src_len and 0 <= j < trg_len }
+  body:
+    op: =
+    args:
+    - index: [batch_size, depth, src_len, trg_len] -> { S_7[n, d, i, j] -> state_x[] }
+      depth: 0
+      read: 0
+      write: 1
+    - index: [batch_size, depth, src_len, trg_len] -> { S_7[n, d, i, j] -> output[((n) : n >= 0 and -2147483647 <= i <= 2147483648), ((d) : d >= 0 and -2147483647 <= i <= 2147483648), ((-1 + i) : 0 < i <= 2147483648), ((j) : -2147483647 <= i <= 2147483648 and j >= 0), (0)] }
+      depth: 5
+      read: 1
+      write: 0
+- line: 59
+  domain: [batch_size, depth, src_len, trg_len] -> { S_8[n, d, i, j = 0] : trg_len > 0 and 0 <= n < batch_size and 0 <= d < depth and 0 <= i < src_len }
+  body:
+    op: =
+    args:
+    - index: [batch_size, depth, src_len, trg_len] -> { S_8[n, d, i, j] -> state_y[] }
+      depth: 0
+      read: 0
+      write: 1
+    - index: [batch_size, depth, src_len, trg_len] -> { S_8[n, d, i, j] -> self_init_state[self[] -> init_state[]] }
+      depth: 0
+      read: 1
+      write: 0
+- line: 61
+  domain: [batch_size, depth, src_len, trg_len] -> { S_9[n, d, i, j] : 0 <= n < batch_size and 0 <= d < depth and 0 <= i < src_len and 0 < j < trg_len }
+  body:
+    op: =
+    args:
+    - index: [batch_size, depth, src_len, trg_len] -> { S_9[n, d, i, j] -> state_y[] }
+      depth: 0
+      read: 0
+      write: 1
+    - index: [batch_size, depth, src_len, trg_len] -> { S_9[n, d, i, j] -> output[((n) : n >= 0 and -2147483647 <= j <= 2147483648), ((d) : d >= 0 and -2147483647 <= j <= 2147483648), ((i) : i >= 0 and -2147483647 <= j <= 2147483648), ((-1 + j) : 0 < j <= 2147483648), (1)] }
+      depth: 5
+      read: 1
+      write: 0
+- line: 63
+  domain: [batch_size, depth, src_len, trg_len] -> { S_10[n, d, i, j] : 0 <= n < batch_size and 0 <= d < depth and 0 <= i < src_len and 0 <= j < trg_len }
+  body:
+    op: =
+    args:
+    - index: [batch_size, depth, src_len, trg_len] -> { S_10[n, d, i, j] -> state[] }
+      depth: 0
+      read: 0
+      write: 1
+    - op: apply
+      args:
+      - index: [batch_size, depth, src_len, trg_len] -> { S_10[n, d, i, j] -> torch_cat[torch[] -> cat[]] }
+        depth: 0
+        read: 1
+        write: 0
+      - op: []
+        args:
+        - index: [batch_size, depth, src_len, trg_len, state_x] -> { S_10[n, d, i, j] -> [(state_x)] }
+          depth: 1
+          read: 1
+          write: 0
+        - index: [batch_size, depth, src_len, trg_len, state_y] -> { S_10[n, d, i, j] -> [(state_y)] }
+          depth: 1
+          read: 1
+          write: 0
+      - op: attribute
+        args:
+        - index: { [] -> dim[] }
+          depth: 0
+          read: 1
+          write: 0
+        - 1
+- line: 64
+  domain: [batch_size, depth, src_len, trg_len] -> { S_11[n, d, i, j] : 0 <= n < batch_size and 0 <= d < depth and 0 <= i < src_len and 0 <= j < trg_len }
+  body:
+    op: =
+    args:
+    - index: [batch_size, depth, src_len, trg_len] -> { S_11[n, d, i, j] -> h_x[] }
+      depth: 0
+      read: 0
+      write: 1
+    - op: apply
+      args:
+      - index: [batch_size, depth, src_len, trg_len] -> { S_11[n, d, i, j] -> self_cells_x[self[] -> cells_x[((d) : d >= 0)]] }
+        depth: 1
+        read: 1
+        write: 0
+      - index: [batch_size, depth, src_len, trg_len, x_t] -> { S_11[n, d, i, j] -> [(x_t)] }
+        depth: 1
+        read: 1
+        write: 0
+      - index: [batch_size, depth, src_len, trg_len, state] -> { S_11[n, d, i, j] -> [(state)] }
+        depth: 1
+        read: 1
+        write: 0
+- line: 65
+  domain: [batch_size, depth, src_len, trg_len] -> { S_12[n, d, i, j] : 0 <= n < batch_size and 0 <= d < depth and 0 <= i < src_len and 0 <= j < trg_len }
+  body:
+    op: =
+    args:
+    - index: [batch_size, depth, src_len, trg_len] -> { S_12[n, d, i, j] -> h_y[] }
+      depth: 0
+      read: 0
+      write: 1
+    - op: apply
+      args:
+      - index: [batch_size, depth, src_len, trg_len] -> { S_12[n, d, i, j] -> self_cells_y[self[] -> cells_y[((d) : d >= 0)]] }
+        depth: 1
+        read: 1
+        write: 0
+      - index: [batch_size, depth, src_len, trg_len, y_t] -> { S_12[n, d, i, j] -> [(y_t)] }
+        depth: 1
+        read: 1
+        write: 0
+      - index: [batch_size, depth, src_len, trg_len, state] -> { S_12[n, d, i, j] -> [(state)] }
+        depth: 1
+        read: 1
+        write: 0
+- line: 67
+  domain: [batch_size, depth, src_len, trg_len] -> { S_13[n, d, i, j] : 0 <= n < batch_size and 0 <= d < depth and 0 <= i < src_len and 0 <= j < trg_len }
+  body:
+    op: =
+    args:
+    - index: [batch_size, depth, src_len, trg_len] -> { S_13[n, d, i, j] -> output[((n) : n >= 0), ((d) : d >= 0), ((i) : i >= 0), ((j) : j >= 0), (0)] }
+      depth: 5
+      read: 0
+      write: 1
+    - index: [batch_size, depth, src_len, trg_len, h_x] -> { S_13[n, d, i, j] -> [(h_x)] }
+      depth: 1
+      read: 1
+      write: 0
+- line: 68
+  domain: [batch_size, depth, src_len, trg_len] -> { S_14[n, d, i, j] : 0 <= n < batch_size and 0 <= d < depth and 0 <= i < src_len and 0 <= j < trg_len }
+  body:
+    op: =
+    args:
+    - index: [batch_size, depth, src_len, trg_len] -> { S_14[n, d, i, j] -> output[((n) : n >= 0), ((d) : d >= 0), ((i) : i >= 0), ((j) : j >= 0), (1)] }
+      depth: 5
+      read: 0
+      write: 1
+    - index: [batch_size, depth, src_len, trg_len, h_y] -> { S_14[n, d, i, j] -> [(h_y)] }
+      depth: 1
+      read: 1
+      write: 0
