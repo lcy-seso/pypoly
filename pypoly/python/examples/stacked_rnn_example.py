@@ -77,13 +77,18 @@ if __name__ == '__main__':
     ])
 
     seq_batch, seq_lens = get_data(batch_size, input_size)
-    seq_batch = ReadTensorArray(
+    # FIXME(Ying): a significant issue in current implementations.
+    # The variable declared here outside the `forward` body MUST have exactly
+    # the same name as the name of its usage in the body of `forward`.
+    input = ReadTensorArray(
         seq_batch,
         array_shape=[batch_size, max(seq_lens)],
         tensor_shape=[1, input_size])
 
-    # declare the output buffer.
-    outputs = ReadWriteTensorArray(
+    # FIXME(Ying): a significant issue in current implementations.
+    # The variable declared here outside the `forward` body MUST have exactly
+    # the same name as the name of its usage in the body of `forward`.
+    output = ReadWriteTensorArray(
         array_shape=(batch_size, max(seq_lens), depth),
         tensor_shape=(1, hidden_size))
 
@@ -92,8 +97,8 @@ if __name__ == '__main__':
     with ScopParser(m) as p:
         p.add_int(batch_size, lower=0, upper=16)
         p.add_array(seq_lens)
-        p.add_array(seq_batch)
-        p.add_array(outputs)
+        p.add_array(input)
+        p.add_array(output)
 
         # uncomment to print the torch AST.
         # p.print_context()
@@ -101,4 +106,4 @@ if __name__ == '__main__':
 
         m = p.parse()
 
-        m(seq_batch, batch_size, seq_lens, depth, outputs)
+        m(input, batch_size, seq_lens, depth, output)
