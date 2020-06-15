@@ -1049,6 +1049,7 @@ isl_space* PypetExprAccessGetParameterSpace(PypetExpr* expr) {
 }
 
 isl_ctx* PypetExprGetCtx(PypetExpr* expr) { return expr->ctx; }
+
 bool PypetExprIsAffine(PypetExpr* expr) {
   CHECK(expr);
   CHECK(expr->type == PypetExprType::PYPET_EXPR_ACCESS);
@@ -1561,7 +1562,11 @@ void ExprPrettyPrinter::Print(std::ostream& out, const PypetExpr* expr,
 __isl_give isl_printer* ExprPrettyPrinter::Print(__isl_take isl_printer* p,
                                                  const PypetExpr* expr) {
   CHECK(p);
-  if (!expr) return isl_printer_free(p);
+  if (!expr) {
+    isl_printer_free(p);
+    LOG(FATAL) << "null expr." << std::endl;
+    return nullptr;
+  }
 
   switch (expr->type) {
     case PypetExprType::PYPET_EXPR_INT:

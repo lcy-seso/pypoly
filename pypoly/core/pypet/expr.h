@@ -300,6 +300,18 @@ PypetExpr* PypetExprAccessUpdateDomain(PypetExpr* expr,
 
 PypetExpr* PypetExprRestrict(PypetExpr* expr, isl_set* set);
 
+/* Does "expr" represent the "integer" infinity?*/
+static bool IsInftyVal(__isl_keep PypetExpr* expr) {
+  CHECK(expr);
+
+  if (expr->type != PYPET_EXPR_INT) return false;
+  isl_val* val = isl_val_copy(expr->i);
+  isl_bool res = isl_val_is_infty(val);
+  isl_val_free(val);
+
+  return res;
+};
+
 struct ExprPrettyPrinter {
   static void Print(std::ostream& out, const PypetExpr* expr, int indent = 0);
   static __isl_give isl_printer* Print(__isl_take isl_printer* p,

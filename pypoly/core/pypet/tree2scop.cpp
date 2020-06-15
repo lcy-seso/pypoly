@@ -1,6 +1,7 @@
 #include "pypoly/core/pypet/tree2scop.h"
 
 #include "pypoly/core/pypet/aff.h"
+#include "pypoly/core/pypet/array.h"
 #include "pypoly/core/pypet/context.h"
 #include "pypoly/core/pypet/isl_printer.h"
 #include "pypoly/core/pypet/nest.h"

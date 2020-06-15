@@ -32,6 +32,7 @@ struct PypetArray {
   // `element_shape` is a list of integer that records shape of the element
   // stored in the array. If array elements are scalars with primary types,
   // element_shape is always equal to : [1],
+  size_t element_dim;
   int* element_shape;
 
   // TODO(Ying): In current implementations, we are not able to distinguish
@@ -48,6 +49,14 @@ struct PypetArray {
   int outer;
   */
 };
+struct ArrayPrettyPrinter {
+  static void Print(std::ostream& out, const PypetArray* array);
+};
+static inline std::ostream& operator<<(std::ostream& out,
+                                       const PypetArray* array) {
+  ArrayPrettyPrinter::Print(out, array);
+  return out;
+};
 
 // A polyhedral statement.
 struct PypetStmt {
@@ -55,6 +64,7 @@ struct PypetStmt {
   ~PypetStmt() = default;
 
   static PypetStmt* Create(isl_set* domain, int id, PypetTree* tree);
+  static __isl_null PypetStmt* Free(__isl_take PypetStmt* stmt);
 
   torch::jit::SourceRange range;
   isl_set* domain;
@@ -86,6 +96,7 @@ struct PypetScop {
   static PypetScop* Create(isl_space* space);
   static PypetScop* Create(isl_space* space, PypetStmt* stmt);
   static PypetScop* Create(isl_space* space, int n, isl_schedule* schedule);
+  static __isl_null PypetScop* Free(__isl_take PypetScop* scop);
 
   torch::jit::SourceRange range;
 

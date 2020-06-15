@@ -1,5 +1,6 @@
 #include "pypoly/core/pypet/parser.h"
 
+#include "pypoly/core/pypet/array.h"
 #include "pypoly/core/pypet/tree.h"
 #include "pypoly/core/pypet/tree2scop.h"
 
@@ -81,12 +82,18 @@ PypetScop* ParserImpl::ParseFunction() {
   CHECK(trees.size() == 1U);
 
   TreeToScop converter(ctx);
-  PypetScop* parsed_data = converter.ScopFromTree(trees[0]);
+  PypetScop* scop = converter.ScopFromTree(trees[0]);
 
-  std::cout << parsed_data << std::endl;
+  // TODO(Ying): Current implementation does not distinguish variable
+  // declaration and name reuse, so integers defined in the scop is
+  // not able to be recognized as arrays.
+  ArrayScanner scanner(&ctx_desc_);
+  scop = scanner.ScanArrays(ctx, scop);
+
+  std::cout << scop << std::endl;
 
   isl_ctx_free(ctx);
-  return parsed_data;
+  return scop;
 }
 
 }  // namespace pypet
