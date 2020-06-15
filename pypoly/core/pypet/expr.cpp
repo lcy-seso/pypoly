@@ -1098,8 +1098,14 @@ isl_pw_aff* PypetExprExtractAffine(PypetExpr* expr, PypetContext* context) {
   CHECK(expr);
   auto iter = context->extracted_affine.find(expr);
   if (iter != context->extracted_affine.end()) {
-    return iter->second;
+    return isl_pw_aff_copy(iter->second);
   }
+  // for (auto iter = context->extracted_affine.begin(); iter !=
+  // context->extracted_affine.end(); ++iter) {
+  //   if (iter->first->IsEqual(expr)) {
+  //     return isl_pw_aff_copy(iter->second);
+  //   }
+  // }
 
   isl_pw_aff* pw_aff = nullptr;
   switch (expr->type) {
@@ -1119,7 +1125,7 @@ isl_pw_aff* PypetExprExtractAffine(PypetExpr* expr, PypetContext* context) {
   }
 
   context->extracted_affine.insert(
-      std::make_pair(PypetExprCopy(expr), isl_pw_aff_copy(pw_aff)));
+      {PypetExprCopy(expr), isl_pw_aff_copy(pw_aff)});
   return pw_aff;
 }
 

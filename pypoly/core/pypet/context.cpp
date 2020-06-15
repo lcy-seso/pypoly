@@ -162,8 +162,8 @@ __isl_give PypetContext* CreatePypetContext(__isl_take isl_set* domain) {
 
   pc->ref = 1;
   pc->domain = domain;
-  pc->assignments.clear();
   pc->allow_nested = true;
+  pc->assignments.clear();
   pc->extracted_affine.clear();
   return pc;
 }
@@ -176,18 +176,18 @@ __isl_null PypetContext* FreePypetContext(__isl_take PypetContext* pc) {
   if (--pc->ref > 0) return nullptr;
 
   isl_set_free(pc->domain);
-  // for (auto iter = pc->assignments.begin(); iter != pc->assignments.end();
-  //      ++iter) {
-  //   isl_id_free(iter->first);
-  //   isl_pw_aff_free(iter->second);
-  // }
-  // pc->assignments.clear();
-  // for (auto iter = pc->extracted_affine.begin();
-  //      iter != pc->extracted_affine.end(); ++iter) {
-  //   PypetExprFree(iter->first);
-  //   isl_pw_aff_free(iter->second);
-  // }
-  // pc->extracted_affine.clear();
+  for (auto iter = pc->extracted_affine.begin();
+       iter != pc->extracted_affine.end(); ++iter) {
+    PypetExprFree(iter->first);
+    isl_pw_aff_free(iter->second);
+  }
+  pc->extracted_affine.clear();
+  for (auto iter = pc->assignments.begin(); iter != pc->assignments.end();
+       ++iter) {
+    isl_id_free(iter->first);
+    isl_pw_aff_free(iter->second);
+  }
+  pc->assignments.clear();
   free(pc);
   return nullptr;
 }
@@ -210,6 +210,8 @@ PypetContext* ContextAlloc(isl_set* domain, bool allow_nested) {
   context->ref = 1;
   context->domain = domain;
   context->allow_nested = allow_nested;
+  context->assignments.clear();
+  context->extracted_affine.clear();
   return context;
 }
 
@@ -217,17 +219,10 @@ PypetContext* PypetContextDup(PypetContext* context) {
   CHECK(context);
   PypetContext* dup =
       ContextAlloc(isl_set_copy(context->domain), context->allow_nested);
-  dup->assignments.clear();
   for (auto iter = context->assignments.begin();
        iter != context->assignments.end(); ++iter) {
-    dup->assignments.insert(std::make_pair(isl_id_copy(iter->first),
-                                           isl_pw_aff_copy(iter->second)));
-  }
-  dup->extracted_affine.clear();
-  for (auto iter = context->extracted_affine.begin();
-       iter != context->extracted_affine.end(); ++iter) {
-    dup->extracted_affine.insert(std::make_pair(PypetExprCopy(iter->first),
-                                                isl_pw_aff_copy(iter->second)));
+    dup->assignments.insert(
+        {isl_id_copy(iter->first), isl_pw_aff_copy(iter->second)});
   }
   return dup;
 }
@@ -241,7 +236,12 @@ PypetContext* PypetContextCopy(PypetContext* context) {
 PypetContext* PypetContextCow(PypetContext* context) {
   CHECK(context);
   if (context->ref == 1) {
-    // TODO(yizhu1): check pointers
+    for (auto iter = context->extracted_affine.begin();
+         iter != context->extracted_affine.end(); ++iter) {
+      PypetExprFree(iter->first);
+      isl_pw_aff_free(iter->second);
+    }
+    context->extracted_affine.clear();
     return context;
   }
   --context->ref;
@@ -309,7 +309,7 @@ PypetContext* PypetContextClearValue(PypetContext* context, isl_id* id) {
 isl_pw_aff* PypetContextGetValue(PypetContext* context, isl_id* id) {
   CHECK(context);
   CHECK(id);
-  isl_pw_aff* pa = context->assignments[id];
+  isl_pw_aff* pa = isl_pw_aff_copy(context->assignments[id]);
   int dim = isl_pw_aff_dim(pa, isl_dim_in);
   if (dim == isl_set_dim(context->domain, isl_dim_set)) {
     return pa;

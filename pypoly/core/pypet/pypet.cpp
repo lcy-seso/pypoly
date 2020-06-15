@@ -319,24 +319,17 @@ void ScopPrettyPrinter::Print(std::ostream& out, const PypetScop* scop) {
   isl_printer* p = isl_printer_to_str(isl_schedule_get_ctx(scop->schedule));
   CHECK(p);
 
-  int indent = 0;
-  p = isl_printer_set_indent(p, indent);
-  p = isl_printer_set_yaml_style(p, ISL_YAML_STYLE_BLOCK);
-  p = isl_printer_start_line(p);
-
-  p = isl_printer_yaml_start_mapping(p);
-
   out << "schedule :" << std::endl << scop->schedule << std::endl;
 
   out << "arrays :" << std::endl;
-  for (size_t i = 0; i < scop->array_num; ++i)
+  for (size_t i = 0; i < scop->array_num; ++i) {
     out << scop->arrays[i] << std::endl;
+  }
 
   out << std::endl << "statements :" << std::endl;
-  for (size_t i = 0; i < scop->stmt_num; ++i)
-    out << scop->stmts[i] << std::endl;
-
-  p = isl_printer_yaml_end_mapping(p);
+  for (size_t i = 0; i < scop->stmt_num; ++i) {
+    out << scop->stmts[i];
+  }
 
   out << std::string(isl_printer_get_str(p));
   isl_printer_free(p);
