@@ -1,0 +1,546 @@
+for
+line : 40
+var:
+  index: { [] -> n[] }
+  depth: 0
+  read: 0
+  write: 1
+init:
+  0
+cond:
+  op: <
+  args:
+  - index: { [] -> n[] }
+    depth: 0
+    read: 1
+    write: 0
+  - index: { [] -> batch_size[] }
+    depth: 0
+    read: 1
+    write: 0
+inc:
+  1
+for body:
+  block
+  line : -1
+  block child 0:
+    for
+    line : 41
+    var:
+      index: { [] -> d[] }
+      depth: 0
+      read: 0
+      write: 1
+    init:
+      0
+    cond:
+      op: <
+      args:
+      - index: { [] -> d[] }
+        depth: 0
+        read: 1
+        write: 0
+      - index: { [] -> depth[] }
+        depth: 0
+        read: 1
+        write: 0
+    inc:
+      1
+    for body:
+      block
+      line : -1
+      block child 0:
+        expression
+        line : 42
+          op: =
+          args:
+          - index: { [] -> src_len[] }
+            depth: 0
+            read: 0
+            write: 1
+          - index: { [[] -> [i0]] -> src_lens[((i0) : i0 >= 0)] }
+            depth: 1
+            read: 1
+            write: 0
+            args:
+            - index: { [] -> n[] }
+              depth: 0
+              read: 1
+              write: 0
+      block child 1:
+        expression
+        line : 43
+          op: =
+          args:
+          - index: { [] -> trg_len[] }
+            depth: 0
+            read: 0
+            write: 1
+          - index: { [[] -> [i0]] -> trg_lens[((i0) : i0 >= 0)] }
+            depth: 1
+            read: 1
+            write: 0
+            args:
+            - index: { [] -> n[] }
+              depth: 0
+              read: 1
+              write: 0
+      block child 2:
+        for
+        line : 44
+        var:
+          index: { [] -> i[] }
+          depth: 0
+          read: 0
+          write: 1
+        init:
+          0
+        cond:
+          op: <
+          args:
+          - index: { [] -> i[] }
+            depth: 0
+            read: 1
+            write: 0
+          - index: { [] -> src_len[] }
+            depth: 0
+            read: 1
+            write: 0
+        inc:
+          1
+        for body:
+          block
+          line : -1
+          block child 0:
+            for
+            line : 45
+            var:
+              index: { [] -> j[] }
+              depth: 0
+              read: 0
+              write: 1
+            init:
+              0
+            cond:
+              op: <
+              args:
+              - index: { [] -> j[] }
+                depth: 0
+                read: 1
+                write: 0
+              - index: { [] -> trg_len[] }
+                depth: 0
+                read: 1
+                write: 0
+            inc:
+              1
+            for body:
+              block
+              line : -1
+              block child 0:
+                if-else
+                line : 46
+                condition:
+                  op: ==
+                  args:
+                  - index: { [] -> d[] }
+                    depth: 0
+                    read: 1
+                    write: 0
+                  - 0
+                if:
+                  block
+                  line : -1
+                  block child 0:
+                    expression
+                    line : 47
+                      op: =
+                      args:
+                      - index: { [] -> x_t[] }
+                        depth: 0
+                        read: 0
+                        write: 1
+                      - index: { [[] -> [i0, i1]] -> src_seq_batch[((i0) : i0 >= 0), ((i1) : i1 >= 0)] }
+                        depth: 2
+                        read: 1
+                        write: 0
+                        args:
+                        - index: { [] -> n[] }
+                          depth: 0
+                          read: 1
+                          write: 0
+                        - index: { [] -> i[] }
+                          depth: 0
+                          read: 1
+                          write: 0
+                  block child 1:
+                    expression
+                    line : 48
+                      op: =
+                      args:
+                      - index: { [] -> y_t[] }
+                        depth: 0
+                        read: 0
+                        write: 1
+                      - index: { [[] -> [i0, i1]] -> trg_seq_batch[((i0) : i0 >= 0), ((i1) : i1 >= 0)] }
+                        depth: 2
+                        read: 1
+                        write: 0
+                        args:
+                        - index: { [] -> n[] }
+                          depth: 0
+                          read: 1
+                          write: 0
+                        - index: { [] -> j[] }
+                          depth: 0
+                          read: 1
+                          write: 0
+                else:
+                  block
+                  line : -1
+                  block child 0:
+                    expression
+                    line : 50
+                      op: =
+                      args:
+                      - index: { [] -> x_t[] }
+                        depth: 0
+                        read: 0
+                        write: 1
+                      - index: { [[] -> [i0, i1, i2, i3, i4]] -> output[((i0) : i0 >= 0), ((i1) : i1 >= 0), ((i2) : i2 >= 0), ((i3) : i3 >= 0), ((i4) : i4 >= 0)] }
+                        depth: 5
+                        read: 1
+                        write: 0
+                        args:
+                        - index: { [] -> n[] }
+                          depth: 0
+                          read: 1
+                          write: 0
+                        - op: -
+                          args:
+                          - index: { [] -> d[] }
+                            depth: 0
+                            read: 1
+                            write: 0
+                          - 1
+                        - index: { [] -> i[] }
+                          depth: 0
+                          read: 1
+                          write: 0
+                        - index: { [] -> j[] }
+                          depth: 0
+                          read: 1
+                          write: 0
+                        - 0
+                  block child 1:
+                    expression
+                    line : 51
+                      op: =
+                      args:
+                      - index: { [] -> y_t[] }
+                        depth: 0
+                        read: 0
+                        write: 1
+                      - index: { [[] -> [i0, i1, i2, i3, i4]] -> output[((i0) : i0 >= 0), ((i1) : i1 >= 0), ((i2) : i2 >= 0), ((i3) : i3 >= 0), ((i4) : i4 >= 0)] }
+                        depth: 5
+                        read: 1
+                        write: 0
+                        args:
+                        - index: { [] -> n[] }
+                          depth: 0
+                          read: 1
+                          write: 0
+                        - op: -
+                          args:
+                          - index: { [] -> d[] }
+                            depth: 0
+                            read: 1
+                            write: 0
+                          - 1
+                        - index: { [] -> i[] }
+                          depth: 0
+                          read: 1
+                          write: 0
+                        - index: { [] -> j[] }
+                          depth: 0
+                          read: 1
+                          write: 0
+                        - 1
+              block child 1:
+                if-else
+                line : 53
+                condition:
+                  op: ==
+                  args:
+                  - index: { [] -> i[] }
+                    depth: 0
+                    read: 1
+                    write: 0
+                  - 0
+                if:
+                  block
+                  line : -1
+                  block child 0:
+                    expression
+                    line : 54
+                      op: =
+                      args:
+                      - index: { [] -> state_x[] }
+                        depth: 0
+                        read: 0
+                        write: 1
+                      - index: { [] -> self_init_state[self[] -> init_state[]] }
+                        depth: 0
+                        read: 1
+                        write: 0
+                else:
+                  block
+                  line : -1
+                  block child 0:
+                    expression
+                    line : 56
+                      op: =
+                      args:
+                      - index: { [] -> state_x[] }
+                        depth: 0
+                        read: 0
+                        write: 1
+                      - index: { [[] -> [i0, i1, i2, i3, i4]] -> output[((i0) : i0 >= 0), ((i1) : i1 >= 0), ((i2) : i2 >= 0), ((i3) : i3 >= 0), ((i4) : i4 >= 0)] }
+                        depth: 5
+                        read: 1
+                        write: 0
+                        args:
+                        - index: { [] -> n[] }
+                          depth: 0
+                          read: 1
+                          write: 0
+                        - index: { [] -> d[] }
+                          depth: 0
+                          read: 1
+                          write: 0
+                        - op: -
+                          args:
+                          - index: { [] -> i[] }
+                            depth: 0
+                            read: 1
+                            write: 0
+                          - 1
+                        - index: { [] -> j[] }
+                          depth: 0
+                          read: 1
+                          write: 0
+                        - 0
+              block child 2:
+                if-else
+                line : 58
+                condition:
+                  op: ==
+                  args:
+                  - index: { [] -> j[] }
+                    depth: 0
+                    read: 1
+                    write: 0
+                  - 0
+                if:
+                  block
+                  line : -1
+                  block child 0:
+                    expression
+                    line : 59
+                      op: =
+                      args:
+                      - index: { [] -> state_y[] }
+                        depth: 0
+                        read: 0
+                        write: 1
+                      - index: { [] -> self_init_state[self[] -> init_state[]] }
+                        depth: 0
+                        read: 1
+                        write: 0
+                else:
+                  block
+                  line : -1
+                  block child 0:
+                    expression
+                    line : 61
+                      op: =
+                      args:
+                      - index: { [] -> state_y[] }
+                        depth: 0
+                        read: 0
+                        write: 1
+                      - index: { [[] -> [i0, i1, i2, i3, i4]] -> output[((i0) : i0 >= 0), ((i1) : i1 >= 0), ((i2) : i2 >= 0), ((i3) : i3 >= 0), ((i4) : i4 >= 0)] }
+                        depth: 5
+                        read: 1
+                        write: 0
+                        args:
+                        - index: { [] -> n[] }
+                          depth: 0
+                          read: 1
+                          write: 0
+                        - index: { [] -> d[] }
+                          depth: 0
+                          read: 1
+                          write: 0
+                        - index: { [] -> i[] }
+                          depth: 0
+                          read: 1
+                          write: 0
+                        - op: -
+                          args:
+                          - index: { [] -> j[] }
+                            depth: 0
+                            read: 1
+                            write: 0
+                          - 1
+                        - 1
+              block child 3:
+                expression
+                line : 63
+                  op: =
+                  args:
+                  - index: { [] -> state[] }
+                    depth: 0
+                    read: 0
+                    write: 1
+                  - op: apply
+                    args:
+                    - index: { [] -> torch_cat[torch[] -> cat[]] }
+                      depth: 0
+                      read: 1
+                      write: 0
+                    - op: []
+                      args:
+                      - index: { [] -> state_x[] }
+                        depth: 0
+                        read: 1
+                        write: 0
+                      - index: { [] -> state_y[] }
+                        depth: 0
+                        read: 1
+                        write: 0
+                    - op: attribute
+                      args:
+                      - index: { [] -> dim[] }
+                        depth: 0
+                        read: 1
+                        write: 0
+                      - 1
+              block child 4:
+                expression
+                line : 64
+                  op: =
+                  args:
+                  - index: { [] -> h_x[] }
+                    depth: 0
+                    read: 0
+                    write: 1
+                  - op: apply
+                    args:
+                    - index: { [[] -> [i0]] -> self_cells_x[self[] -> cells_x[((i0) : i0 >= 0)]] }
+                      depth: 1
+                      read: 1
+                      write: 0
+                      args:
+                      - index: { [] -> d[] }
+                        depth: 0
+                        read: 1
+                        write: 0
+                    - index: { [] -> x_t[] }
+                      depth: 0
+                      read: 1
+                      write: 0
+                    - index: { [] -> state[] }
+                      depth: 0
+                      read: 1
+                      write: 0
+              block child 5:
+                expression
+                line : 65
+                  op: =
+                  args:
+                  - index: { [] -> h_y[] }
+                    depth: 0
+                    read: 0
+                    write: 1
+                  - op: apply
+                    args:
+                    - index: { [[] -> [i0]] -> self_cells_y[self[] -> cells_y[((i0) : i0 >= 0)]] }
+                      depth: 1
+                      read: 1
+                      write: 0
+                      args:
+                      - index: { [] -> d[] }
+                        depth: 0
+                        read: 1
+                        write: 0
+                    - index: { [] -> y_t[] }
+                      depth: 0
+                      read: 1
+                      write: 0
+                    - index: { [] -> state[] }
+                      depth: 0
+                      read: 1
+                      write: 0
+              block child 6:
+                expression
+                line : 67
+                  op: =
+                  args:
+                  - index: { [[] -> [i0, i1, i2, i3, i4]] -> output[((i0) : i0 >= 0), ((i1) : i1 >= 0), ((i2) : i2 >= 0), ((i3) : i3 >= 0), ((i4) : i4 >= 0)] }
+                    depth: 5
+                    read: 0
+                    write: 1
+                    args:
+                    - index: { [] -> n[] }
+                      depth: 0
+                      read: 1
+                      write: 0
+                    - index: { [] -> d[] }
+                      depth: 0
+                      read: 1
+                      write: 0
+                    - index: { [] -> i[] }
+                      depth: 0
+                      read: 1
+                      write: 0
+                    - index: { [] -> j[] }
+                      depth: 0
+                      read: 1
+                      write: 0
+                    - 0
+                  - index: { [] -> h_x[] }
+                    depth: 0
+                    read: 1
+                    write: 0
+              block child 7:
+                expression
+                line : 68
+                  op: =
+                  args:
+                  - index: { [[] -> [i0, i1, i2, i3, i4]] -> output[((i0) : i0 >= 0), ((i1) : i1 >= 0), ((i2) : i2 >= 0), ((i3) : i3 >= 0), ((i4) : i4 >= 0)] }
+                    depth: 5
+                    read: 0
+                    write: 1
+                    args:
+                    - index: { [] -> n[] }
+                      depth: 0
+                      read: 1
+                      write: 0
+                    - index: { [] -> d[] }
+                      depth: 0
+                      read: 1
+                      write: 0
+                    - index: { [] -> i[] }
+                      depth: 0
+                      read: 1
+                      write: 0
+                    - index: { [] -> j[] }
+                      depth: 0
+                      read: 1
+                      write: 0
+                    - 1
+                  - index: { [] -> h_y[] }
+                    depth: 0
+                    read: 1
+                    write: 0

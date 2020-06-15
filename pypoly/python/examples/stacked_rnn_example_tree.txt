@@ -1,0 +1,276 @@
+for
+line : 34
+var:
+  index: { [] -> i[] }
+  depth: 0
+  read: 0
+  write: 1
+init:
+  0
+cond:
+  op: <
+  args:
+  - index: { [] -> i[] }
+    depth: 0
+    read: 1
+    write: 0
+  - index: { [] -> batch_size[] }
+    depth: 0
+    read: 1
+    write: 0
+inc:
+  1
+for body:
+  block
+  line : -1
+  block child 0:
+    expression
+    line : 35
+      op: =
+      args:
+      - index: { [] -> seq_len[] }
+        depth: 0
+        read: 0
+        write: 1
+      - index: { [[] -> [i0]] -> seq_lens[((i0) : i0 >= 0)] }
+        depth: 1
+        read: 1
+        write: 0
+        args:
+        - index: { [] -> i[] }
+          depth: 0
+          read: 1
+          write: 0
+  block child 1:
+    for
+    line : 36
+    var:
+      index: { [] -> j[] }
+      depth: 0
+      read: 0
+      write: 1
+    init:
+      0
+    cond:
+      op: <
+      args:
+      - index: { [] -> j[] }
+        depth: 0
+        read: 1
+        write: 0
+      - index: { [] -> seq_len[] }
+        depth: 0
+        read: 1
+        write: 0
+    inc:
+      1
+    for body:
+      block
+      line : -1
+      block child 0:
+        for
+        line : 37
+        var:
+          index: { [] -> k[] }
+          depth: 0
+          read: 0
+          write: 1
+        init:
+          0
+        cond:
+          op: <
+          args:
+          - index: { [] -> k[] }
+            depth: 0
+            read: 1
+            write: 0
+          - index: { [] -> depth[] }
+            depth: 0
+            read: 1
+            write: 0
+        inc:
+          1
+        for body:
+          block
+          line : -1
+          block child 0:
+            if-else
+            line : 38
+            condition:
+              op: ==
+              args:
+              - index: { [] -> j[] }
+                depth: 0
+                read: 1
+                write: 0
+              - 0
+            if:
+              block
+              line : -1
+              block child 0:
+                expression
+                line : 39
+                  op: =
+                  args:
+                  - index: { [] -> h_prev[] }
+                    depth: 0
+                    read: 0
+                    write: 1
+                  - index: { [] -> self_init_state[self[] -> init_state[]] }
+                    depth: 0
+                    read: 1
+                    write: 0
+            else:
+              block
+              line : -1
+              block child 0:
+                expression
+                line : 41
+                  op: =
+                  args:
+                  - index: { [] -> h_prev[] }
+                    depth: 0
+                    read: 0
+                    write: 1
+                  - index: { [[] -> [i0, i1, i2]] -> output[((i0) : i0 >= 0), ((i1) : i1 >= 0), ((i2) : i2 >= 0)] }
+                    depth: 3
+                    read: 1
+                    write: 0
+                    args:
+                    - index: { [] -> i[] }
+                      depth: 0
+                      read: 1
+                      write: 0
+                    - op: -
+                      args:
+                      - index: { [] -> j[] }
+                        depth: 0
+                        read: 1
+                        write: 0
+                      - 1
+                    - index: { [] -> k[] }
+                      depth: 0
+                      read: 1
+                      write: 0
+          block child 1:
+            if-else
+            line : 43
+            condition:
+              op: ==
+              args:
+              - index: { [] -> k[] }
+                depth: 0
+                read: 1
+                write: 0
+              - 0
+            if:
+              block
+              line : -1
+              block child 0:
+                expression
+                line : 44
+                  op: =
+                  args:
+                  - index: { [] -> x[] }
+                    depth: 0
+                    read: 0
+                    write: 1
+                  - index: { [[] -> [i0, i1]] -> input[((i0) : i0 >= 0), ((i1) : i1 >= 0)] }
+                    depth: 2
+                    read: 1
+                    write: 0
+                    args:
+                    - index: { [] -> i[] }
+                      depth: 0
+                      read: 1
+                      write: 0
+                    - index: { [] -> j[] }
+                      depth: 0
+                      read: 1
+                      write: 0
+            else:
+              block
+              line : -1
+              block child 0:
+                expression
+                line : 46
+                  op: =
+                  args:
+                  - index: { [] -> x[] }
+                    depth: 0
+                    read: 0
+                    write: 1
+                  - index: { [[] -> [i0, i1, i2]] -> output[((i0) : i0 >= 0), ((i1) : i1 >= 0), ((i2) : i2 >= 0)] }
+                    depth: 3
+                    read: 1
+                    write: 0
+                    args:
+                    - index: { [] -> i[] }
+                      depth: 0
+                      read: 1
+                      write: 0
+                    - index: { [] -> j[] }
+                      depth: 0
+                      read: 1
+                      write: 0
+                    - op: -
+                      args:
+                      - index: { [] -> k[] }
+                        depth: 0
+                        read: 1
+                        write: 0
+                      - 1
+          block child 2:
+            expression
+            line : 47
+              op: =
+              args:
+              - index: { [] -> h[] }
+                depth: 0
+                read: 0
+                write: 1
+              - op: apply
+                args:
+                - index: { [[] -> [i0]] -> self_cells[self[] -> cells[((i0) : i0 >= 0)]] }
+                  depth: 1
+                  read: 1
+                  write: 0
+                  args:
+                  - index: { [] -> k[] }
+                    depth: 0
+                    read: 1
+                    write: 0
+                - index: { [] -> x[] }
+                  depth: 0
+                  read: 1
+                  write: 0
+                - index: { [] -> h_prev[] }
+                  depth: 0
+                  read: 1
+                  write: 0
+          block child 3:
+            expression
+            line : 48
+              op: =
+              args:
+              - index: { [[] -> [i0, i1, i2]] -> output[((i0) : i0 >= 0), ((i1) : i1 >= 0), ((i2) : i2 >= 0)] }
+                depth: 3
+                read: 0
+                write: 1
+                args:
+                - index: { [] -> i[] }
+                  depth: 0
+                  read: 1
+                  write: 0
+                - index: { [] -> j[] }
+                  depth: 0
+                  read: 1
+                  write: 0
+                - index: { [] -> k[] }
+                  depth: 0
+                  read: 1
+                  write: 0
+              - index: { [] -> h[] }
+                depth: 0
+                read: 1
+                write: 0
