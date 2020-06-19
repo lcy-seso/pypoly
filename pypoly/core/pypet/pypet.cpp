@@ -28,6 +28,11 @@ isl_set* AccessExtractContext(PypetExpr* expr, isl_set* context) {
 }
 
 isl_set* ExprExtractContext(PypetExpr* expr, isl_set* context) {
+  // TODO(yizhu1): a temporary workaround
+  if (expr->type == PypetExprType::PYPET_EXPR_OP &&
+      expr->op == PypetOpType::PYPET_APPLY) {
+    return context;
+  }
   if (expr->type == PypetExprType::PYPET_EXPR_OP &&
       expr->op == PypetOpType::PYPET_COND) {
     bool is_aff = PypetExprIsAffine(expr->args[0]);
@@ -63,6 +68,7 @@ isl_set* ExprExtractContext(PypetExpr* expr, isl_set* context) {
   if (expr->type == PypetExprType::PYPET_EXPR_ACCESS) {
     context = AccessExtractContext(expr, context);
   }
+  // LOG(INFO) << context;
   return context;
 }
 
@@ -215,8 +221,10 @@ PypetStmt* PypetStmt::Create(isl_set* domain, int id, PypetTree* tree) {
   stmt->body = tree;
 
   CHECK_EQ(tree->type, PYPET_TREE_EXPR);
-  stmt->arg_num = tree->ast.Expr.expr->arg_num;
-  stmt->args = tree->ast.Expr.expr->args;
+  stmt->arg_num = 0;
+  stmt->args = nullptr;
+  // stmt->arg_num = tree->ast.Expr.expr->arg_num;
+  // stmt->args = tree->ast.Expr.expr->args;
 
   return stmt;
 }

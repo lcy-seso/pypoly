@@ -232,6 +232,8 @@ __isl_keep PypetScop* TreeToScop::ScopFromBlock(__isl_keep PypetTree* tree,
   for (int i = 0; i < tree->ast.Block.n; ++i) {
     // TODO(yizhu1): support for continue and break
     PypetScop* cur_scop = ToScop(tree->ast.Block.children[i], pc, state);
+    // LOG(INFO) << std::endl << tree->ast.Block.children[i];
+    // LOG(INFO) << cur_scop->context;
     // TODO(yizhu1): check assume primitive
     pc = ScopHandleWrites(cur_scop, pc);
     if (IsAssignment(tree->ast.Block.children[i])) {
@@ -260,6 +262,7 @@ __isl_keep PypetScop* TreeToScop::ScopFromContinue(
 __isl_keep PypetScop* TreeToScop::ScopFromDecl(__isl_keep PypetTree* tree,
                                                __isl_keep PypetContext* pc,
                                                __isl_take PypetState* state) {
+  UNIMPLEMENTED();
   return nullptr;
 }
 
@@ -409,6 +412,8 @@ __isl_keep PypetScop* TreeToScop::ScopFromAffineFor(
     __isl_keep PypetTree* tree, __isl_take isl_pw_aff* init_val,
     __isl_take isl_pw_aff* pa_inc, __isl_take isl_val* inc,
     __isl_take PypetContext* pc, __isl_take PypetState* state) {
+  // use init_val, inc and cond to construct the iteration domain of current
+  // loop
   int pos = PypetContextDim(pc) - 1;
   isl_set* domain = PypetContextGetDomain(pc);
   PypetExpr* cond_expr = PypetExprCopy(tree->ast.Loop.cond);
@@ -424,6 +429,7 @@ __isl_keep PypetScop* TreeToScop::ScopFromAffineFor(
 
   bool is_unsigned = tree->ast.Loop.iv->type_size > 0;
   CHECK(!is_unsigned);
+  LOG(INFO) << pa;
   bool is_non_affine =
       isl_pw_aff_involves_nan(pa) || !IsNestedAllowed(pa, tree->ast.Loop.body);
   CHECK(!is_non_affine);
@@ -470,6 +476,7 @@ __isl_keep PypetScop* TreeToScop::ScopFromAffineFor(
   valid_inc = EnforceSubset(isl_set_copy(domain), valid_inc);
 
   pc = PypetContextIntersectDomain(pc, isl_set_copy(domain));
+  LOG(INFO) << pc->domain;
 
   PypetScop* scop = ToScop(tree->ast.Loop.body, pc, state);
   scop = PypetScopResolveNested(scop);
@@ -532,6 +539,8 @@ __isl_keep PypetScop* TreeToScop::ToScop(__isl_take PypetTree* tree,
   struct PypetScop* scop = nullptr;
 
   if (!tree) return nullptr;
+
+  LOG(INFO) << "ToScop" << std::endl << pc;
 
   switch (tree->type) {
     case PYPET_TREE_ERROR:

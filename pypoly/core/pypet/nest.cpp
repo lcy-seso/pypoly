@@ -2,6 +2,7 @@
 
 #include "pypoly/core/pypet/aff.h"
 #include "pypoly/core/pypet/expr.h"
+#include "pypoly/core/pypet/isl_printer.h"
 #include "pypoly/core/pypet/tree.h"
 
 namespace pypoly {
@@ -200,7 +201,12 @@ int PypetNestedNInSpace(isl_space* space) {
 }
 
 PypetExpr* PypetNestedExtractExpr(isl_id* id) {
-  return PypetExprCopy(static_cast<PypetExpr*>(isl_id_get_user(id)));
+  PypetExpr* expr = static_cast<PypetExpr*>(isl_id_get_user(id));
+  if (expr) {
+    return PypetExprCopy(expr);
+  } else {
+    return nullptr;
+  }
 }
 
 bool PypetNestedAnyInPwAff(isl_pw_aff* pa) {
@@ -375,19 +381,23 @@ PypetTree* PypetTreeResolveNested(PypetTree* tree, isl_space* space) {
 }
 
 PypetStmt* PypetStmtExtractNested(PypetStmt* stmt, int n, int* param2pos) {
+  LOG(INFO) << stmt->domain;
   isl_ctx* ctx = isl_set_get_ctx(stmt->domain);
   int arg_num = stmt->arg_num;
+  LOG(INFO) << arg_num;
   PypetExpr** args = isl_calloc_array(ctx, PypetExpr*, n + arg_num);
   CHECK(args);
   isl_space* space = isl_set_get_space(stmt->domain);
   if (isl_space_is_wrapping(space)) {
     space = isl_space_domain(isl_space_unwrap(space));
   }
+  LOG(INFO) << space;
   arg_num = PypetExtractNestedFromSpace(space, 0, args, param2pos);
   isl_space_free(space);
   for (int i = 0; i < stmt->arg_num; ++i) {
     args[arg_num + i] = stmt->args[i];
   }
+  for (int i = 0; i < stmt->arg_num + arg_num; ++i) LOG(INFO) << args[i];
   free(stmt->args);
   stmt->args = args;
   stmt->arg_num += arg_num;
