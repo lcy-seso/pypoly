@@ -407,26 +407,49 @@ void ContextPrettyPrinter::Print(std::ostream& out,
   p = isl_printer_set_indent(p, indent + 2);
   p = isl_printer_yaml_next(p);
 
-  for (auto it = context->assignments.begin(); it != context->assignments.end();
-       ++it) {
-    p = isl_printer_print_pw_aff(p, it->second);
-    p = isl_printer_yaml_next(p);
+  if (!context->assignments.empty()) {
+    for (auto it = context->assignments.begin();
+         it != context->assignments.end(); ++it) {
+      p = isl_printer_yaml_start_sequence(p);
+      p = isl_printer_yaml_start_mapping(p);
+      p = isl_printer_print_id(p, it->first);
+      p = isl_printer_yaml_next(p);
+      p = isl_printer_print_pw_aff(p, it->second);
+      p = isl_printer_yaml_next(p);
+      p = isl_printer_yaml_end_mapping(p);
+      p = isl_printer_yaml_end_sequence(p);
+    }
+  } else {
+    p = isl_printer_yaml_start_sequence(p);
+    p = isl_printer_print_str(p, "empty");
+    p = isl_printer_yaml_end_sequence(p);
   }
-  p = isl_printer_set_indent(p, indent);
-
-  p = isl_printer_print_str(p, "extracted_affine");
   p = isl_printer_yaml_next(p);
-  p = isl_printer_set_indent(p, indent + 2);
-  for (auto it = context->extracted_affine.begin();
-       it != context->extracted_affine.end(); it++) {
-    p = isl_printer_print_pw_aff(p, it->second);
-    p = isl_printer_yaml_next(p);
-  }
-  p = isl_printer_set_indent(p, indent);
 
-  p = isl_printer_print_str(p, "\nnesting allowed ");
+  p = isl_printer_set_indent(p, indent);
+  p = isl_printer_print_str(p, "extracted_affine");
+  p = isl_printer_set_indent(p, indent + 2);
+  p = isl_printer_yaml_next(p);
+  if (!context->extracted_affine.empty()) {
+    for (auto it = context->extracted_affine.begin();
+         it != context->extracted_affine.end(); it++) {
+      p = isl_printer_yaml_start_sequence(p);
+      p = isl_printer_print_pw_aff(p, it->second);
+      p = isl_printer_yaml_end_sequence(p);
+    }
+  } else {
+    p = isl_printer_yaml_start_sequence(p);
+    p = isl_printer_print_str(p, "empty");
+    p = isl_printer_yaml_end_sequence(p);
+  }
+  p = isl_printer_yaml_next(p);
+
+  p = isl_printer_set_indent(p, indent);
+  p = isl_printer_print_str(p, "nesting allowed");
   p = isl_printer_yaml_next(p);
   p = isl_printer_print_int(p, int(context->allow_nested));
+  p = isl_printer_yaml_next(p);
+
   p = isl_printer_yaml_end_mapping(p);
 
   out << std::string(isl_printer_get_str(p));
