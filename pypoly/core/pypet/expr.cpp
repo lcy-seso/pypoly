@@ -67,7 +67,6 @@ isl_pw_aff* NestedAccess(PypetExpr* expr, PypetContext* context) {
   if (nested) {
     return NonAffine(PypetContextGetSpace(context));
   }
-  // LOG(INFO) << expr;
   isl_id* id = PypetNestedPypetExpr(PypetExprCopy(expr));
   space = PypetContextGetSpace(context);
   space = isl_space_insert_dims(space, isl_dim_param, 0, 1);
@@ -75,7 +74,6 @@ isl_pw_aff* NestedAccess(PypetExpr* expr, PypetContext* context) {
   space = isl_space_set_dim_id(space, isl_dim_param, 0, id);
   isl_local_space* ls = isl_local_space_from_space(space);
   isl_aff* aff = isl_aff_var_on_domain(ls, isl_dim_param, 0);
-  // LOG(INFO) << aff;
   return isl_pw_aff_from_aff(aff);
 }
 
@@ -1105,10 +1103,6 @@ isl_pw_aff* PypetExprExtractAffineCondition(PypetExpr* expr,
 
 isl_pw_aff* PypetExprExtractAffine(PypetExpr* expr, PypetContext* context) {
   CHECK(expr);
-  // auto iter = context->extracted_affine.find(expr);
-  // if (iter != context->extracted_affine.end()) {
-  //   return isl_pw_aff_copy(iter->second);
-  // }
   for (auto iter = context->extracted_affine.begin();
        iter != context->extracted_affine.end(); ++iter) {
     if (iter->first->IsEqual(expr)) {
@@ -1133,7 +1127,6 @@ isl_pw_aff* PypetExprExtractAffine(PypetExpr* expr, PypetContext* context) {
       break;
   }
 
-  // LOG(INFO) << expr << std::endl << pw_aff;
   context->extracted_affine.insert(
       {PypetExprCopy(expr), isl_pw_aff_copy(pw_aff)});
   return pw_aff;

@@ -232,8 +232,6 @@ __isl_keep PypetScop* TreeToScop::ScopFromBlock(__isl_keep PypetTree* tree,
   for (int i = 0; i < tree->ast.Block.n; ++i) {
     // TODO(yizhu1): support for continue and break
     PypetScop* cur_scop = ToScop(tree->ast.Block.children[i], pc, state);
-    // LOG(INFO) << std::endl << tree->ast.Block.children[i];
-    // LOG(INFO) << cur_scop->context;
     // TODO(yizhu1): check assume primitive
     pc = ScopHandleWrites(cur_scop, pc);
     if (IsAssignment(tree->ast.Block.children[i])) {
@@ -475,7 +473,6 @@ __isl_keep PypetScop* TreeToScop::ScopFromAffineFor(
   valid_inc = EnforceSubset(isl_set_copy(domain), valid_inc);
 
   pc = PypetContextIntersectDomain(pc, isl_set_copy(domain));
-  // LOG(INFO) << pc->domain;
 
   PypetScop* scop = ToScop(tree->ast.Loop.body, pc, state);
   scop = PypetScopResolveNested(scop);
@@ -538,8 +535,6 @@ __isl_keep PypetScop* TreeToScop::ToScop(__isl_take PypetTree* tree,
   struct PypetScop* scop = nullptr;
 
   if (!tree) return nullptr;
-
-  // LOG(INFO) << "ToScop" << std::endl << pc;
 
   switch (tree->type) {
     case PYPET_TREE_ERROR:

@@ -32,19 +32,16 @@ int AddParameter(PypetExpr* expr, void* user) {
   }
 
   isl_space* space = PypetContextGetSpace(context);
-  // LOG(INFO) << space;
   int pos = isl_space_find_dim_by_id(space, isl_dim_param, id);
   if (pos < 0) {
     pos = isl_space_dim(space, isl_dim_param);
     space = isl_space_add_dims(space, isl_dim_param, 1);
     space = isl_space_set_dim_id(space, isl_dim_param, pos, isl_id_copy(id));
   }
-  // LOG(INFO) << space;
 
   isl_local_space* ls = isl_local_space_from_space(space);
   isl_aff* aff = isl_aff_var_on_domain(ls, isl_dim_param, pos);
   isl_pw_aff* pa = isl_pw_aff_from_aff(aff);
-  // LOG(INFO) << id << " " << pa;
   context = PypetContextSetValue(context, id, pa);
   return 0;
 }
@@ -58,6 +55,8 @@ int ClearWrite(PypetExpr* expr, void* user) {
     return 0;
   }
 
+  // Clear mapping for variables that are written in at some location, like
+  // 'seq_len' in stacked_rnn_example.py. Code in below is a workaround.
   isl_id* id = PypetExprAccessGetId(expr);
   if (PypetContextIsAssigned(*context, id)) {
     *context = PypetContextClearValue(*context, id);
@@ -87,7 +86,6 @@ PypetExpr* AccessPlugInAffineRead(PypetExpr* expr, void* user) {
     isl_pw_aff_free(pw_aff);
     return expr;
   }
-  // LOG(INFO) << pw_aff;
   PypetExprFree(expr);
   return PypetExprFromIndex(isl_multi_pw_aff_from_pw_aff(pw_aff));
 }
@@ -368,15 +366,10 @@ PypetContext* PypetContextSetAllowNested(PypetContext* context, bool val) {
 }
 
 PypetExpr* PypetContextEvaluateExpr(PypetContext* context, PypetExpr* expr) {
-  // LOG(INFO) << std::endl << expr;
   expr = PypetExprInsertDomain(expr, PypetContextGetSpace(context));
-  // LOG(INFO) << std::endl << expr;
   expr = PlugInAffineRead(expr, context);
-  // LOG(INFO) << std::endl << expr;
   expr = PypetExprPlugInArgs(expr, context);
-  // LOG(INFO) << std::endl << expr;
   expr = PlugInAffine(expr, context);
-  // LOG(INFO) << std::endl << expr;
   expr = MergeConditionalAccesses(expr);
   expr = PlugInSummaries(expr, context);
   return expr;
