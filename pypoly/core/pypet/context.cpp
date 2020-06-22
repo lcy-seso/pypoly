@@ -55,12 +55,20 @@ int ClearWrite(PypetExpr* expr, void* user) {
     return 0;
   }
 
+  // Clear mappings for variables that are written in and red at different
+  // locations in the source program, like 'seq_len' in stacked_rnn_example.py.
+  // Code in below is a workaround.
   isl_id* id = PypetExprAccessGetId(expr);
-  if (isl_id_get_user(id)) {
+  if (PypetContextIsAssigned(*context, id)) {
     *context = PypetContextClearValue(*context, id);
   } else {
     isl_id_free(id);
   }
+  // if (isl_id_get_user(id)) {
+  //   *context = PypetContextClearValue(*context, id);
+  // } else {
+  //   isl_id_free(id);
+  // }
   return 0;
 }
 
@@ -75,6 +83,10 @@ PypetExpr* AccessPlugInAffineRead(PypetExpr* expr, void* user) {
   }
 
   isl_pw_aff* pw_aff = PypetExprExtractAffine(expr, context);
+  if (isl_pw_aff_involves_nan(pw_aff)) {
+    isl_pw_aff_free(pw_aff);
+    return expr;
+  }
   PypetExprFree(expr);
   return PypetExprFromIndex(isl_multi_pw_aff_from_pw_aff(pw_aff));
 }
@@ -162,7 +174,7 @@ __isl_give PypetContext* CreatePypetContext(__isl_take isl_set* domain) {
 
   pc->ref = 1;
   pc->domain = domain;
-  pc->allow_nested = true;
+  pc->allow_nested = false;
   pc->assignments.clear();
   pc->extracted_affine.clear();
   return pc;
@@ -389,26 +401,49 @@ void ContextPrettyPrinter::Print(std::ostream& out,
   p = isl_printer_set_indent(p, indent + 2);
   p = isl_printer_yaml_next(p);
 
-  for (auto it = context->assignments.begin(); it != context->assignments.end();
-       ++it) {
-    p = isl_printer_print_pw_aff(p, it->second);
-    p = isl_printer_yaml_next(p);
+  if (!context->assignments.empty()) {
+    for (auto it = context->assignments.begin();
+         it != context->assignments.end(); ++it) {
+      p = isl_printer_yaml_start_sequence(p);
+      p = isl_printer_yaml_start_mapping(p);
+      p = isl_printer_print_id(p, it->first);
+      p = isl_printer_yaml_next(p);
+      p = isl_printer_print_pw_aff(p, it->second);
+      p = isl_printer_yaml_next(p);
+      p = isl_printer_yaml_end_mapping(p);
+      p = isl_printer_yaml_end_sequence(p);
+    }
+  } else {
+    p = isl_printer_yaml_start_sequence(p);
+    p = isl_printer_print_str(p, "empty");
+    p = isl_printer_yaml_end_sequence(p);
   }
-  p = isl_printer_set_indent(p, indent);
-
-  p = isl_printer_print_str(p, "extracted_affine");
   p = isl_printer_yaml_next(p);
-  p = isl_printer_set_indent(p, indent + 2);
-  for (auto it = context->extracted_affine.begin();
-       it != context->extracted_affine.end(); it++) {
-    p = isl_printer_print_pw_aff(p, it->second);
-    p = isl_printer_yaml_next(p);
-  }
-  p = isl_printer_set_indent(p, indent);
 
-  p = isl_printer_print_str(p, "\nnesting allowed ");
+  p = isl_printer_set_indent(p, indent);
+  p = isl_printer_print_str(p, "extracted_affine");
+  p = isl_printer_set_indent(p, indent + 2);
+  p = isl_printer_yaml_next(p);
+  if (!context->extracted_affine.empty()) {
+    for (auto it = context->extracted_affine.begin();
+         it != context->extracted_affine.end(); it++) {
+      p = isl_printer_yaml_start_sequence(p);
+      p = isl_printer_print_pw_aff(p, it->second);
+      p = isl_printer_yaml_end_sequence(p);
+    }
+  } else {
+    p = isl_printer_yaml_start_sequence(p);
+    p = isl_printer_print_str(p, "empty");
+    p = isl_printer_yaml_end_sequence(p);
+  }
+  p = isl_printer_yaml_next(p);
+
+  p = isl_printer_set_indent(p, indent);
+  p = isl_printer_print_str(p, "nesting allowed");
   p = isl_printer_yaml_next(p);
   p = isl_printer_print_int(p, int(context->allow_nested));
+  p = isl_printer_yaml_next(p);
+
   p = isl_printer_yaml_end_mapping(p);
 
   out << std::string(isl_printer_get_str(p));

@@ -18,7 +18,9 @@ namespace pypet {
     return out;                                                         \
   }
 PRINTER_FUNC(multi_pw_aff)
+PRINTER_FUNC(multi_aff)
 PRINTER_FUNC(pw_aff)
+PRINTER_FUNC(aff)
 PRINTER_FUNC(id)
 PRINTER_FUNC(schedule)
 
@@ -36,6 +38,7 @@ PRINTER_FUNC(schedule)
     return out;                                                 \
   }
 PRINTER_FUNC2(set)
+PRINTER_FUNC2(map)
 PRINTER_FUNC2(union_set)
 PRINTER_FUNC2(space)
 

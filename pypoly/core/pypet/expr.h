@@ -301,7 +301,7 @@ PypetExpr* PypetExprAccessUpdateDomain(PypetExpr* expr,
 PypetExpr* PypetExprRestrict(PypetExpr* expr, isl_set* set);
 
 /* Does "expr" represent the "integer" infinity?*/
-static bool IsInftyVal(__isl_keep PypetExpr* expr) {
+inline bool IsInftyVal(__isl_keep PypetExpr* expr) {
   CHECK(expr);
 
   if (expr->type != PYPET_EXPR_INT) return false;
