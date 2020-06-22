@@ -302,7 +302,11 @@ isl_pw_aff* ExtractAffineFromOp(PypetExpr* expr, PypetContext* context) {
       break;
   }
   CHECK(ret);
-  CHECK(isl_pw_aff_involves_nan(ret) == 0);
+  if (isl_pw_aff_involves_nan(ret)) {
+    isl_space* space = isl_pw_aff_get_domain_space(ret);
+    isl_pw_aff_free(ret);
+    return NonAffine(space);
+  }
   if (expr->type_size > 0) {
     ret = PypetWrapPwAff(ret, expr->type_size);
   } else if (expr->type_size < 0) {

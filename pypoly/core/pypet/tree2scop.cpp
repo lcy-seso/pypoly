@@ -429,7 +429,6 @@ __isl_keep PypetScop* TreeToScop::ScopFromAffineFor(
 
   bool is_unsigned = tree->ast.Loop.iv->type_size > 0;
   CHECK(!is_unsigned);
-  LOG(INFO) << pa;
   bool is_non_affine =
       isl_pw_aff_involves_nan(pa) || !IsNestedAllowed(pa, tree->ast.Loop.body);
   CHECK(!is_non_affine);
@@ -476,7 +475,7 @@ __isl_keep PypetScop* TreeToScop::ScopFromAffineFor(
   valid_inc = EnforceSubset(isl_set_copy(domain), valid_inc);
 
   pc = PypetContextIntersectDomain(pc, isl_set_copy(domain));
-  LOG(INFO) << pc->domain;
+  // LOG(INFO) << pc->domain;
 
   PypetScop* scop = ToScop(tree->ast.Loop.body, pc, state);
   scop = PypetScopResolveNested(scop);
@@ -540,24 +539,31 @@ __isl_keep PypetScop* TreeToScop::ToScop(__isl_take PypetTree* tree,
 
   if (!tree) return nullptr;
 
-  LOG(INFO) << "ToScop" << std::endl << pc;
+  // LOG(INFO) << "ToScop" << std::endl << pc;
 
   switch (tree->type) {
     case PYPET_TREE_ERROR:
-      return nullptr;
+      UNIMPLEMENTED();
+      break;
     case PYPET_TREE_BLOCK:
-      return ScopFromBlock(tree, pc, state);
+      scop = ScopFromBlock(tree, pc, state);
+      break;
     case PYPET_TREE_BREAK:
-      return ScopFromBreak(tree, pc, state);
+      scop = ScopFromBreak(tree, pc, state);
+      break;
     case PYPET_TREE_CONTINUE:
-      return ScopFromContinue(tree, pc, state);
+      scop = ScopFromContinue(tree, pc, state);
+      break;
     case PYPET_TREE_DECL:
     case PYPET_TREE_DECL_INIT:
-      return ScopFromDecl(tree, pc, state);
+      scop = ScopFromDecl(tree, pc, state);
+      break;
     case PYPET_TREE_EXPR:
-      return ScopFromTreeExpr(tree, pc, state);
+      scop = ScopFromTreeExpr(tree, pc, state);
+      break;
     case PYPET_TREE_RETURN:
-      return ScopFromReturn(tree, pc, state);
+      scop = ScopFromReturn(tree, pc, state);
+      break;
     case PYPET_TREE_IF:
     case PYPET_TREE_IF_ELSE:
       scop = ScopFromIf(tree, pc, state);
@@ -566,7 +572,6 @@ __isl_keep PypetScop* TreeToScop::ToScop(__isl_take PypetTree* tree,
       scop = ScopFromFor(tree, pc, state);
       break;
   }
-  if (!scop) return nullptr;
   return scop;
 }
 

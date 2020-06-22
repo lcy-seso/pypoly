@@ -397,7 +397,6 @@ PypetStmt* PypetStmtExtractNested(PypetStmt* stmt, int n, int* param2pos) {
   for (int i = 0; i < stmt->arg_num; ++i) {
     args[arg_num + i] = stmt->args[i];
   }
-  for (int i = 0; i < stmt->arg_num + arg_num; ++i) LOG(INFO) << args[i];
   free(stmt->args);
   stmt->args = args;
   stmt->arg_num += arg_num;
