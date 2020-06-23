@@ -269,7 +269,6 @@ PypetExpr* EmitStatements::ExtractIndexExprFromIdent(
     ptr = iter->second;
   }
   isl_id* id = isl_id_alloc(ctx, name.c_str(), ptr);
-  // isl_id* id = isl_id_alloc(ctx, name.c_str(), nullptr);
   isl_space* space = isl_space_alloc(ctx, 0, 0, 0);
   space = isl_space_set_tuple_id(space, isl_dim_out, id);
   return PypetExprFromIndex(isl_multi_pw_aff_zero(space));
