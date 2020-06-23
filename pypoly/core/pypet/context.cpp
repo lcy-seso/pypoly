@@ -57,18 +57,12 @@ int ClearWrite(PypetExpr* expr, void* user) {
 
   // Clear mappings for variables that are written in and red at different
   // locations in the source program, like 'seq_len' in stacked_rnn_example.py.
-  // Code in below is a workaround.
   isl_id* id = PypetExprAccessGetId(expr);
-  if (PypetContextIsAssigned(*context, id)) {
+  if (isl_id_get_user(id)) {
     *context = PypetContextClearValue(*context, id);
   } else {
     isl_id_free(id);
   }
-  // if (isl_id_get_user(id)) {
-  //   *context = PypetContextClearValue(*context, id);
-  // } else {
-  //   isl_id_free(id);
-  // }
   return 0;
 }
 

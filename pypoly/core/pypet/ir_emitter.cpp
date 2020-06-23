@@ -22,24 +22,6 @@ PypetExpr* PypetExprAccessFromIndex(const torch::jit::Expr& expr,
   return index;
 }
 
-PypetExpr* ExtractIndexExprFromIdent(isl_ctx* ctx,
-                                     const torch::jit::Ident& ident_expr) {
-  const std::string& name = ident_expr.name();
-  isl_id* id = isl_id_alloc(ctx, name.c_str(), nullptr);
-  isl_space* space = isl_space_alloc(ctx, 0, 0, 0);
-  space = isl_space_set_tuple_id(space, isl_dim_out, id);
-  return PypetExprFromIndex(isl_multi_pw_aff_zero(space));
-}
-
-// TODO(yizhu1): check the type_size field
-PypetExpr* ExtractIndexExprFromVar(isl_ctx* ctx, const torch::jit::Var& expr) {
-  CHECK(expr.kind() == torch::jit::TK_VAR);
-  torch::jit::Ident ident_expr(expr.name());
-  PypetExpr* ret = ExtractIndexExprFromIdent(ctx, ident_expr);
-  ret->type_size = -32;
-  return ret;
-}
-
 PypetExpr* ExtractIndexExprFromConst(isl_ctx* ctx,
                                      const torch::jit::Const& expr) {
   CHECK(expr.isIntegral());
@@ -273,6 +255,34 @@ PypetTree* EmitStatements::EmitDelete(const torch::jit::Delete& stmt) {
 PypetTree* EmitStatements::EmitExpr(const torch::jit::Expr& tree) {
   UNIMPLEMENTED();
   return nullptr;
+}
+
+PypetExpr* EmitStatements::ExtractIndexExprFromIdent(
+    isl_ctx* ctx, const torch::jit::Ident& ident_expr) {
+  const std::string& name = ident_expr.name();
+  auto iter = name2ast_ptr.find(name);
+  void* ptr = nullptr;
+  if (iter == name2ast_ptr.end()) {
+    ptr = const_cast<void*>(static_cast<const void*>(&ident_expr));
+    CHECK(name2ast_ptr.insert({name, ptr}).second);
+  } else {
+    ptr = iter->second;
+  }
+  isl_id* id = isl_id_alloc(ctx, name.c_str(), ptr);
+  // isl_id* id = isl_id_alloc(ctx, name.c_str(), nullptr);
+  isl_space* space = isl_space_alloc(ctx, 0, 0, 0);
+  space = isl_space_set_tuple_id(space, isl_dim_out, id);
+  return PypetExprFromIndex(isl_multi_pw_aff_zero(space));
+}
+
+// TODO(yizhu1): check the type_size field
+PypetExpr* EmitStatements::ExtractIndexExprFromVar(
+    isl_ctx* ctx, const torch::jit::Var& expr) {
+  CHECK(expr.kind() == torch::jit::TK_VAR);
+  torch::jit::Ident ident_expr(expr.name());
+  PypetExpr* ret = ExtractIndexExprFromIdent(ctx, ident_expr);
+  ret->type_size = -32;
+  return ret;
 }
 
 PypetExpr* EmitStatements::ExtractAccessExpr(isl_ctx* ctx,

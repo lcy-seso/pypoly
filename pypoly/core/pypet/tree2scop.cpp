@@ -30,7 +30,7 @@ bool IsNestedAllowed(isl_pw_aff* pa, PypetTree* tree) {
   int param_num = isl_pw_aff_dim(pa, isl_dim_param);
   for (int i = 0; i < param_num; ++i) {
     isl_id* id = isl_pw_aff_get_dim_id(pa, isl_dim_param, i);
-    if (!PypetNestedExtractExpr(id)) {
+    if (!PypetNestedInId(id)) {
       isl_id_free(id);
       continue;
     }
