@@ -1576,6 +1576,10 @@ __isl_give isl_printer* ExprPrettyPrinter::Print(__isl_take isl_printer* p,
       break;
     case PypetExprType::PYPET_EXPR_ACCESS:
       p = isl_printer_yaml_start_mapping(p);
+      p = isl_printer_print_str(p, "type_size");
+      p = isl_printer_yaml_next(p);
+      p = isl_printer_print_int(p, expr->type_size);
+      p = isl_printer_yaml_next(p);
       if (expr->acc.ref_id) {
         p = isl_printer_print_str(p, "ref_id");
         p = isl_printer_yaml_next(p);
@@ -1636,6 +1640,10 @@ __isl_give isl_printer* ExprPrettyPrinter::Print(__isl_take isl_printer* p,
       p = isl_printer_print_str(p, "op");
       p = isl_printer_yaml_next(p);
       p = isl_printer_print_str(p, op_type_to_string[expr->op]);
+      p = isl_printer_yaml_next(p);
+      p = isl_printer_print_str(p, "type_size");
+      p = isl_printer_yaml_next(p);
+      p = isl_printer_print_int(p, expr->type_size);
       p = isl_printer_yaml_next(p);
       p = PrintArguments(expr, p);
       p = isl_printer_yaml_end_mapping(p);

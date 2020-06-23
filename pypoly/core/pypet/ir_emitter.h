@@ -11,7 +11,7 @@ namespace pypoly {
 namespace pypet {
 
 struct EmitStatements {
-  EmitStatements(isl_ctx* ctx) : ctx(ctx){};
+  EmitStatements(isl_ctx* ctx) : ctx(ctx) { name2ast_ptr.clear(); }
   std::vector<PypetTree*> operator()(
       const torch::jit::List<torch::jit::Stmt>& statements);
 
@@ -33,6 +33,9 @@ struct EmitStatements {
   PypetTree* EmitDelete(const torch::jit::Delete& smt);
   PypetTree* EmitExpr(const torch::jit::Expr& tree);
 
+  PypetExpr* ExtractIndexExprFromIdent(isl_ctx* ctx,
+                                       const torch::jit::Ident& ident_expr);
+  PypetExpr* ExtractIndexExprFromVar(isl_ctx* ctx, const torch::jit::Var& expr);
   PypetExpr* ExtractAccessExpr(isl_ctx* ctx, const torch::jit::Expr& expr);
   PypetExpr* ExtractAssignExpr(isl_ctx* ctx, const torch::jit::Assign& stmt);
   PypetExpr* ExtractIndexExprFromSubscript(isl_ctx* ctx,
@@ -48,7 +51,7 @@ struct EmitStatements {
   PypetExpr* ExtractExpr(isl_ctx* ctx, const torch::jit::Expr& expr);
 
   isl_ctx* ctx;
-  std::set<std::string> used_names;
+  std::unordered_map<std::string, void*> name2ast_ptr;
 };
 
 }  // namespace pypet
