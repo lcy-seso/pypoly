@@ -40,6 +40,7 @@ PRINTER_FUNC(schedule)
 PRINTER_FUNC2(set)
 PRINTER_FUNC2(map)
 PRINTER_FUNC2(union_set)
+PRINTER_FUNC2(union_map)
 PRINTER_FUNC2(space)
 
 }  // namespace pypet

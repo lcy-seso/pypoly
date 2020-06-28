@@ -1366,8 +1366,20 @@ PypetExpr* PypetExpr::RemoveDuplicateArgs() {
 }
 
 bool PypetExpr::HasRelevantAccessRelation() {
-  // TODO(yizhu1): fake killed, may read, may write
-  return false;
+  if (acc.kill &&
+      !acc.access[PypetExprAccessType::PYPET_EXPR_ACCESS_FAKE_KILL]) {
+    return false;
+  }
+  if (acc.read &&
+      !acc.access[PypetExprAccessType::PYPET_EXPR_ACCESS_MAY_READ]) {
+    return false;
+  }
+  if (acc.write &&
+      (!acc.access[PypetExprAccessType::PYPET_EXPR_ACCESS_MAY_WRITE] ||
+       !acc.access[PypetExprAccessType::PYPET_EXPR_ACCESS_MUST_WRITE])) {
+    return false;
+  }
+  return true;
 }
 
 bool PypetExpr::IsEqual(PypetExpr* rhs) {

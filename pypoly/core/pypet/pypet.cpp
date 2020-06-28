@@ -246,7 +246,8 @@ isl_union_map* ExprCollectAccess(PypetExpr* expr, PypetExprAccessType type,
                                  isl_union_set* domain) {
   isl_union_map* access = PypetExprAccessGetAccess(expr, type);
   access = isl_union_map_intersect_domain(access, isl_union_set_copy(domain));
-  return isl_union_map_union(accesses, access);
+  isl_union_map* new_accesses = isl_union_map_union(accesses, access);
+  return new_accesses;
 }
 
 struct PypetExprCollectAccessesData {
@@ -425,7 +426,8 @@ isl_union_map* PypetScop::CollectAccesses(PypetExprAccessType type) const {
   isl_union_map* accesses = isl_union_map_empty(space);
 
   for (int i = 0; i < stmt_num; ++i) {
-    isl_union_map* accesses_i = stmts[i]->CollectAccesses(type, space);
+    isl_union_map* accesses_i =
+        stmts[i]->CollectAccesses(type, isl_set_get_space(context));
     accesses = isl_union_map_union(accesses, accesses_i);
   }
 
@@ -441,6 +443,22 @@ isl_union_map* PypetScop::CollectAccesses(PypetExprAccessType type) const {
   accesses = isl_union_map_apply_range(accesses, to_inner);
 
   return accesses;
+}
+
+isl_union_map* PypetScop::ComputeDependenceFlow() const {
+  isl_union_access_info* access =
+      isl_union_access_info_from_sink(isl_union_map_copy(GetMayReads()));
+  isl_union_map* must_writes = isl_union_map_copy(GetMustWrites());
+  access = isl_union_access_info_set_kill(access, must_writes);
+  access = isl_union_access_info_set_may_source(
+      access, isl_union_map_copy(GetMayWrites()));
+  access =
+      isl_union_access_info_set_schedule(access, isl_schedule_copy(schedule));
+  isl_union_flow* flow = isl_union_access_info_compute_flow(access);
+  isl_union_map* dep_flow = isl_union_flow_get_may_dependence(flow);
+  LOG(INFO) << dep_flow;
+  isl_union_flow_free(flow);
+  return dep_flow;
 }
 
 PypetScop* PypetScopRestrict(PypetScop* scop, isl_set* cond) {

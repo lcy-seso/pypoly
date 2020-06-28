@@ -119,6 +119,8 @@ struct PypetScop {
 
   isl_union_map* CollectAccesses(PypetExprAccessType type) const;
 
+  isl_union_map* ComputeDependenceFlow() const;
+
   torch::jit::SourceRange range;
 
   // program parameters. A unit set.
