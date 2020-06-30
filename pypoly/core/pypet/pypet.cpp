@@ -456,7 +456,6 @@ isl_union_map* PypetScop::ComputeDependenceFlow() const {
       isl_union_access_info_set_schedule(access, isl_schedule_copy(schedule));
   isl_union_flow* flow = isl_union_access_info_compute_flow(access);
   isl_union_map* dep_flow = isl_union_flow_get_may_dependence(flow);
-  LOG(INFO) << dep_flow;
   isl_union_flow_free(flow);
   return dep_flow;
 }
@@ -570,6 +569,16 @@ __isl_give isl_printer* StmtPrettyPrinter::Print(__isl_take isl_printer* p,
   CHECK_EQ(stmt->body->type, PYPET_TREE_EXPR);
   p = isl_printer_yaml_next(p);
   p = ExprPrettyPrinter::Print(p, stmt->body->ast.Expr.expr);
+  p = isl_printer_yaml_next(p);
+
+  p = isl_printer_print_str(p, "arguments");
+  p = isl_printer_yaml_next(p);
+  p = isl_printer_yaml_start_sequence(p);
+  for (int i = 0; i < stmt->arg_num; ++i) {
+    p = ExprPrettyPrinter::Print(p, stmt->args[i]);
+    p = isl_printer_yaml_next(p);
+  }
+  p = isl_printer_yaml_end_sequence(p);
   p = isl_printer_yaml_end_mapping(p);
   return p;
 }
