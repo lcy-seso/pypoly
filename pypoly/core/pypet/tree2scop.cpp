@@ -260,6 +260,7 @@ __isl_keep PypetScop* TreeToScop::ScopFromContinue(
 __isl_keep PypetScop* TreeToScop::ScopFromDecl(__isl_keep PypetTree* tree,
                                                __isl_keep PypetContext* pc,
                                                __isl_take PypetState* state) {
+  UNIMPLEMENTED();
   return nullptr;
 }
 
@@ -409,6 +410,8 @@ __isl_keep PypetScop* TreeToScop::ScopFromAffineFor(
     __isl_keep PypetTree* tree, __isl_take isl_pw_aff* init_val,
     __isl_take isl_pw_aff* pa_inc, __isl_take isl_val* inc,
     __isl_take PypetContext* pc, __isl_take PypetState* state) {
+  // use init_val, inc and cond to construct the iteration domain of current
+  // loop
   int pos = PypetContextDim(pc) - 1;
   isl_set* domain = PypetContextGetDomain(pc);
   PypetExpr* cond_expr = PypetExprCopy(tree->ast.Loop.cond);
@@ -535,20 +538,27 @@ __isl_keep PypetScop* TreeToScop::ToScop(__isl_take PypetTree* tree,
 
   switch (tree->type) {
     case PYPET_TREE_ERROR:
-      return nullptr;
+      UNIMPLEMENTED();
+      break;
     case PYPET_TREE_BLOCK:
-      return ScopFromBlock(tree, pc, state);
+      scop = ScopFromBlock(tree, pc, state);
+      break;
     case PYPET_TREE_BREAK:
-      return ScopFromBreak(tree, pc, state);
+      scop = ScopFromBreak(tree, pc, state);
+      break;
     case PYPET_TREE_CONTINUE:
-      return ScopFromContinue(tree, pc, state);
+      scop = ScopFromContinue(tree, pc, state);
+      break;
     case PYPET_TREE_DECL:
     case PYPET_TREE_DECL_INIT:
-      return ScopFromDecl(tree, pc, state);
+      scop = ScopFromDecl(tree, pc, state);
+      break;
     case PYPET_TREE_EXPR:
-      return ScopFromTreeExpr(tree, pc, state);
+      scop = ScopFromTreeExpr(tree, pc, state);
+      break;
     case PYPET_TREE_RETURN:
-      return ScopFromReturn(tree, pc, state);
+      scop = ScopFromReturn(tree, pc, state);
+      break;
     case PYPET_TREE_IF:
     case PYPET_TREE_IF_ELSE:
       scop = ScopFromIf(tree, pc, state);
@@ -557,7 +567,6 @@ __isl_keep PypetScop* TreeToScop::ToScop(__isl_take PypetTree* tree,
       scop = ScopFromFor(tree, pc, state);
       break;
   }
-  if (!scop) return nullptr;
   return scop;
 }
 

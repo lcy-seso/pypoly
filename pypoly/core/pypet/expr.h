@@ -6,39 +6,6 @@
 namespace pypoly {
 namespace pypet {
 
-enum PypetExprType {
-  PYPET_EXPR_ERROR = -1,
-  PYPET_EXPR_ACCESS,
-  PYPET_EXPR_CALL,
-  PYPET_EXPR_OP,
-  PYPET_EXPR_INT,
-};
-
-enum PypetOpType {
-  PYPET_ASSIGN = 0,  // Tensor operation leads to an assignment.
-  PYPET_ADD,
-  PYPET_SUB,
-  PYPET_MUL,
-  PYPET_DIV,
-  PYPET_MOD,
-  PYPET_MINUS,
-  PYPET_EQ,
-  PYPET_NE,
-  PYPET_LE,
-  PYPET_GE,
-  PYPET_LT,
-  PYPET_GT,
-  PYPET_COND,
-  PYPET_AND,
-  PYPET_XOR,
-  PYPET_OR,
-  PYPET_NOT,
-  PYPET_APPLY,
-  PYPET_LIST_LITERAL,
-  PYPET_ATTRIBUTE,
-  PYPET_UNKNOWN,
-};
-
 static constexpr const char* op_type_to_string[] = {
     [PYPET_ASSIGN] = "=",
     [PYPET_ADD] = "+",
@@ -63,16 +30,6 @@ static constexpr const char* op_type_to_string[] = {
     [PYPET_ATTRIBUTE] = "attribute",
 };
 
-enum PypetExprAccessType {
-  PYPET_EXPR_ACCESS_MAY_READ = 0,
-  PYPET_EXPR_ACCESS_BEGIN = PYPET_EXPR_ACCESS_MAY_READ,
-  PYPET_EXPR_ACCESS_FAKE_KILL = PYPET_EXPR_ACCESS_MAY_READ,
-  PYPET_EXPR_ACCESS_MAY_WRITE,
-  PYPET_EXPR_ACCESS_MUST_WRITE,
-  PYPET_EXPR_ACCESS_END,
-  PYPET_EXPR_ACCESS_KILL,
-};
-
 struct PypetExprAccess {
   PypetExprAccess() = default;
   ~PypetExprAccess() = default;
@@ -84,14 +41,6 @@ struct PypetExprAccess {
   size_t write;
   size_t kill;
   isl_union_map* access[PYPET_EXPR_ACCESS_END];  // access relation.
-};
-
-enum PypetArgType {
-  PYPET_ARG_INT,
-  PYPET_ARG_TENSOR,
-  PYPET_ARG_ARRAY,
-  PYPET_ARG_OTHER,  // int, float, etc. other numeric types.
-  // TODO(Ying): Do we need more argument types?
 };
 
 struct PypetFuncSummaryArg {
@@ -206,6 +155,12 @@ PypetExpr* PypetExprGetArg(PypetExpr* expr, int pos);
 
 PypetExpr* PypetExprSetArg(PypetExpr* expr, int pos, PypetExpr* arg);
 
+isl_union_map* PypetExprAccessGetDependentAccess(PypetExpr* expr,
+                                                 PypetExprAccessType type);
+
+isl_union_map* PypetExprAccessGetAccess(PypetExpr* expr,
+                                        PypetExprAccessType type);
+
 isl_space* PypetExprAccessGetAugmentedDomainSpace(PypetExpr* expr);
 
 isl_space* PypetExprAccessGetDomainSpace(PypetExpr* expr);
@@ -301,7 +256,7 @@ PypetExpr* PypetExprAccessUpdateDomain(PypetExpr* expr,
 PypetExpr* PypetExprRestrict(PypetExpr* expr, isl_set* set);
 
 /* Does "expr" represent the "integer" infinity?*/
-static bool IsInftyVal(__isl_keep PypetExpr* expr) {
+inline bool IsInftyVal(__isl_keep PypetExpr* expr) {
   CHECK(expr);
 
   if (expr->type != PYPET_EXPR_INT) return false;

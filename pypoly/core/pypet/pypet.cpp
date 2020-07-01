@@ -28,6 +28,12 @@ isl_set* AccessExtractContext(PypetExpr* expr, isl_set* context) {
 }
 
 isl_set* ExprExtractContext(PypetExpr* expr, isl_set* context) {
+  // TODO(yizhu1): a temporary workaround to avoid adding parameters in APPLY
+  // into context
+  if (expr->type == PypetExprType::PYPET_EXPR_OP &&
+      expr->op == PypetOpType::PYPET_APPLY) {
+    return context;
+  }
   if (expr->type == PypetExprType::PYPET_EXPR_OP &&
       expr->op == PypetOpType::PYPET_COND) {
     bool is_aff = PypetExprIsAffine(expr->args[0]);
@@ -215,8 +221,8 @@ PypetStmt* PypetStmt::Create(isl_set* domain, int id, PypetTree* tree) {
   stmt->body = tree;
 
   CHECK_EQ(tree->type, PYPET_TREE_EXPR);
-  stmt->arg_num = tree->ast.Expr.expr->arg_num;
-  stmt->args = tree->ast.Expr.expr->args;
+  stmt->arg_num = 0;
+  stmt->args = nullptr;
 
   return stmt;
 }
@@ -233,6 +239,63 @@ __isl_null PypetStmt* PypetStmt::Free(__isl_take PypetStmt* stmt) {
   free(stmt->args);
   free(stmt);
   return nullptr;
+}
+
+isl_union_map* ExprCollectAccess(PypetExpr* expr, PypetExprAccessType type,
+                                 isl_union_map* accesses,
+                                 isl_union_set* domain) {
+  isl_union_map* access = PypetExprAccessGetAccess(expr, type);
+  access = isl_union_map_intersect_domain(access, isl_union_set_copy(domain));
+  isl_union_map* new_accesses = isl_union_map_union(accesses, access);
+  return new_accesses;
+}
+
+struct PypetExprCollectAccessesData {
+  PypetExprAccessType type;
+  isl_union_set* domain;
+  isl_union_map* accesses;
+};
+
+int ExprCollectAccesses(PypetExpr* expr, void* user) {
+  PypetExprCollectAccessesData* data =
+      static_cast<PypetExprCollectAccessesData*>(user);
+  if (PypetExprIsAffine(expr)) {
+    return 0;
+  }
+  if ((data->type == PypetExprAccessType::PYPET_EXPR_ACCESS_MAY_READ &&
+       expr->acc.read) ||
+      ((data->type == PypetExprAccessType::PYPET_EXPR_ACCESS_MAY_WRITE ||
+        data->type == PypetExprAccessType::PYPET_EXPR_ACCESS_MUST_WRITE) &&
+       expr->acc.write)) {
+    data->accesses =
+        ExprCollectAccess(expr, data->type, data->accesses, data->domain);
+  }
+  CHECK(data->accesses);
+  return 0;
+}
+
+isl_union_map* PypetStmt::CollectAccesses(PypetExprAccessType type,
+                                          isl_space* dim) const {
+  bool must = false;
+  if (type == PypetExprAccessType::PYPET_EXPR_ACCESS_MUST_WRITE) {
+    must = true;
+  }
+
+  if (must && arg_num > 0) {
+    return isl_union_map_empty(dim);
+  }
+  if (must && body->type == PypetTreeType::PYPET_TREE_EXPR) {
+    return isl_union_map_empty(dim);
+  }
+
+  PypetExprCollectAccessesData data;
+  data.type = type;
+  data.domain = isl_union_set_from_set(DropArguments(isl_set_copy(domain)));
+  data.accesses = isl_union_map_empty(dim);
+
+  PypetTreeForeachAccessExpr(body, ExprCollectAccesses, &data);
+  isl_union_set_free(data.domain);
+  return data.accesses;
 }
 
 isl_set* StmtExtractContext(PypetStmt* stmt, isl_set* context) {
@@ -302,6 +365,99 @@ __isl_null PypetScop* PypetScop::Free(__isl_take PypetScop* scop) {
   free(scop->stmts);
   free(scop);
   return nullptr;
+}
+
+isl_union_map* PypetScop::ComputeAnyToInner() const {
+  return ComputeToInner(false, true);
+}
+
+isl_map* SetInnerDomain(isl_map* map, isl_set* dom) {
+  isl_map* copy;
+  copy = isl_map_copy(map);
+  copy = isl_map_intersect_range(copy, isl_set_copy(dom));
+  dom = isl_map_domain(isl_map_copy(copy));
+  copy = isl_map_gist_domain(copy, dom);
+  dom = isl_map_range(copy);
+  map = isl_map_intersect_range(map, dom);
+  return map;
+}
+
+isl_union_map* PypetScop::ComputeToInner(bool from_outermost,
+                                         bool to_innermost) const {
+  isl_union_map* to_inner = isl_union_map_empty(isl_set_get_space(context));
+
+  for (int i = 0; i < array_num; ++i) {
+    PypetArray* array = arrays[i];
+    if (to_innermost && array->outer) {
+      continue;
+    }
+    isl_set* set = isl_set_copy(array->extent);
+    isl_space* space = isl_set_get_space(set);
+    isl_map* map = isl_set_identity(isl_set_universe(space));
+
+    while (map && isl_map_domain_is_wrapping(map)) {
+      if (!from_outermost) {
+        to_inner = isl_union_map_add_map(to_inner, isl_map_copy(map));
+      }
+      map = isl_map_domain_factor_domain(map);
+      map = SetInnerDomain(map, set);
+    }
+    isl_set_free(set);
+    to_inner = isl_union_map_add_map(to_inner, map);
+  }
+
+  return to_inner;
+}
+
+isl_union_map* PypetScop::GetMayReads() const {
+  return CollectAccesses(PypetExprAccessType::PYPET_EXPR_ACCESS_MAY_READ);
+}
+
+isl_union_map* PypetScop::GetMayWrites() const {
+  return CollectAccesses(PypetExprAccessType::PYPET_EXPR_ACCESS_MAY_WRITE);
+}
+
+isl_union_map* PypetScop::GetMustWrites() const {
+  return CollectAccesses(PypetExprAccessType::PYPET_EXPR_ACCESS_MUST_WRITE);
+}
+
+isl_union_map* PypetScop::CollectAccesses(PypetExprAccessType type) const {
+  isl_space* space = isl_set_get_space(context);
+  isl_union_map* accesses = isl_union_map_empty(space);
+
+  for (int i = 0; i < stmt_num; ++i) {
+    isl_union_map* accesses_i =
+        stmts[i]->CollectAccesses(type, isl_set_get_space(context));
+    accesses = isl_union_map_union(accesses, accesses_i);
+  }
+
+  isl_union_set* arrays =
+      isl_union_set_empty(isl_union_map_get_space(accesses));
+  for (int i = 0; i < array_num; ++i) {
+    arrays =
+        isl_union_set_add_set(arrays, isl_set_copy(this->arrays[i]->extent));
+  }
+  accesses = isl_union_map_intersect_range(accesses, arrays);
+
+  isl_union_map* to_inner = ComputeAnyToInner();
+  accesses = isl_union_map_apply_range(accesses, to_inner);
+
+  return accesses;
+}
+
+isl_union_map* PypetScop::ComputeDependenceFlow() const {
+  isl_union_access_info* access =
+      isl_union_access_info_from_sink(isl_union_map_copy(GetMayReads()));
+  isl_union_map* must_writes = isl_union_map_copy(GetMustWrites());
+  access = isl_union_access_info_set_kill(access, must_writes);
+  access = isl_union_access_info_set_may_source(
+      access, isl_union_map_copy(GetMayWrites()));
+  access =
+      isl_union_access_info_set_schedule(access, isl_schedule_copy(schedule));
+  isl_union_flow* flow = isl_union_access_info_compute_flow(access);
+  isl_union_map* dep_flow = isl_union_flow_get_may_dependence(flow);
+  isl_union_flow_free(flow);
+  return dep_flow;
 }
 
 PypetScop* PypetScopRestrict(PypetScop* scop, isl_set* cond) {
@@ -413,6 +569,16 @@ __isl_give isl_printer* StmtPrettyPrinter::Print(__isl_take isl_printer* p,
   CHECK_EQ(stmt->body->type, PYPET_TREE_EXPR);
   p = isl_printer_yaml_next(p);
   p = ExprPrettyPrinter::Print(p, stmt->body->ast.Expr.expr);
+  p = isl_printer_yaml_next(p);
+
+  p = isl_printer_print_str(p, "arguments");
+  p = isl_printer_yaml_next(p);
+  p = isl_printer_yaml_start_sequence(p);
+  for (int i = 0; i < stmt->arg_num; ++i) {
+    p = ExprPrettyPrinter::Print(p, stmt->args[i]);
+    p = isl_printer_yaml_next(p);
+  }
+  p = isl_printer_yaml_end_sequence(p);
   p = isl_printer_yaml_end_mapping(p);
   return p;
 }

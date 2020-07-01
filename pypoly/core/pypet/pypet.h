@@ -1,7 +1,8 @@
 #ifndef PYPOLY_CORE_PYPET_PYPET_H_
 #define PYPOLY_CORE_PYPET_PYPET_H_
 
-#include "util.h"
+#include "pypoly/core/pypet/type.h"
+#include "pypoly/core/pypet/util.h"
 
 #include <torch/csrc/jit/frontend/source_range.h>
 
@@ -46,19 +47,21 @@ struct PypetArray {
   int live_out;
   int uniquely_defined;
   int exposed;
-  int outer;
   */
+  int outer;
 };
+
 struct ArrayPrettyPrinter {
   static __isl_give isl_printer* Print(__isl_take isl_printer* p,
                                        const PypetArray* array);
   static void Print(std::ostream& out, const PypetArray* array, int indent = 0);
 };
+
 static inline std::ostream& operator<<(std::ostream& out,
                                        const PypetArray* array) {
   ArrayPrettyPrinter::Print(out, array);
   return out;
-};
+}
 
 // A polyhedral statement.
 struct PypetStmt {
@@ -67,6 +70,9 @@ struct PypetStmt {
 
   static PypetStmt* Create(isl_set* domain, int id, PypetTree* tree);
   static __isl_null PypetStmt* Free(__isl_take PypetStmt* stmt);
+
+  isl_union_map* CollectAccesses(PypetExprAccessType type,
+                                 isl_space* dim) const;
 
   torch::jit::SourceRange range;
   isl_set* domain;
@@ -80,6 +86,7 @@ struct PypetStmt {
   // Information to print the body of the statement in source program.
   PypetTree* body;
 };
+
 isl_set* StmtExtractContext(PypetStmt* stmt, isl_set* context);
 
 struct StmtPrettyPrinter {
@@ -87,11 +94,12 @@ struct StmtPrettyPrinter {
                                        const PypetStmt* stmt);
   static void Print(std::ostream& out, const PypetStmt* stmt, int indent = 0);
 };
+
 static inline std::ostream& operator<<(std::ostream& out,
                                        const PypetStmt* stmt) {
   StmtPrettyPrinter::Print(out, stmt);
   return out;
-};
+}
 
 struct PypetScop {
   PypetScop() = delete;
@@ -101,6 +109,17 @@ struct PypetScop {
   static PypetScop* Create(isl_space* space, PypetStmt* stmt);
   static PypetScop* Create(isl_space* space, int n, isl_schedule* schedule);
   static __isl_null PypetScop* Free(__isl_take PypetScop* scop);
+
+  isl_union_map* ComputeAnyToInner() const;
+  isl_union_map* ComputeToInner(bool from_outermost, bool to_innermost) const;
+
+  isl_union_map* GetMayReads() const;
+  isl_union_map* GetMayWrites() const;
+  isl_union_map* GetMustWrites() const;
+
+  isl_union_map* CollectAccesses(PypetExprAccessType type) const;
+
+  isl_union_map* ComputeDependenceFlow() const;
 
   torch::jit::SourceRange range;
 
@@ -128,11 +147,12 @@ struct ScopPrettyPrinter {
                                        const PypetScop* scop);
   static void Print(std::ostream& out, const PypetScop* scop, int indent = 0);
 };
+
 static inline std::ostream& operator<<(std::ostream& out,
                                        const PypetScop* scop) {
   ScopPrettyPrinter::Print(out, scop);
   return out;
-};
+}
 
 PypetScop* PypetScopAdd(isl_ctx* ctx, isl_schedule* schedule, PypetScop* lhs,
                         PypetScop* rhs);

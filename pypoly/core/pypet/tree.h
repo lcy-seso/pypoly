@@ -8,20 +8,6 @@ namespace pypet {
 
 struct PypetExpr;
 
-enum PypetTreeType {
-  PYPET_TREE_ERROR = 0,
-  PYPET_TREE_EXPR,
-  PYPET_TREE_BLOCK,
-  PYPET_TREE_BREAK,
-  PYPET_TREE_CONTINUE,
-  PYPET_TREE_DECL,
-  PYPET_TREE_DECL_INIT,
-  PYPET_TREE_IF,      /* An if without an else branch */
-  PYPET_TREE_IF_ELSE, /* An if with an else branch */
-  PYPET_TREE_FOR,
-  PYPET_TREE_RETURN,
-};
-
 static constexpr const char* tree_type_str[] = {
     [PYPET_TREE_ERROR] = "error",
     [PYPET_TREE_EXPR] = "expression",

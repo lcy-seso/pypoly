@@ -2,6 +2,7 @@
 
 #include "pypoly/core/pypet/aff.h"
 #include "pypoly/core/pypet/expr.h"
+#include "pypoly/core/pypet/isl_printer.h"
 #include "pypoly/core/pypet/tree.h"
 
 namespace pypoly {
@@ -200,7 +201,12 @@ int PypetNestedNInSpace(isl_space* space) {
 }
 
 PypetExpr* PypetNestedExtractExpr(isl_id* id) {
-  return PypetExprCopy(static_cast<PypetExpr*>(isl_id_get_user(id)));
+  PypetExpr* expr = static_cast<PypetExpr*>(isl_id_get_user(id));
+  if (expr) {
+    return PypetExprCopy(expr);
+  } else {
+    return nullptr;
+  }
 }
 
 bool PypetNestedAnyInPwAff(isl_pw_aff* pa) {
