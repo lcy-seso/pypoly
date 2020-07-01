@@ -1,35 +1,35 @@
-context: [batch_size, depth, seq_len, h_prev, x] -> {  : batch_size <= 0 or (batch_size > 0 and depth <= 0) or (batch_size > 0 and depth >= 2147483650 and seq_len <= 0) or (batch_size > 0 and 0 < depth <= 2147483649 and seq_len <= 2147483649) }
+context: [batch_size, depth] -> {  :  }
 context value: [batch_size] -> {  :  }
 schedule:
-  domain: "[batch_size, depth, seq_len] -> { S_1[i, j] : 0 <= i < batch_size and 0 <= j < depth; S_4[i, j, k = 0] : seq_len > 0 and 0 <= i < batch_size and 0 <= j < depth; S_3[i, j, k] : 0 <= i < batch_size and 0 < j < depth and 0 <= k < seq_len; S_6[i, j, k] : 0 <= i < batch_size and 0 <= j < depth and 0 <= k < seq_len; S_7[i, j] : 0 <= i < batch_size and 0 <= j < depth; S_5[i, j, k] : 0 <= i < batch_size and 0 <= j < depth and 0 < k < seq_len; S_2[i, j = 0, k] : depth > 0 and 0 <= i < batch_size and 0 <= k < seq_len; S_0[i] : 0 <= i < batch_size }"
+  domain: "[batch_size, depth] -> { S_2[i, j = 0, k] : depth > 0 and 0 <= i < batch_size and k >= 0; S_4[i, j, k] : 0 <= i < batch_size and 0 <= j < depth and k >= 0; S_6[i, j, k] : 0 <= i < batch_size and 0 <= j < depth and k >= 0; S_7[i, j] : 0 <= i < batch_size and 0 <= j < depth; S_0[i] : 0 <= i < batch_size; S_5[i, j, k] : 0 <= i < batch_size and 0 <= j < depth and k >= 0; S_1[i, j] : 0 <= i < batch_size and 0 <= j < depth; S_3[i, j, k] : 0 <= i < batch_size and 0 < j < depth and k >= 0 }"
   child:
-    schedule: "[batch_size, depth, seq_len] -> L_0[{ S_1[i, j] -> [(i)]; S_4[i, j, k] -> [(i)]; S_3[i, j, k] -> [(i)]; S_6[i, j, k] -> [(i)]; S_7[i, j] -> [(i)]; S_5[i, j, k] -> [(i)]; S_2[i, j, k] -> [(i)]; S_0[i] -> [(i)] }]"
+    schedule: "[batch_size, depth] -> L_0[{ S_2[i, j, k] -> [(i)]; S_4[i, j, k] -> [(i)]; S_6[i, j, k] -> [(i)]; S_7[i, j] -> [(i)]; S_0[i] -> [(i)]; S_5[i, j, k] -> [(i)]; S_1[i, j] -> [(i)]; S_3[i, j, k] -> [(i)] }]"
     child:
       sequence:
-      - filter: "[batch_size, depth, seq_len] -> { S_0[i] }"
-      - filter: "[batch_size, depth, seq_len] -> { S_1[i, j]; S_4[i, j, k]; S_3[i, j, k]; S_6[i, j, k]; S_7[i, j]; S_5[i, j, k]; S_2[i, j, k] }"
+      - filter: "[batch_size, depth] -> { S_0[i] }"
+      - filter: "[batch_size, depth] -> { S_2[i, j, k]; S_4[i, j, k]; S_6[i, j, k]; S_7[i, j]; S_5[i, j, k]; S_1[i, j]; S_3[i, j, k] }"
         child:
-          schedule: "[batch_size, depth, seq_len] -> L_1[{ S_1[i, j] -> [(j)]; S_4[i, j, k] -> [(j)]; S_3[i, j, k] -> [(j)]; S_6[i, j, k] -> [(j)]; S_7[i, j] -> [(j)]; S_5[i, j, k] -> [(j)]; S_2[i, j, k] -> [(j)] }]"
+          schedule: "[batch_size, depth] -> L_1[{ S_2[i, j, k] -> [(j)]; S_4[i, j, k] -> [(j)]; S_6[i, j, k] -> [(j)]; S_7[i, j] -> [(j)]; S_5[i, j, k] -> [(j)]; S_1[i, j] -> [(j)]; S_3[i, j, k] -> [(j)] }]"
           child:
             sequence:
-            - filter: "[batch_size, depth, seq_len] -> { S_1[i, j] }"
-            - filter: "[batch_size, depth, seq_len] -> { S_6[i, j, k]; S_2[i, j, k]; S_3[i, j, k]; S_4[i, j, k]; S_5[i, j, k] }"
+            - filter: "[batch_size, depth] -> { S_1[i, j] }"
+            - filter: "[batch_size, depth] -> { S_2[i, j, k]; S_6[i, j, k]; S_3[i, j, k]; S_5[i, j, k]; S_4[i, j, k] }"
               child:
-                schedule: "[batch_size, depth, seq_len] -> L_2[{ S_6[i, j, k] -> [(k)]; S_2[i, j, k] -> [(k)]; S_3[i, j, k] -> [(k)]; S_4[i, j, k] -> [(k)]; S_5[i, j, k] -> [(k)] }]"
+                schedule: "[batch_size, depth] -> L_2[{ S_2[i, j, k] -> [(k)]; S_6[i, j, k] -> [(k)]; S_3[i, j, k] -> [(k)]; S_5[i, j, k] -> [(k)]; S_4[i, j, k] -> [(k)] }]"
                 child:
                   sequence:
-                  - filter: "[batch_size, depth, seq_len] -> { S_3[i, j, k]; S_2[i, j, k] }"
+                  - filter: "[batch_size, depth] -> { S_2[i, j, k]; S_3[i, j, k] }"
                     child:
                       set:
-                      - filter: "[batch_size, depth, seq_len] -> { S_2[i, j, k] }"
-                      - filter: "[batch_size, depth, seq_len] -> { S_3[i, j, k] }"
-                  - filter: "[batch_size, depth, seq_len] -> { S_4[i, j, k]; S_5[i, j, k] }"
+                      - filter: "[batch_size, depth] -> { S_2[i, j, k] }"
+                      - filter: "[batch_size, depth] -> { S_3[i, j, k] }"
+                  - filter: "[batch_size, depth] -> { S_5[i, j, k]; S_4[i, j, k] }"
                     child:
                       set:
-                      - filter: "[batch_size, depth, seq_len] -> { S_4[i, j, k] }"
-                      - filter: "[batch_size, depth, seq_len] -> { S_5[i, j, k] }"
-                  - filter: "[batch_size, depth, seq_len] -> { S_6[i, j, k] }"
-            - filter: "[batch_size, depth, seq_len] -> { S_7[i, j] }"
+                      - filter: "[batch_size, depth] -> { S_4[i, j, k] }"
+                      - filter: "[batch_size, depth] -> { S_5[i, j, k] }"
+                  - filter: "[batch_size, depth] -> { S_6[i, j, k] }"
+            - filter: "[batch_size, depth] -> { S_7[i, j] }"
 arrays:
 - context: {  :  }
   extent: { input[i0, i1] : 0 <= i0 <= 3 and 0 <= i1 <= 18 }
@@ -60,6 +60,7 @@ arrays:
       read: 0
       write: 1
     - 1
+  arguments: []
 - line: 38
   domain: [batch_size, depth] -> { S_1[i, j] : 0 <= i < batch_size and 0 <= j < depth }
   body:
@@ -73,81 +74,126 @@ arrays:
       depth: 1
       read: 1
       write: 0
+  arguments: []
 - line: 41
-  domain: [batch_size, depth, seq_len] -> { S_2[i, j = 0, k] : depth > 0 and 0 <= i < batch_size and 0 <= k < seq_len }
+  domain: [batch_size, depth] -> { [S_2[i, j = 0, k] -> [seq_len]] : depth > 0 and 0 <= i < batch_size and k >= 0 and seq_len > k }
   body:
     op: =
     args:
-    - index: [batch_size, depth, seq_len] -> { S_2[i, j, k] -> x[] }
+    - index: [batch_size, depth] -> { S_2[i, j, k] -> x[] }
       depth: 0
       read: 0
       write: 1
-    - index: [batch_size, depth, seq_len] -> { S_2[i, j, k] -> input[((i) : i >= 0), ((k) : k >= 0)] }
+    - index: [batch_size, depth] -> { S_2[i, j, k] -> input[((i) : i >= 0), ((k) : k >= 0)] }
       depth: 2
       read: 1
       write: 0
+  arguments:
+  - index: [batch_size, depth] -> { S_2[i, j, k] -> seq_len[] }
+    depth: 0
+    read: 1
+    write: 0
 - line: 43
-  domain: [batch_size, depth, seq_len] -> { S_3[i, j, k] : 0 <= i < batch_size and 0 < j < depth and 0 <= k < seq_len }
+  domain: [batch_size, depth] -> { [S_3[i, j, k] -> [seq_len]] : 0 <= i < batch_size and 0 < j < depth and k >= 0 and seq_len > k }
   body:
     op: =
     args:
-    - index: [batch_size, depth, seq_len] -> { S_3[i, j, k] -> x[] }
+    - index: [batch_size, depth] -> { S_3[i, j, k] -> x[] }
       depth: 0
       read: 0
       write: 1
-    - index: [batch_size, depth, seq_len] -> { S_3[i, j, k] -> output[((i) : i >= 0 and -2147483647 <= j <= 2147483648), ((-1 + j) : 0 < j <= 2147483648), ((k) : -2147483647 <= j <= 2147483648 and k >= 0)] }
+    - index: [batch_size, depth] -> { S_3[i, j, k] -> output[((i) : i >= 0 and -2147483647 <= j <= 2147483648), ((-1 + j) : 0 < j <= 2147483648), ((k) : -2147483647 <= j <= 2147483648 and k >= 0)] }
       depth: 3
       read: 1
       write: 0
+  arguments:
+  - index: [batch_size, depth] -> { S_3[i, j, k] -> seq_len[] }
+    depth: 0
+    read: 1
+    write: 0
 - line: 46
-  domain: [batch_size, depth, seq_len] -> { S_4[i, j, k = 0] : seq_len > 0 and 0 <= i < batch_size and 0 <= j < depth }
+  domain: [batch_size, depth] -> { [S_4[i, j, k] -> [link_len, seq_len]] : 0 <= i < batch_size and 0 <= j < depth and k >= 0 and link_len > k and seq_len > k }
   body:
     op: =
     args:
-    - index: [batch_size, depth, seq_len] -> { S_4[i, j, k] -> h_prev[] }
+    - index: [batch_size, depth] -> { S_4[i, j, k] -> h_prev[] }
       depth: 0
       read: 0
       write: 1
-    - index: [batch_size, depth, seq_len] -> { S_4[i, j, k] -> self_init_state[self[] -> init_state[]] }
+    - index: [batch_size, depth] -> { S_4[i, j, k] -> self_init_state[self[] -> init_state[]] }
       depth: 0
       read: 1
       write: 0
+  arguments:
+  - index: [batch_size, depth] -> { S_4[i, j, k] -> link_len[] }
+    depth: 0
+    read: 1
+    write: 0
+  - index: [batch_size, depth] -> { S_4[i, j, k] -> seq_len[] }
+    depth: 0
+    read: 1
+    write: 0
 - line: 48
-  domain: [batch_size, depth, seq_len] -> { S_5[i, j, k] : 0 <= i < batch_size and 0 <= j < depth and 0 < k < seq_len }
+  domain: [batch_size, depth] -> { [S_5[i, j, k] -> [link_len, seq_len]] : 0 <= i < batch_size and 0 <= j < depth and k >= 0 and link_len <= k and seq_len > k }
   body:
     op: =
     args:
-    - index: [batch_size, depth, seq_len] -> { S_5[i, j, k] -> h_prev[] }
+    - index: [batch_size, depth] -> { S_5[i, j, k] -> h_prev[] }
       depth: 0
       read: 0
       write: 1
-    - index: [batch_size, depth, seq_len] -> { S_5[i, j, k] -> output[((i) : i >= 0 and -2147483647 <= k <= 2147483648), ((j) : j >= 0 and -2147483647 <= k <= 2147483648), ((-1 + k) : 0 < k <= 2147483648)] }
+    - index: [batch_size, depth] -> { [S_5[i, j, k] -> [i3]] -> output[((i) : i >= 0), ((j) : j >= 0), ((i3) : i3 >= 0)] }
       depth: 3
       read: 1
       write: 0
+      args:
+      - op: -
+        args:
+        - index: [batch_size, depth] -> { S_5[i, j, k] -> [(k)] }
+          depth: 1
+          read: 1
+          write: 0
+        - index: [batch_size, depth] -> { S_5[i, j, k] -> link_len[] }
+          depth: 0
+          read: 1
+          write: 0
+  arguments:
+  - index: [batch_size, depth] -> { S_5[i, j, k] -> link_len[] }
+    depth: 0
+    read: 1
+    write: 0
+  - index: [batch_size, depth] -> { S_5[i, j, k] -> seq_len[] }
+    depth: 0
+    read: 1
+    write: 0
 - line: 50
-  domain: [batch_size, depth, seq_len] -> { S_6[i, j, k] : 0 <= i < batch_size and 0 <= j < depth and 0 <= k < seq_len }
+  domain: [batch_size, depth] -> { [S_6[i, j, k] -> [seq_len]] : 0 <= i < batch_size and 0 <= j < depth and k >= 0 and seq_len > k }
   body:
     op: =
     args:
-    - index: [batch_size, depth, seq_len] -> { S_6[i, j, k] -> output[((i) : i >= 0), ((j) : j >= 0), ((k) : k >= 0)] }
+    - index: [batch_size, depth] -> { S_6[i, j, k] -> output[((i) : i >= 0), ((j) : j >= 0), ((k) : k >= 0)] }
       depth: 3
       read: 0
       write: 1
     - op: apply
       args:
-      - index: [batch_size, depth, seq_len] -> { S_6[i, j, k] -> self_cells[self[] -> cells[((j) : j >= 0)]] }
+      - index: [batch_size, depth] -> { S_6[i, j, k] -> self_cells[self[] -> cells[((j) : j >= 0)]] }
         depth: 1
         read: 1
         write: 0
-      - index: [batch_size, depth, seq_len, x] -> { S_6[i, j, k] -> [(x)] }
-        depth: 1
+      - index: [batch_size, depth] -> { S_6[i, j, k] -> x[] }
+        depth: 0
         read: 1
         write: 0
-      - index: [batch_size, depth, seq_len, h_prev] -> { S_6[i, j, k] -> [(h_prev)] }
-        depth: 1
+      - index: [batch_size, depth] -> { S_6[i, j, k] -> h_prev[] }
+        depth: 0
         read: 1
         write: 0
+  arguments:
+  - index: [batch_size, depth] -> { S_6[i, j, k] -> seq_len[] }
+    depth: 0
+    read: 1
+    write: 0
 - line: 51
   domain: [batch_size, depth] -> { S_7[i, j] : 0 <= i < batch_size and 0 <= j < depth }
   body:
@@ -157,7 +203,11 @@ arrays:
       depth: 0
       read: 0
       write: 1
-    - index: [batch_size, depth] -> { S_7[i, j] -> [(2)] }
-      depth: 1
-      read: 1
-      write: 0
+    - op: *
+      args:
+      - 2
+      - index: [batch_size, depth] -> { S_7[i, j] -> link_len[] }
+        depth: 0
+        read: 1
+        write: 0
+  arguments: []
