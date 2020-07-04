@@ -14,8 +14,8 @@ import pypoly
 from pypoly import ScopParser
 from pypoly import CellArray
 from pypoly import VanillaRNNCell
-from pypoly import ReadWriteTensorArray
-from pypoly import ReadTensorArray
+from pypoly import MutableArray
+from pypoly import ImmutableArray
 
 
 class GridRNN(nn.Module):
@@ -34,9 +34,9 @@ class GridRNN(nn.Module):
         self.cell_y3 = cells_y[2]
         self.cells_y = [self.cell_y1, self.cell_y2, self.cell_y3]
 
-    def forward(self, src_seq_batch: ReadTensorArray, src_seq_lens: List[int],
-                trg_seq_batch: ReadTensorArray, trg_seq_lens: List[int],
-                batch_size: int, depth: int, output: ReadWriteTensorArray):
+    def forward(self, src_seq_batch: ImmutableArray, src_seq_lens: List[int],
+                trg_seq_batch: ImmutableArray, trg_seq_lens: List[int],
+                batch_size: int, depth: int, output: MutableArray):
         for n in range(batch_size):
             for d in range(depth):
                 src_len = src_lens[n]
@@ -109,7 +109,7 @@ if __name__ == '__main__':
     # FIXME(Ying): a significant issue in current implementations.
     # The variable declared here outside the `forward` body MUST have exactly
     # the same name as the name of its usage in the body of `forward`.
-    src_seq_batch = ReadTensorArray(
+    src_seq_batch = ImmutableArray(
         src_seq_batch,
         array_shape=[batch_size, max(src_lens)],
         tensor_shape=[1, input_size])
@@ -117,7 +117,7 @@ if __name__ == '__main__':
     # FIXME(Ying): a significant issue in current implementations.
     # The variable declared here outside the `forward` body MUST have exactly
     # the same name as the name of its usage in the body of `forward`.
-    trg_seq_batch = ReadTensorArray(
+    trg_seq_batch = ImmutableArray(
         trg_seq_batch,
         array_shape=[batch_size, max(trg_lens)],
         tensor_shape=[1, input_size])
@@ -125,7 +125,7 @@ if __name__ == '__main__':
     # FIXME(Ying): a significant issue in current implementations.
     # The variable declared here outside the `forward` body MUST have exactly
     # the same name as the name of its usage in the body of `forward`.
-    output = ReadWriteTensorArray(
+    output = MutableArray(
         array_shape=(batch_size, depth, max(src_lens), max(trg_lens),
                      grid_dim),
         tensor_shape=(1, hidden_size))

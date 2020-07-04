@@ -1,23 +1,42 @@
 from typing import List
 from collections.abc import Sequence
 from collections.abc import MutableSequence
+
+from abc import ABC, abstractmethod
+
 import copy
 
 import torch
-from torch import Tensor
 
 __all__ = [
-    'TensorArray',
-    'ReadWriteTensorArray',
-    'ReadTensorArray',
+    'ImmutableTensor',
+    'MutableTensor',
+    'MutableArray',
+    'ImmutableArray',
     'CellArray',
 ]
 
 
-class TensorArray(object):
-    """
-    A TensorArray is a variable-length list of tensor. Each tensor stored in
-    this TensorArray must have a same shape.
+class Tensor(ABC):
+    pass
+
+
+class ImmutableTensor(Tensor):
+    pass
+
+
+class MutableTensor(Tensor):
+    pass
+
+
+class Array(ABC):
+    """ Array<T>
+
+    An Array is a variable-length list of homogeneous elements that have the
+    same shape and the same type. An mutable Array is functional that EACH
+    position is ONLY allowed to write once. Once an array postion is written,
+    its value cannot be changed unless the array is reset.
+
 
     The warped Array class mainly serves for two purposes:
 
@@ -42,17 +61,16 @@ class TensorArray(object):
     pass
 
 
-class CellArray(TensorArray, Sequence):
-    """
-    A read-only, list-like class whose elements MUST have a type of
-    torch.nn.Module.
+class CellArray(Array, Sequence):
+    """ A read-only array of functions: Array<function>
+
+    A read-only, list-like class whose elements are callable.
     """
 
     def _type_check(self, input):
-        if not (isinstance(input, list) or isinstance(input, TensorArray)):
-            raise ValueError(
-                ('Error input. The Ctor accepts '
-                 'a Python built-in list or a TensorArray as input'))
+        if not (isinstance(input, list) or isinstance(input, Array)):
+            raise ValueError(('Error input. The Ctor accepts '
+                              'a Python built-in list or a Array as input'))
 
     def __init__(self, input):
         self._type_check(input)
@@ -66,7 +84,7 @@ class CellArray(TensorArray, Sequence):
         return len(self.T)
 
 
-class ReadTensorArray(TensorArray, Sequence):
+class ImmutableArray(Array, Sequence):
     """
     A read-only, list-like class whose elements MUST have a type of torch.Tensor.
     """
@@ -81,7 +99,7 @@ class ReadTensorArray(TensorArray, Sequence):
             array = array[0]
 
     def __init__(self, input, array_shape, tensor_shape):
-        super(ReadTensorArray, self).__init__()
+        super(ImmutableArray, self).__init__()
 
         self.tensor_shape = tensor_shape if isinstance(
             tensor_shape, List) else list(tensor_shape)
@@ -120,26 +138,25 @@ class ReadTensorArray(TensorArray, Sequence):
         pass
 
 
-class ReadWriteTensorArrayInternal(TensorArray, MutableSequence):
+class MutableArrayInternal(Array, MutableSequence):
     def __init__(self, input):
         if not isinstance(input, List):
-            raise ValueError(
-                ("ReadWriteTensorArrayInternal must be constructed from "
-                 "an empty Python list or Python list of "
-                 "ReadWriteTensorArrayInternal object."))
+            raise ValueError(("MutableArrayInternal must be constructed from "
+                              "an empty Python list or Python list of "
+                              "MutableArrayInternal object."))
 
         if not input:
             raise ValueError("Error input value.")
 
         elem = input[0]
-        if not ((isinstance(elem, List) and (not elem))
-                or isinstance(elem, ReadWriteTensorArrayInternal)):
+        if not ((isinstance(elem, List) and
+                 (not elem)) or isinstance(elem, MutableArrayInternal)):
             raise ValueError(
-                ("ReadWriteTensorArrayInternal must be constructed from "
+                ("MutableArrayInternal must be constructed from "
                  "an empty Python list or an ArrayInternal object."))
 
         self.T = input
-        self.is_leaf = not isinstance(input[0], ReadWriteTensorArrayInternal)
+        self.is_leaf = not isinstance(input[0], MutableArrayInternal)
         self.length = len(input)
 
     def __str__(self):
@@ -185,8 +202,9 @@ class ReadWriteTensorArrayInternal(TensorArray, MutableSequence):
         pass
 
 
-class ReadWriteTensorArray(TensorArray, MutableSequence):
-    """
+class MutableArray(Array, MutableSequence):
+    """ MutableArray<T>, T is a concreate type.
+
     A read-write, list-like class whose elements MUST have a type of
     torch.Tensor.
     """
@@ -196,7 +214,7 @@ class ReadWriteTensorArray(TensorArray, MutableSequence):
                  tensor_shape,
                  dtype=torch.float32,
                  **kwargs):
-        super(ReadWriteTensorArray, self).__init__()
+        super(MutableArray, self).__init__()
 
         self.tensor_shape = tensor_shape if isinstance(
             tensor_shape, List) else list(tensor_shape)
@@ -208,7 +226,7 @@ class ReadWriteTensorArray(TensorArray, MutableSequence):
 
     def _create_array(self):
         # the innermost dimension.
-        list_inner_dim = ReadWriteTensorArrayInternal(
+        list_inner_dim = MutableArrayInternal(
             [[] for _ in range(self.array_shape[-1])])
 
         list_current_dim = []
@@ -216,7 +234,7 @@ class ReadWriteTensorArray(TensorArray, MutableSequence):
             list_current_dim = []
             for i in range(dim_size):
                 list_current_dim.append(copy.deepcopy(list_inner_dim))
-            list_inner_dim = ReadWriteTensorArrayInternal(list_current_dim)
+            list_inner_dim = MutableArrayInternal(list_current_dim)
         return list_current_dim
 
     def _array_shape_str(self):
@@ -247,9 +265,9 @@ class ReadWriteTensorArray(TensorArray, MutableSequence):
         return self.T[i]
 
     def __setitem__(self, index, value):
-        if not isinstance(value, ReadWriteTensorArrayInternal):
-            raise ValueError(('The element of ReadWriteTensorArray must be '
-                              'a ReadWriteTensorArrayInternal object.'))
+        if not isinstance(value, MutableArrayInternal):
+            raise ValueError(('The element of MutableArray must be '
+                              'a MutableArrayInternal object.'))
         if index >= self.array_shape[0]:
             raise IndexError((f'list index {index} is out of range'
                               f' ({self.length}).'))

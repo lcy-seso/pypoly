@@ -5,7 +5,7 @@ repos:
     -   id: remove-crlf
         files: (?!.*third_party)^.*$ | (?!.*book)^.*$
 -   repo: https://github.com/pre-commit/mirrors-yapf.git
-    sha: v0.23.0
+    sha: v0.30.0
     hooks:
     -   id: yapf
         files: (.*\.(py|bzl)|BUILD|.*\.BUILD|WORKSPACE)$

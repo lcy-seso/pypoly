@@ -13,8 +13,8 @@ import context
 from pypoly import ScopParser
 from pypoly import VanillaRNNCell
 from pypoly import CellArray
-from pypoly import ReadWriteTensorArray
-from pypoly import ReadTensorArray
+from pypoly import MutableArray
+from pypoly import ImmutableArray
 
 
 class StackedLSTM(nn.Module):
@@ -29,8 +29,8 @@ class StackedLSTM(nn.Module):
 
         self.cells = [self.cell1, self.cell2, self.cell3]
 
-    def forward(self, input: ReadTensorArray, batch_size: int,
-                seq_lens: List[int], depth: int, output: ReadWriteTensorArray):
+    def forward(self, input: ImmutableArray, batch_size: int,
+                seq_lens: List[int], depth: int, output: MutableArray):
         for i in range(batch_size):
             seq_len = seq_lens[i]
             for j in range(seq_len):  # data-dependent loop bound.
@@ -80,7 +80,7 @@ if __name__ == '__main__':
     # FIXME(Ying): a significant issue in current implementations.
     # The variable declared here outside the `forward` body MUST have exactly
     # the same name as the name of its usage in the body of `forward`.
-    input = ReadTensorArray(
+    input = ImmutableArray(
         seq_batch,
         array_shape=[batch_size, max(seq_lens)],
         tensor_shape=[1, input_size])
@@ -88,7 +88,7 @@ if __name__ == '__main__':
     # FIXME(Ying): a significant issue in current implementations.
     # The variable declared here outside the `forward` body MUST have exactly
     # the same name as the name of its usage in the body of `forward`.
-    output = ReadWriteTensorArray(
+    output = MutableArray(
         array_shape=(batch_size, max(seq_lens), depth),
         tensor_shape=(1, hidden_size))
 

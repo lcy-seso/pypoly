@@ -12,12 +12,17 @@ import torch
 from typing import List
 
 from .python import array_pb2
+
+from .python.array import *
 from .python.cells import *
-from .python import *
+
+from .python.ops import meta
+from .python.ops import compound
+from .python.ops import functional
 
 __all__ = [
     'ScopParser',
-] + python.__all__
+]
 
 #FIXME(Ying) for debug only, Needs a standarded way to distribute the package
 # and import bindings.
@@ -183,12 +188,12 @@ class ScopParser(object):
             context_var.elem_desc.shape.extend([1])
 
             self.var_contexts.append(context_var)
-        elif isinstance(var, TensorArray):
+        elif isinstance(var, Array):
             min_shape = [1 for _ in range(var.dim)
                          ] if min_shape is None else min_shape
             max_shape = var.array_shape if max_shape is None else max_shape
             array_type = ('read_tensor_array' if isinstance(
-                var, ReadTensorArray) else 'readwrite_tensor_array')
+                var, ImmutableArray) else 'readwrite_tensor_array')
 
             context_var = array_pb2.ContextVar()
             context_var.name = var_name
