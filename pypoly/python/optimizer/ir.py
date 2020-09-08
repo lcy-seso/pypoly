@@ -34,18 +34,35 @@ class Tree:
         self.annotation_ = "none"
         self.children_ = children
     
+    # enum of types
+    # kBlock, kSequence, kSet, kStatement, kCall, kLoop, kIf
     def type(self):
         return self.type_
     
+    # enum of annotations
+    # kBoudary, kParallelizable
     def annotation(self):
         return self.annotation_
 
     def children(self):
         return self.children_
     
+    def set_child(self, i, child):
+        self.children_[i] = child
+    
     def generate_dataflow_graph(self):
         return Graph()
     
+    # a strong assumption of the input code's pattern:
+    #  L_0(i_0)
+    #    L_1(i_1)
+    #      ...
+    #        L_n(i_n)
+    #          [S_0, S_1, ..., S_m]
+    # constraints:
+    #  1. each iterator is an induced variable, initial value is 0, increment is 1, upper bound is a symbolic constant or a certain bound of a Tensor Array
+    #  2. all statements are in the deepest loop and follow the SSA requirements: left hand side (write in) is a accessed tensor in array, right hand side is an element in tensor array or context (scope)
+    #  3. a statement S_i can be if-else parsed from filter (further specifications are needed)
     def down_to_deepest_loop(self):
         node = self
         while node.children_[0].type() == "kLoop":
@@ -69,6 +86,7 @@ class Tree:
         # placeholder for Propagation related interfaces
         return FunctionSignature()
 
+# reference to data structures in PET
 class PolyIR:
     def generate_ast(self):
         return Tree("None", [])

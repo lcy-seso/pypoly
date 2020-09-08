@@ -1,7 +1,7 @@
 from ir import PolyIR
 
 # implicit computation order is scheduled by clear semantic syntax tree constructs: sequence, set(execute in parallel).
-class StatementScheduler:
+class BlockScheduler:
     # the return element is a syntax tree
     @staticmethod
     def run(tree):
@@ -37,7 +37,7 @@ class ParallelDetection:
     def run(tree):
         def node_handler(tree):
             if tree.type() == "kBlock":
-                tree = StatementScheduler.run(tree)
+                tree = BlockScheduler.run(tree)
             elif tree.type() == "kLoop":
                 tree = NestedLoopScheduler.run(tree)
             return tree
