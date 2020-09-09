@@ -9,7 +9,7 @@ class BlockScheduler:
         # dependence relation / data (tensor / tensor array) as an edge
         # each node has a integer to indicate the logical execution time, by default the number is the topological order
         dataflow_graph = tree.generate_dataflow_graph()
-        StatementScheduler.greedy_scheduler(dataflow_graph)
+        BlockScheduler.greedy_scheduler(dataflow_graph)
         return tree.generate_ast(dataflow_graph)
     
     @staticmethod
