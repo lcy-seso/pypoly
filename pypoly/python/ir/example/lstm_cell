@@ -1,0 +1,175 @@
+# frontend code
+LSTM_cell(x, c, h, w_ii, w_if, w_ig, w_io, w_hi, w_hf, w_hg, w_ho, b_ii, b_if, b_ig, b_io, b_hi, b_hf, b_hg, b_ho) {
+    i = map(
+        binary(
+            +,
+            broadcast(+, -1, matmul(x, w_ii), b_ii),
+            broadcast(+, -1, matmul(h, w_hi), b_hi)
+        ),
+        (v) { return exp(v) / (exp(v) + 1) }
+    )
+    f = map(
+        binary(
+            +,
+            broadcast(+, -1, matmul(x, w_if), b_if),
+            broadcast(+, -1, matmul(h, w_hf), b_hf)
+        ),
+        (v) { return exp(v) / (exp(v) + 1) }
+    )
+    g = map(
+        binary(
+            +,
+            broadcast(+, -1, matmul(x, w_ig), b_ig),
+            broadcast(+, -1, matmul(h, w_hg), b_hg)
+        ),
+        (v) { return (exp(2*v) - 1) / (exp(2*v) + 1) }
+    )
+    o = map(
+        binary(
+            +,
+            broadcast(+, -1, matmul(x, w_io), b_io),
+            broadcast(+, -1, matmul(h, w_ho), b_ho)
+        ),
+        (v) { return exp(v) / (exp(v) + 1) }
+    )
+    c_out = binary(+, binary(*, f, c), binary(*, i, g))
+    h_out = binary(*, o, map(c_out, (v) { return (exp(2*v) - 1) / (exp(2*v) + 1) } ))
+    return c_out, h_out
+}
+
+# normalization
+# mention: common sub-expression elimination may be needed
+LSTM_cell(x, c, h, w_ii, w_if, w_ig, w_io, w_hi, w_hf, w_hg, w_ho, b_ii, b_if, b_ig, b_io, b_hi, b_hf, b_hg, b_ho) {
+    i_map_binary_broadcast_0_matmul = matmul(x, w_ii)
+    i_map_binary_broadcast_0 = broadcast(+, -1, i_map_binary_broadcast_0_matmul, b_ii)
+    i_map_binary_broadcast_1_matmul = matmul(h, w_hi)
+    i_map_binary_broadcast_1 = broadcast(+, -1, i_map_binary_broadcast_1_matmul, b_hi)
+    i_map_binary = binary(+, i_map_binary_broadcast_0, i_map_binary_broadcast_1)
+    i = map(i_map_binary, (v) { return exp(v) / (exp(v) + 1) })
+
+    f_map_binary_broadcast_0_matmul = matmul(x, w_if)
+    f_map_binary_broadcast_0 = broadcast(+, -1, f_map_binary_broadcast_0_matmul, b_if)
+    f_map_binary_broadcast_1_matmul = matmul(h, w_hf)
+    f_map_binary_broadcast_1 = broadcast(+, -1, f_map_binary_broadcast_1_matmul, b_hf)
+    f_map_binary = binary(+, f_map_binary_broadcast_0, f_map_binary_broadcast_1)
+    f = map(f_map_binary, (v) { return exp(v) / (exp(v) + 1) })
+
+    g_map_binary_broadcast_0_matmul = matmul(x, w_ig)
+    g_map_binary_broadcast_0 = broadcast(+, -1, g_map_binary_broadcast_0_matmul, b_ig)
+    g_map_binary_broadcast_1_matmul = matmul(h, w_hg)
+    g_map_binary_broadcast_1 = broadcast(+, -1, g_map_binary_broadcast_1_matmul, b_hg)
+    g_map_binary = binary(+, g_map_binary_broadcast_0, g_map_binary_broadcast_1)
+    g = map(g_map_binary, (v) { return (exp(2*v) - 1) / (exp(2*v) + 1) })
+
+    o_map_binary_broadcast_0_matmul = matmul(x, w_io)
+    o_map_binary_broadcast_0 = broadcast(+, -1, o_map_binary_broadcast_0_matmul, b_io)
+    o_map_binary_broadcast_1_matmul = matmul(h, w_ho)
+    o_map_binary_broadcast_1 = broadcast(+, -1, o_map_binary_broadcast_1_matmul, b_ho)
+    o_map_binary = binary(+, o_map_binary_broadcast_0, o_map_binary_broadcast_1)
+    o = map(o_map_binary, (v) { return exp(v) / (exp(v) + 1) })
+
+    c_out_binary_0 = binary(*, f, c)
+    c_out_binary_1 = binary(*, i, g)
+    c_out = binary(+, c_out_binary_0, c_out_binary_1)
+
+    h_out_binary_1 = map(c_out, (v) { return (exp(2*v) - 1) / (exp(2*v) + 1) }) 
+    h_out = binary(*, o, h_out_binary_1)
+    return c_out, h_out
+}
+
+# IR
+LSTM_cell(x, c, h, w_ii, w_if, w_ig, w_io, w_hi, w_hf, w_hg, w_ho, b_ii, b_if, b_ig, b_io, b_hi, b_hf, b_hg, b_ho) {
+    for (c0, x.dim(0))
+        for (c1, w_ii.dim(1))
+            i_map_binary_broadcast_0_matmul[c0, c1] = reduce(0, +, x[c0, :], w_ii[:, c1])
+    for (c0, i_map_binary_broadcast_0_matmul.dim(0))
+        for (c1, i_map_binary_broadcast_0_matmul.dim(1))
+            i_map_binary_broadcast_0[c0, c1] = i_map_binary_broadcast_0_matmul[c0, c1] + b_ii[c1]
+    for (c0, h.dim(0))
+        for (c1, w_hi.dim(1))
+            i_map_binary_broadcast_1_matmul[c0, c1] = reduce(0, +, h[c0, :], w_hi[:, c1])
+    for (c0, i_map_binary_broadcast_1_matmul.dim(0))
+        for (c1, i_map_binary_broadcast_1_matmul.dim(1))
+            i_map_binary_broadcast_1[c0, c1] = i_map_binary_broadcast_1_matmul[c0, c1] + b_hi[c1]
+    for (c0, i_map_binary_broadcast_0.dim(0))
+        for (c1, i_map_binary_broadcast_0.dim(1))
+            i_map_binary[c0, c1] = i_map_binary_broadcast_0[c0, c1] + i_map_binary_broadcast_1[c0, c1]
+    for (c0, i_map_binary.dim(0))
+        for (c1, i_map_binary.dim(1))
+            i[c0, c1] = apply(i_map_binary[c0, c1], (v) { return exp(v) / (exp(v) + 1) })
+
+    for (c0, x.dim(0))
+        for (c1, w_ih.dim(1))
+            f_map_binary_broadcast_0_matmul[c0, c1] = reduce(0, +, x[c0, :], w_if[:, c1])
+    for (c0, f_map_binary_broadcast_0_matmul.dim(0))
+        for (c1, f_map_binary_broadcast_0_matmul.dim(1))
+            f_map_binary_broadcast_0[c0, c1] = f_map_binary_broadcast_0_matmul[c0, c1] + b_if[c1]
+    for (c0, h.dim(0))
+        for (c1, w_hf.dim(1))
+            f_map_binary_broadcast_1_matmul[c0, c1] = reduce(0, +, h[c0, :], w_hf[:, c1])
+    for (c0, f_map_binary_broadcast_1_matmul.dim(0))
+        for (c1, f_map_binary_broadcast_1_matmul.dim(1))
+            f_map_binary_broadcast_1[c0, c1] = f_map_binary_broadcast_1_matmul[c0, c1] + b_hf[c1]
+    for (c0, f_map_binary_broadcast_0.dim(0))
+        for (c1, f_map_binary_broadcast_0.dim(1))
+            f_map_binary[c0, c1] = f_map_binary_broadcast_0[c0, c1] + f_map_binary_broadcast_1[c0, c1]
+    for (c0, f_map_binary.dim(0))
+        for (c1, f_map_binary.dim(1))
+            f[c0, c1] = apply(f_map_binary[c0, c1], (v) { return exp(v) / (exp(v) + 1) })
+
+    for (c0, x.dim(0))
+        for (c1, w_ig.dim(1))
+            g_map_binary_broadcast_0_matmul[c0, c1] = reduce(0, +, x[c0, :], w_ig[:, c1])
+    for (c0, g_map_binary_broadcast_0_matmul.dim(0))
+        for (c1, g_map_binary_broadcast_0_matmul.dim(1))
+            g_map_binary_broadcast_0[c0, c1] = g_map_binary_broadcast_0_matmul[c0, c1] + b_ig[c1]
+    for (c0, h.dim(0))
+        for (c1, w_hg.dim(1))
+            g_map_binary_broadcast_1_matmul[c0, c1] = reduce(0, +, h[c0, :], w_hg[:, c1])
+    for (c0, g_map_binary_broadcast_1_matmul.dim(0))
+        for (c1, g_map_binary_broadcast_1_matmul.dim(1))
+            g_map_binary_broadcast_1[c0, c1] = g_map_binary_broadcast_1_matmul[c0, c1] + b_hg[c1]
+    for (c0, g_map_binary_broadcast_0.dim(0))
+        for (c1, g_map_binary_broadcast_0.dim(1))
+            g_map_binary[c0, c1] = g_map_binary_broadcast_0[c0, c1] + g_map_binary_broadcast_1[c0, c1]
+    for (c0, g_map_binary.dim(0))
+        for (c1, g_map_binary.dim(1))
+            g[c0, c1] = apply(g_map_binary[c0, c1], (v) { return (exp(2*v) - 1) / (exp(2*v) + 1) })
+
+    for (c0, x.dim(0))
+        for (c1, w_io.dim(1))
+            o_map_binary_broadcast_0_matmul[c0, c1] = reduce(0, +, x[c0, :], w_io[:, c1])
+    for (c0, o_map_binary_broadcast_0_matmul.dim(0))
+        for (c1, o_map_binary_broadcast_0_matmul.dim(1))
+            o_map_binary_broadcast_0[c0, c1] = o_map_binary_broadcast_0_matmul[c0, c1] + b_io[c1]
+    for (c0, h.dim(0))
+        for (c1, w_ho.dim(1))
+            o_map_binary_broadcast_1_matmul[c0, c1] = reduce(0, +, h[c0, :], w_ho[:, c1])
+    for (c0, o_map_binary_broadcast_1_matmul.dim(0))
+        for (c1, o_map_binary_broadcast_1_matmul.dim(1))
+            o_map_binary_broadcast_1[c0, c1] = o_map_binary_broadcast_1_matmul[c0, c1] + b_ho[c1]
+    for (c0, o_map_binary_broadcast_0.dim(0))
+        for (c1, o_map_binary_broadcast_0.dim(1))
+            o_map_binary[c0, c1] = o_map_binary_broadcast_0[c0, c1] + o_map_binary_broadcast_1[c0, c1]
+    for (c0, o_map_binary.dim(0))
+        for (c1, o_map_binary.dim(1))
+            o[c0, c1] = apply(o_map_binary[c0, c1], (v) { return exp(v) / (exp(v) + 1) })
+
+    for (c0, f.dim(0))
+        for (c1, f.dim(1))
+            c_out_binary_0[c0, c1] = f[c0, c1] * c[c0, c1]
+    for (c0, i.dim(0))
+        for (c1, i.dim(1))
+            c_out_binary_1[c0, c1] = i[c0, c1] * g[c0, c1]
+    for (c0, c_out_binary_0.dim(0))
+        for (c1, c_out_binary_1.dim(1))
+            c_out[c0, c1] = c_out_binary_0[c0, c1] + c_out_binary_1[c0, c1]
+
+    for (c0, c_out.dim(0))
+        for (c1, c_out.dim(1))
+            h_out_binary_1[c0, c1] = apply(c_out[c0, c1], (v) { return (exp(2*v) - 1) / (exp(2*v) + 1) })
+    for (c0, o.dim(0))
+        for (c1, o.dim(1))
+            h_out[c0, c1] = o[c0, c1] * h_out_binary_1[c0, c1]
+    return c_out, h_out
+}
