@@ -1,0 +1,30 @@
+# frontend code
+# the semantic of foldl may influence the optimization result (how to translate this?)
+out = scanl(
+    [](state, word_emb) { # var state is the vertical hidden state, emb iterates over sentence
+        return scanl(
+            [](pre_state, cur_state) { # pre_state stores horizontal, cur_state stores vertical
+                return LSTM_cell(x=pre_state[1], c=cur_state[0], h=cur_state[1], weights)
+            },
+            state,
+            init={none, word_emb}
+        )
+    },
+    sentence,
+    init=prev
+)
+
+# IR
+for (c0, sentence.len())
+    if (c0 == 0)
+        for (c1, prev.len()) # prev.len() is depth
+            if c1 == 0
+                out[c0, c1] = LSTM_cell(x=sentence[c0], c=prev[c1][0], h=prev[c1][1], weights)
+            else
+                out[c0, c1] = LSTM_cell(x=out[c1-1][1], c=prev[c1-1][0], h=prev[c1-1][1], weights)
+    else
+        for (c1, prev.len())
+            if c1 == 0
+                out[c0, c1] = LSTM_cell(sentence[c0], c=out[c0-1][0], h=out[c0-1][1], weights)
+            else
+                out[c0, c1] = LSTM_cell(x=out[c1-1][1], c=out[c1-1][0], h=prev[c1-1][1], weights)
