@@ -1,0 +1,32 @@
+# frontend
+src_init_states = [src_init_state] * src_len
+tgt_init_states = [tgt_init_state] * tgt_len
+
+first_layer_out = scanl(
+    [](y_items, x_items) {
+        return scanl(
+            [](lhs, rhs) {
+                x_t, state_x = lhs
+                y_t, state_y = rhs
+                h_prev = tensor.cat([state_x, state_y], dim=1)
+                x_out = cell(h_prev, x_t)
+                y_out = cell(h_prev, y_t)
+
+            },
+            y_items
+            init=x_items
+        )
+    },
+    {src_encs, src_init_states},
+    init={tgt_encs, tgt_init_states}
+)
+
+succ_layers_out = scanl(
+    [](prev_layer_out) {
+        return scanl(
+            init={src_init_state, }
+        )
+    }
+    {src_init_states, tgt_init_states}, # len = d-1
+    init=first_layer_out
+)
