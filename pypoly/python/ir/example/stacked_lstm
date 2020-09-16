@@ -28,3 +28,25 @@ for (c0, sentence.len())
                 out[c0, c1] = LSTM_cell(sentence[c0], c=out[c0-1][0], h=out[c0-1][1], weights)
             else
                 out[c0, c1] = LSTM_cell(x=out[c1-1][1], c=out[c1-1][0], h=prev[c1-1][1], weights)
+
+# add batch dimension and layered weights
+out = map(
+    [](sentence) {
+        return scanl(
+            # lhs shares same type with the init var
+            # rhs iterates over the input list(s)
+            [](stacked_states, word_emb) {
+                return scanl(
+                    [](prev_lstm_out, hidden_elements) {
+                        # LSTM_cell return a tuple of tensors {c, h}, same type with init
+                        return LSTM_cell(x=prev_lstm_out[1], c=hidden_elements[0][0], h=hidden_elements[0][1], weights=hidden_elements[1])
+                    }
+                    {stacked_states, weights}, # weights is a var in the current closure
+                    init={none, word_emb}
+                )
+            },
+            sentence,
+            init=init_states # init_states is a tuple of two tensor arrays containing 'c' and 'h'
+        )
+    }
+)
