@@ -1,9 +1,9 @@
 # frontend code
 # the semantic of foldl may influence the optimization result (how to translate this?)
 out = scanl(
-    [](state, word_emb) { # var state is the vertical hidden state, emb iterates over sentence
+    (state, word_emb) { # var state is the vertical hidden state, emb iterates over sentence
         return scanl(
-            [](pre_state, cur_state) { # pre_state stores horizontal, cur_state stores vertical
+            (pre_state, cur_state) { # pre_state stores horizontal, cur_state stores vertical
                 return LSTM_cell(x=pre_state[1], c=cur_state[0], h=cur_state[1], weights)
             },
             state,
@@ -31,13 +31,13 @@ for (c0, sentence.len())
 
 # add batch dimension and layered weights
 out = map(
-    [](sentence) {
+    (sentence) {
         return scanl(
             # lhs shares same type with the init var
             # rhs iterates over the input list(s)
-            [](stacked_states, word_emb) {
+            (stacked_states, word_emb) {
                 return scanl(
-                    [](prev_lstm_out, hidden_elements) {
+                    (prev_lstm_out, hidden_elements) {
                         # LSTM_cell return a tuple of tensors {c, h}, same type with init
                         return LSTM_cell(x=prev_lstm_out[1], c=hidden_elements[0][0], h=hidden_elements[0][1], weights=hidden_elements[1])
                     }
