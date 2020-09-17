@@ -1,10 +1,13 @@
 # frontend
-# here repeat elements are stored as reference
+# here repeat elements may be stored as references at runtime
 layer_x_inits = x_init_state.repeat(len(x_encs)).repeat(depth)
 layer_y_inits = y_init_state.repeat(len(y_encs)).repeat(depth)
 
 extended_x_encs = x_encs.map((x_enc) { return x_enc.repeat(len(y_encs))} )
 extended_y_encs = y_encs.repeat(len(x_encs))
+
+# Generally, we are applying the cell function to structured tensor arrays. Users only need to prepare (transform) data following certain rules
+# and the function will automatically launched along dimensions one by one.
 
 # lambda functions in scan share same signature (a, b) -> a, where 'a' is the type of the initial variable, 'b' is the type of elements in the list that is scanned
 # the return type is 'a'. As a result, the type of the final result is List[a]
@@ -28,7 +31,7 @@ out = scanl(
                 # the type of returned element is {TensorArray(tgt_len), TensorArray(tgt_len)}
                 # the first dim of vertical_states and prev_vertical is tgt_len
                 return scanl(
-                    [](prev_x_states, tupled_states) {
+                    (prev_x_states, tupled_states) {
                         x_state, _ = prev_x_states
                         _, y_state = tupled_states[0]
                         x_t, y_t = tupled_states[1]
