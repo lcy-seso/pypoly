@@ -6,12 +6,27 @@ layer_y_inits = y_init_state.repeat(len(y_encs)).repeat(depth)
 extended_x_encs = x_encs.map((x_enc) { return x_enc.repeat(len(y_encs))} )
 extended_y_encs = y_encs.repeat(len(x_encs))
 
+# lambda functions in scan share same signature (a, b) -> a, where 'a' is the type of the initial variable, 'b' is the type of elements in the list that is scanned
+# the return type is 'a'. As a result, the type of the final result is List[a]
+
+# scan along depth
+# the type of 'init' is {TensorArray(src_len, tgt_len), TensorArray(src_len, tgt_len)}
+# the type of returned element is {TensorArray(depth, src_len, tgt_len), TensorArray(depth, src_len, tgt_len)}
+# the first dim of layer_x_inits, layer_y_inits and weights is depth
 out = scanl(
     (prev_layer_out, inits) {
         x_inits, y_inits, weight = inits
+        # scan along source sequence
+        # the type of 'init' is {TensorArray(tgt_len), TensorArray(tgt_len)}
+        # the type of returned element is {TensorArray(src_len, tgt_len), TensorArray(src_len, tgt_len)}
+        # the first dim of x_inits and prev_layer_out is src_len
         return scanl(
             (vertical_states, horizontal_elements) {
                 x_init, prev_vertical = horizontal_elements
+                # scan along target sequence
+                # the type of 'init" is {Tensor(hidden_dim), Tensor(hidden_dim)}
+                # the type of returned element is {TensorArray(tgt_len), TensorArray(tgt_len)}
+                # the first dim of vertical_states and prev_vertical is tgt_len
                 return scanl(
                     [](prev_x_states, tupled_states) {
                         x_state, _ = prev_x_states
@@ -25,7 +40,7 @@ out = scanl(
                 )
             },
             {x_inits, prev_layer_out},
-            {none, y_inits}
+            init={none, y_inits}
         )
     },
     {layer_x_inits, layer_y_inits, weights}
