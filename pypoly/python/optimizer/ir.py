@@ -1,8 +1,67 @@
 class Tensor:
-    pass
+    def __init__(self, data_type, shape):
+        self.data_type_ = data_type
+        self.shape_ = shape
+    
+    def data_type(self):
+        return self.data_type_
+    
+    def shape(self):
+        return self.shape_
+    
+    def is_equal(self, rhs):
+        return self.data_type_ == rhs.data_type() and self.shape_ == rhs.shape
 
+# there may be a base class for TensorArray and Tuple
+# constraints consistent with nested loops, elements inside should be homogeneous
 class TensorArray:
-    pass
+    def __init__(self, python_list):
+        self.length_ = len(python_list)
+        if isinstance(python_list[0], Tensor):
+            self.items_ = python_list
+            self.depth_ = 0
+            self.tensor_info_ = python_list[0]
+        else:
+            assert isinstance(python_list[0], TensorArray)
+            self.items_ = [None] * self.length_
+            for i in range(self.length_):
+                self.items_[i] = TensorArray(python_list[i])
+            self.depth_ = self.items_[0].depth() + 1
+            self.tensor_info_ = self.items_[0].tensor_info()
+        assert TensorArray.check_homogeneous(self.items_)
+
+    def length(self):
+        return self.length_
+    
+    def depth(self):
+        return self.depth_
+    
+    def tensor_info(self):
+        return self.tensor_info_
+    
+    @staticmethod
+    def check_homogeneous(items):
+        if isinstance(items[0], Tensor):
+            for i in range(len(items) - 1):
+                if items[0].is_equal(items[i + 1]) == False:
+                    return False
+        else:
+            for i in range(len(items) - 1):
+                if items[0].depth() != items[i + 1].depth or items[0].tensor_info().is_equal(items[i + 1].tensor_info()) == False:
+                    return False
+        return True
+
+# weaker constraints compared to TensorArray
+class Tuple:
+    def __init__(self, python_list):
+        self.length_ = python_list
+        if isinstance(python_list[0], Tensor):
+            self.items_ = python_list
+        else:
+            assert isinstance(python_list[0], TensorArray)
+            for i in range(self.length_ - 1):
+                assert python_list[0].length() == python_list[i + 1].length()
+            self.items_ = python_list    
 
 class Node:
     pass
