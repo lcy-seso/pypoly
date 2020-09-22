@@ -24,7 +24,7 @@ out = scanl(
         # the type of returned element is {TensorArray(src_len, tgt_len), TensorArray(src_len, tgt_len)}
         # the first dim of x_inits and prev_layer_out is src_len
         return scanl(
-            (vertical_states, horizontal_elements) {
+            [weight](vertical_states, horizontal_elements) {
                 x_init, prev_vertical = horizontal_elements
                 # scan along target sequence
                 # the type of 'init" is {Tensor(hidden_dim), Tensor(hidden_dim)}
@@ -48,6 +48,24 @@ out = scanl(
     },
     {layer_x_inits, layer_y_inits, weights}
     init={extended_x_encs, extended_y_encs}
+)
+
+# a possible high level interface
+out = scan_by_dim(
+    # dimension binding / referring:
+    # prev_x_states -> [0, 1]
+    # prev_y_states -> [0, 2]
+    # prev_layer_states -> [1, 2]
+    # weight -> [0]
+    (prev_x_states, prev_y_states, prev_layer_states, context={weight}) {
+        x_state, _ = prev_x_states
+        _, y_state = prev_y_states
+        x_t, y_t = prev_layer_states
+        h_prev = tensor.concat((x_state, y_state), dim=1)
+        return {cell(h_prev, x_t, weight), cell(h_prev, y_t, weight)}
+    },
+    context=[(weights, [0])],
+    init=[(layer_x_inits, [0, 1]), (layer_y_inits, [0, 2]), (extended_x_encs, [1, 2]), (extended_y_encs, [1, 2])]
 )
 
 # normalized IR
