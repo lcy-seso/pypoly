@@ -1,9 +1,53 @@
-Op Type
+Variable Type
 
-- add, sub, mul, div
-- eq, ne, le, ge, lt, gt
-- and, xor, or, not
-- neg
+- Tensor (scalar represented as tensor?)
+  - data type
+  - shape
+  - layout
+- Tensor Array (inherit from *List*)
+  - length
+  - item list of tensors or tensor arrays
+  - tensor info
+  - depth
+  - layout
+  - label the static and dynamic dimensions?
+  - dimension info propagation?
+- Object Reference
+  - initial object
+- Tuple (inherit from *List*)
+  - length
+  - item list of object references
+
+Op Type (system interfaces)
+
+- basic arithmetic
+  - unary
+    - neg
+  - binary
+    - add, sub, mul, div
+    - eq, ne, le, ge, lt, gt
+    - and, xor, or, not
+    - max, min
+- computation: *a* and *b* below are all tensors, iterable object refers to data structures inherited from *List*
+  - map
+    - iterable object: List[*a*]
+    - lambda function: *a* -> *b*
+    - return type: List[*b*]
+  - scan (fold)
+    - initial variable: *a*
+    - iterable object: List[*b*]
+    - lambda function: (*a*, *b*) -> *a*
+    - return type: List[*a*]
+- data movement
+  - gather
+    - iterable variable: List[*a*]
+    - index: List[tuple<*int*>]
+    - return type: *b*
+  - scatter
+    - iterable variable: List[*a*]
+    - input tensor: *b*
+    - index: List[tuple<*int*>]
+    - no return type, in place assignment / modification to the iterable variable
 
 Expr Access Type
 
@@ -11,18 +55,28 @@ Expr Access Type
 - may write
 - must write
 
-Expr: args: List[Expr]
+Expr
 
-- access
+- type ? (check the array part in PET)
+- args: List[Expr]
+
+Expr Type
+
+- access (variable name is included in this category)
   - access type
 - call
-  - func-name: string
+  - func-name (optional for lambda function): string
 - op
   - op type
+- int (initial value, increment)
 
 Tree
 
-- expr
+- computation
+  - inputs: List[Expr]
+  - output: Expr
+  - block: Tree
+- expr (differences against decl-init), call functions with no return statement
   - expr: Expr
 - block
   - children: List[Tree]
@@ -39,6 +93,13 @@ Tree
   - cond: Expr
   - inc: Expr
   - body: Tree
+
+Important utility interfaces of Tree
+
+- Shape propagation: static and dynamic
+- Function signature generation
+- Meta info propagation: tell whether inputs of a function can be batched
+- Fuse / merge code (tree, computation)
 
 Notes
 
