@@ -1,24 +1,28 @@
-Variable Type
+**Variable Type**
 
 - Tensor (scalar represented as tensor?)
   - data type
   - shape
   - layout
-- Tensor Array (inherit from *List*)
+- List
   - length
-  - item list of tensors or tensor arrays
+  - item type (label reference?)
+  - storage of items
+  - *initialization* ? like the syntax in python: l = [i for i in range(10)]
+  - *append* ? immutable ?
+- Tensor Array (inherit from *List*)
+  - item type specialization: tensors, tensor arrays
   - tensor info
   - depth
   - layout
   - label the static and dynamic dimensions?
-  - dimension info propagation?
-- Object Reference
-  - initial object
+  - dynamic dimension reference?
 - Tuple (inherit from *List*)
-  - length
-  - item list of object references
+  - item type specialization: object references
+- Object Reference
+  - pointer to source object, constraints of source object: tensor, tensor arrays
 
-Op Type (system interfaces)
+**Op Type (system interfaces)**
 
 - basic arithmetic
   - unary
@@ -28,12 +32,14 @@ Op Type (system interfaces)
     - eq, ne, le, ge, lt, gt
     - and, xor, or, not
     - max, min
+- tensor (array) operation (to be discussed)
+  - repeat
 - computation: *a* and *b* below are all tensors, iterable object refers to data structures inherited from *List*
   - map
     - iterable object: List[*a*]
     - lambda function: *a* -> *b*
     - return type: List[*b*]
-  - scan (fold)
+  - scan (fold, reduce)
     - initial variable: *a*
     - iterable object: List[*b*]
     - lambda function: (*a*, *b*) -> *a*
@@ -42,6 +48,7 @@ Op Type (system interfaces)
   - gather
     - iterable variable: List[*a*]
     - index: List[tuple<*int*>]
+    - dimension: int
     - return type: *b*
   - scatter
     - iterable variable: List[*a*]
