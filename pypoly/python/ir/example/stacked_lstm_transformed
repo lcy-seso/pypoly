@@ -1,0 +1,30 @@
+# initial code
+for (i, 0, batch_size) # batch_size
+    for (j, 1, input[i].length()) # seq_len
+        for (k, 1, depth)
+            output[i][j][k] = LSTM_cell(output[i][j-1][k][0], output[i][j][k-1][0], output[i][j][k-1][1]) # weight is omitted
+
+# transformed
+for (c0, 0, max(input.length(depth=1))+depth-1) # L0
+    for (c1, 0, batch_size) # L1 parallel for
+        if c0 < input[c1].length()+depth-1 # this loop can be removed
+            for (c2, max(0, c0-depth+1), min(input[c1].length(), c0+1)) # L2 parallel for
+                # S(c1, c2, c0-c2)
+                output[c1][c2][c0-c2] = LSTM_cell(output[c1][c2-1][c0-c2][0], output[c1][c2][c0-c2-1][0], output[c1][c2][c0-c2-1][1])
+
+# insert gather and scatter
+for (c0, 0, max(input.length(depth=1))+depth-1) # L0
+    # affine scheduling ensures lists below is not empty
+    read_index_list_0 = list.for([(c1, 0, batch_size), c2(0, max(0, c0-depth+1), min(input[c1].length(), c0+1))], [c0](c1, c2) { return Tuple(c1, c2-1, c0-c2, 0)})
+    read_data_0 = gather(output, read_index_list_0)
+
+    read_index_list_1 = list.for([(c1, 0, batch_size), c2(0, max(0, c0-depth+1), min(input[c1].length(), c0+1))], [c0](c1, c2) { return Tuple(c1, c2, c0-c2-1, 0)})
+    read_data_1 = gather(output, read_index_list_1)
+
+    read_index_list_2 = list.for([(c1, 0, batch_size), c2(0, max(0, c0-depth+1), min(input[c1].length(), c0+1))], [c0](c1, c2) { return Tuple(c1, c2, c0-c2-1, 1)})
+    read_data_2 = gather(output, read_index_list_2)
+
+    gathered_output = LSTM_cell(read_data_0, read_data_1, read_data_2)
+
+    write_index_list = list.for([(c1, 0, batch_size), c2(0, max(0, c0-depth+1), min(input[c1].length(), c0+1))], [c0](c1, c2) { return Tuple(c1, c2, c0-c2, 1)})
+    scatter(gathered_output, output, write_index_list)

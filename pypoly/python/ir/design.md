@@ -8,8 +8,8 @@
   - length
   - item type (label reference? *repeat*)
   - storage of items
-  - *initialization* ? like the syntax in python: arr = [i for i in range(10)], note that the representation is not strongly related to the implemention, referring to the example code in Grid RNN
-  - do we need *append* ? immutable ?
+  - List is initialized by definition. *map*, *scan* and *for* are used to build List(constructor functions). Note that the representation is not strongly related to the implemention, referring to the example code in Grid RNN
+  - List structure follows functional programming model, immutable and no modification interface( like append) is provided
 - Tensor Array (inherit from *List*)
   - item type specialization: tensors, tensor arrays
   - tensor info
@@ -47,6 +47,14 @@
     - iterable object: List[*b*]
     - lambda function: (*a*, *b*) -> *a*
     - return type: List[*a*]
+  - for
+    - iteration domain: List[iteration variable]
+      - iteration variable: Tuple<name,lower_bound,upper_bound,increment>
+      - name: expr, int
+      - lower_bound: expr, int
+      - upper_bound: expr, int
+      - increment: expr, int
+    - lambda function: (List[int]) -> a
 - data movement
   - gather
     - iterable variable: List[*a*]
