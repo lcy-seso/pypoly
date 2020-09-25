@@ -47,7 +47,7 @@
     - iterable object: List[*b*]
     - lambda function: (*a*, *b*) -> *a*
     - return type: List[*a*]
-  - for
+  - for (we argue that *for* is constrained in the frontend and fully functioning in the backend)
     - iteration domain: List[iteration variable]
       - iteration variable: Tuple<name,lower_bound,upper_bound,increment>
       - name: expr, int
@@ -67,6 +67,9 @@
     - index: List[tuple<*int*>]
     - dimension: int
     - no return type, in place assignment / modification to the iterable variable
+- data access
+  - index (currently, we constrain that the arguement of index is a single induction variable, not an expression composed of algebraic combination of variables)
+    - access position: int
 
 Expr Access Type
 
