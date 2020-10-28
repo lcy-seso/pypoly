@@ -48,7 +48,7 @@ class Function {
   //  Tuple elements need to be declared explicitly 
   vector<Type*> ret_types_;
   vector<Statement*> stmts_;
-
+  StmtScheduleInfo schedule_info_;
 };
 
 class Program {
@@ -99,7 +99,50 @@ void BlockParallelismDetection(Function* func) {
     return 
   }
   Graph* graph = BuildFlowGraph(func->stmts_);
-  func->parallel_info_ = GreedyScheduler(graph);
+  func->schedule_info_ = GreedyScheduler(graph);
+}
+
+Statement* CanScanOptimized(Statement* stmt) {
+  if (IsScan(stmt->expr_) == false) {
+    return nullptr;
+  }
+  Function* applied_func = GetScanInnerFunc(stmt->expr_);
+  int dep_stmt_cnt = 0;
+  Statement* nested_dep_stmt = nullptr;
+  for (Statement* item : applied_func->stmts_) {
+    // do not recursively check the user function.
+    if (IsUserFunc(item->expr_)) {
+      return nullptr;
+    }
+    // do not optimize inner reduce
+    if (IsReduce(item->expr_)) {
+      return nullptr;
+    }
+    // do not optimize inner map. Although there may be statements carrying dependence inside the map,
+    // it will introduce implementation complexity.
+    if (IsMap(item->expr_)) {
+      return nullptr;
+    }
+    if (IsScan(item->expr_) || IsFold(item->expr_)) {
+      ++dep_stmt_cnt;
+      nested_dep_stmt = item;
+    }
+  }
+  return nested_dep_stmt;
+}
+
+// we current focus on the two level scan now
+void OptimizeScan(Statement* scan, Statement* nested_stmt) {
+  // the dimension naming rule: i0, i1
+  Type* out_type = GetScanOutType(scan);
+  // according to the constraints, we know that i0 carries a dependence vector of 1 implicitly
+
+  // can we guarantee that the type of initializer must be iterated over by the nested_stmt?
+  // as a result, i1 carries a dependence vector of 1 implicitly too
+
+  // for the two level case, the function called by nested_stmt is analyzed.
+  // the returned element of this function corresponds to the level-2 item in the out_type
+  // we need to trace variables accessed by this function clearly to compute the dependence vectors(the relative position to the returned element).
 }
 
 void ParallelismDetection(Program* prog) {
@@ -107,9 +150,9 @@ void ParallelismDetection(Program* prog) {
   BlockParallelismDetection(entry);
   for (int i = 0; i < entry->stmts_.size(); ++i) {
     Statement* stmt = entry->stmts_[i];
-    if (CanScanOptimized(stmt)) {
+    if (CanScanOptimized(stmt) != nullptr) {
       OptimizeScan(stmt);
-    } else if (CanFoldOptimized(stmt)) {
+    } else if (CanFoldOptimized(stmt) != nullptr) {
       OptimizeFold(stmt);
     }
   }
