@@ -156,6 +156,33 @@ vector<vector<int>> ComputeTransformMat(vector<vector<int>>& dep_vecs) {
 void DoTransform(Stmt* scan, vector<vector<int>>& dep_vecs, vector<vector<int>>& mat) {
   // By processing the input data properly, we can implicitly make the shape
   // of the output TA compatible with the transformation matrix.
+
+  // it seems that if we forbid the usage of 'index' in lambda function,
+  // dependence vectors must be
+  // [1, 0, ..., 0]
+  // [0, 1, ..., 0]
+  // ...
+  // [0, 0, ..., 1]
+  // as a result, the optimal transformation matrix is
+  // 1, 1, ..., 1
+  // 1, 0, ..., 0
+  // 0, 1, ..., 0
+  // ...
+  // 0, 0, ..., 1
+  // the transformed code is (expressed by nested for loops)
+  // dim_i may be evaluated at runtime
+  // for c0 in range(0, \sum^n_{i=1} {dim_i - 1} + 1)
+  //   for c1 in range(max(0, c0-dim2+1), min(dim1, c0+1))
+  //     for c2 in range(max(0, c0-c1-dim3+1), min(dim2, c0-c1+1))
+  //       ...
+  //         for ci in range(max(0, c0-c1-..-c_{i-1}-dim_{i+1}+1), min(dim_i,c0-c1-c2-...-c_{i-1}+1))
+  //           ...
+  //             i1, i2, ..., in = c1, c2, ..., c0 - c1 - c2 - ... - c_{n-1}
+
+  // similar to the stacked lstm example, we can add 'None' to existed data
+  // to transformed the above nested for loop to scan + n-1 maps
+  // after that, we can transpose the skewed output to the layout that source
+  // program wants
 }
 
 // we current focus on the two level scan now
@@ -172,6 +199,7 @@ void OptimizeScan(Statement* scan, Statement* nested_stmt) {
   DoTransform(scan, dep_vecs, trans_mat);
 }
 
+// our IR should be able to represent all stencil programs
 void ParallelismDetection(Program* prog) {
   Function* entry = prog->name2func_[entry_func_];
   BlockParallelismDetection(entry);
