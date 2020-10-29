@@ -57,8 +57,8 @@ class Program {
   string entry_func_;
   // global func
   unordered_map<string, Function*> name2func_;
-  // global data
-  unordered_map<string, Type*> name2data_;
+  // global var
+  unordered_map<string, Type*> name2var_;
 };
 
 class Node {
@@ -84,7 +84,7 @@ class Graph {
   vector<Edge*> edges_;
 };
 
-// add an entry node to make the Graph a DAG
+// add a fake entry node to make the Graph a DAG
 StmtScheduleInfo GreedyScheduler(Graph* graph) {
 }
 
@@ -123,6 +123,9 @@ Statement* CanScanOptimized(Statement* stmt) {
     if (IsMap(item->expr_)) {
       return nullptr;
     }
+    // actually, we need to check the parameters of scan to rule out the
+    // situation that additional dependence transformation is applied to
+    // inputs in a statement
     if (IsScan(item->expr_) || IsFold(item->expr_)) {
       ++dep_stmt_cnt;
       nested_dep_stmt = item;
@@ -131,18 +134,42 @@ Statement* CanScanOptimized(Statement* stmt) {
   return nested_dep_stmt;
 }
 
+vector<vector<int>> ComputeDepVecs(Statement* scan, Statement* nested_stmt) {
+  // according to the constraints, we know that i0 carries a dependence vector
+  // of 1 implicitly
+
+  // can we guarantee that the type of initializer must be iterated over by
+  // the nested_stmt?
+  // as a result, i1 carries a dependence vector of 1 implicitly too
+
+  // for the two level case, the function called by nested_stmt is analyzed.
+  // the returned element of this function corresponds to the level-2 item in
+  // the out_type
+  // we need to trace variables accessed by this function clearly to compute
+  // the dependence vectors(the relative position to the returned element).
+}
+
+vector<vector<int>> ComputeTransformMat(vector<vector<int>>& dep_vecs) {
+
+}
+
+void DoTransform(Stmt* scan, vector<vector<int>>& dep_vecs, vector<vector<int>>& mat) {
+  // By processing the input data properly, we can implicitly make the shape
+  // of the output TA compatible with the transformation matrix.
+}
+
 // we current focus on the two level scan now
 void OptimizeScan(Statement* scan, Statement* nested_stmt) {
   // the dimension naming rule: i0, i1
   Type* out_type = GetScanOutType(scan);
-  // according to the constraints, we know that i0 carries a dependence vector of 1 implicitly
-
-  // can we guarantee that the type of initializer must be iterated over by the nested_stmt?
-  // as a result, i1 carries a dependence vector of 1 implicitly too
-
-  // for the two level case, the function called by nested_stmt is analyzed.
-  // the returned element of this function corresponds to the level-2 item in the out_type
-  // we need to trace variables accessed by this function clearly to compute the dependence vectors(the relative position to the returned element).
+  // for current targets, all dep_vecs are unit vectors  
+  vector<vector<int>> dep_vecs = ComputeDepVecs(scan, nested_stmt);
+  // the transformation matrix is a 01 matrix. The first row makes sure that
+  // after transformation, only the top level carries dependence, e.g., a scan
+  // elements in the remaining rows ensure that the matrix is invertible
+  vector<vector<int>> trans_mat = ComputeTransformMat(dep_vecs);
+  // the most complexed one, transform the internal representation
+  DoTransform(scan, dep_vecs, trans_mat);
 }
 
 void ParallelismDetection(Program* prog) {
