@@ -46,15 +46,24 @@ skewed_output = scan(embed_xs, wavefront_func, TensorArray(depth, lambda _: retu
 
 grid rnn
 ```python
-skewed_input = 
 
 def y_map_func():
   map()
   pass
 
-def x_map_func():
+def x_map_func(idx, emb_vecs, prev_states):
+  if idx < len(emb_xs) + len(emb_ys) - 1:
+
+  else:
+    
   map(y_map_func)
   pass
 
+skewed_input = TensorArray(len(emb_xs) + len(emb_ys) - 1, lambda c0: return TensorArray(mix(len(emb_xs), c0 + 1) - max(0, c0 - len(emb_ys) + 1), lambda c1: return {index(emb_xs, c1), index(emb_ys, c0 - c1)})) + TensorArray(depth - 1, lambda _: return None)
+
 skewed_output = scan(skewed_input, x_map_func)
 ```
+Try to answer following questions
+- can we simplify code structures above ?
+- replace TensorArray with another interface to 'pack' data ?
+- do we need to add redundant 'None' ?
