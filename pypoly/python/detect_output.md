@@ -13,7 +13,8 @@ def lstm_cell(state: Tuple[Tensor], x: Tensor, rnn_param: Tuple[Tensor]) -> Tupl
 
 
 def wavefront_func(idx, x, prev_states):
-  # depth < len(xs) by default
+  # assume: depth < len(xs)
+  # 3 cases included
   if idx < depth:
     in_xs = x + TensorArray(idx, lambda xs_idx: return prev_states[xs_idx - 1][0])
     in_hs = TensorArray(idx - 1, lambda hs_idx: return prev_states[hs_idx][0]) + h_initials[idx]
@@ -33,6 +34,8 @@ def wavefront_func(idx, x, prev_states):
 
   map_out = map(zip(in_xs, in_hs, in_cs, in_ws), lambda idx, (x, h, c, w): lstm_cell({h, c}, x, in_ws))
 
+  # do we need these 'None'? A procedure similar to the collection data above
+  # can be used to transform the 'skewed_output' back to 'output'
   if idx < depth:
     return map_out + TensorArray(depth - idx - 1, lambda _: return None)
   elif idx < len(xs):
@@ -47,23 +50,42 @@ skewed_output = scan(embed_xs, wavefront_func, TensorArray(depth, lambda _: retu
 grid rnn
 ```python
 
-def y_map_func():
-  map()
-  pass
-
-def x_map_func(idx, emb_vecs, prev_states):
-  if idx < len(emb_xs) + len(emb_ys) - 1:
-
+# emb_vecs: List[{Tensor, Tensor}]
+# prev_states: List[List[{Tensor, Tensor}]]
+def gen_map_func(idx, emb_vecs, prev_states):
+  # state_xs, state_ys, x_ts, y_ts, cur_ws are built in this function, they
+  # share a same type List[List{Tensor, Tensor}]. lists are in same length.
+  # for simplicity, assume depth < len(emb_xs) < len(emb_ys)
+  if idx < depth:
+    # TODO
+  elif idx < len(emb_xs):
+    # TODO
+  elif idx < len(emb_ys):
+    # TODO
+  elif idx < len(emb_xs) + len(emb_ys) - 1:
+    # TODO
   else:
-    
-  map(y_map_func)
-  pass
+    # TODO
+  map_context = zip(state_xs, state_ys, x_ts, y_ts, cur_ws)
+  return map(map_context, lambda _, item1: return map(item1, lambda _, item2: grid_cell(item2))
 
 skewed_input = TensorArray(len(emb_xs) + len(emb_ys) - 1, lambda c0: return TensorArray(mix(len(emb_xs), c0 + 1) - max(0, c0 - len(emb_ys) + 1), lambda c1: return {index(emb_xs, c1), index(emb_ys, c0 - c1)})) + TensorArray(depth - 1, lambda _: return None)
 
-skewed_output = scan(skewed_input, x_map_func)
+skewed_output = scan(skewed_input, gen_map_func, None)
 ```
 Try to answer following questions
-- can we simplify code structures above ?
-- replace TensorArray with another interface to 'pack' data ?
-- do we need to add redundant 'None' ?
+- can we simplify code structures above ? -> The overall code structure is discussed in below.
+- replace TensorArray with another interface to pack or stack data ? -> I personally recommend this strategy to deliver clear information to the optimizer that it does not need to construct a 'true' TensorArray in some cases.
+- do we need to add redundant 'None's? -> 'None' is (only?) needed at the top level scan to compromise between the API and transformed code.
+
+One principle of our programming model: if a function accept an Iterable Object as an input, main body of the function is organized by *map*, *reduce* or *scan*. (**Hint, discussion here may not applicable for code when in a block, tensor level operation is launched after a reduce or multiple control constructs, scan + map ?**)In other words, these APIs are used to explicitly describe the operations over lists of tensors and decouple the control flow and the concept of operators in traditional frameworks.
+
+The overall code structure
+1. transform the initial state and append some 'None's to the tail. this state is scanned over, e.g. carries the dependence.
+2. inputs of the tensor level function call in the deepest 'scan' will be collected (as references?) and orgranized.
+3. apply 'map's to the collected data
+4. transform the output TensorArray back to its layout in user code
+
+In current model examples, transformations in **step 1** and **step 4** are performed in an affine way.
+
+More about **step 2**: in general, it is a procedure that accepts a variable that represents the predecessor state and other variables that correspond to the values in the scope. As demonstrated by the example above, different ways will be used to collect data when index value of the top level 'scan' changes.
