@@ -36,6 +36,7 @@ def wavefront_func(idx, x, prev_states):
 
   # do we need these 'None'? A procedure similar to the collection data above
   # can be used to transform the 'skewed_output' back to 'output'
+  # quick note: 'None' here is related to the way how we collect data
   if idx < depth:
     return map_out + TensorArray(depth - idx - 1, lambda _: return None)
   elif idx < len(xs):
@@ -89,3 +90,11 @@ The overall code structure
 In current model examples, transformations in **step 1** and **step 4** are performed in an affine way.
 
 More about **step 2**: in general, it is a procedure that accepts a variable that represents the predecessor state and other variables that correspond to the values in the scope. As demonstrated by the example above, different ways will be used to collect data when index value of the top level 'scan' changes.
+
+Multiple control statements (only consider scan, map and reduce) in a nested function (preliminary discussion), here the word 'follow' means that the output of the predecessor is consumed by the latter one & the word 'compose' means that compose the two lambda functions
+1. a scan followed by a map -> compose
+2. a scan followed by a scan -> compose
+3. a scan followed by a reduce -> split the scan and reduce into two regions and apply optimizations one by one -> a heuristic strategy -> a possible case, the scan returns List[List[Tensor]], the reduce returns List[Tensor]
+4. a map followed by a map -> compose
+5. a map followed by a scan -> compose
+6. a map followed by a reduce -> compose
